@@ -13,6 +13,7 @@ public class TraderProfileResponse {
     private String fullName;
     private String phoneNumber;
     private String email;
+    private String idNumber;
     private String businessName;
     private String businessType;
     private String tradingArea;
@@ -35,6 +36,7 @@ public class TraderProfileResponse {
                 .fullName(trader.getFullName())
                 .phoneNumber(trader.getPhoneNumber())
                 .email(trader.getEmail())
+                .idNumber(trader.getIdNumber())
                 .businessName(trader.getBusinessName())
                 .businessType(trader.getBusinessType())
                 .tradingArea(trader.getTradingArea())

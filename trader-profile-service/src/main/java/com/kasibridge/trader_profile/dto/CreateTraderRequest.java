@@ -39,4 +39,12 @@ public class CreateTraderRequest {
     private String bankName;
 
     private TraderProfile.OnboardingChannel onboardingChannel;
+
+    public boolean isRegistered() {
+        return Boolean.TRUE.equals(hasBusinessRegistration);
+    }
+
+    public boolean hasCipc() {
+        return cipcNumber != null && !cipcNumber.trim().isEmpty();
+    }
 }

@@ -30,7 +30,6 @@ public class TraderProfileServiceImpl implements TraderProfileService{
 
         //check for duplicate phone
         if(repository.existsByPhoneNumber(request.getPhoneNumber())){
-
             throw new DuplicateTraderException(
                     "A trader with phone number " + request.getPhoneNumber() + " already exists."
             );
@@ -40,6 +39,20 @@ public class TraderProfileServiceImpl implements TraderProfileService{
         if(request.getEmail() != null && repository.existsByEmail(request.getEmail())){
             throw new DuplicateTraderException(
                     "A trader with email " + request.getEmail() + " already exists."
+            );
+        }
+
+        //CIPC only valid if business is registered
+        if (request.hasCipc() && !request.isRegistered()) {
+            throw new IllegalArgumentException(
+                    "CIPC number can only be provided if the business is registered."
+            );
+        }
+
+        //if registered, CIPC number is required
+        if (request.isRegistered() && !request.hasCipc()) {
+            throw new IllegalArgumentException(
+                    "CIPC number is required when business is registered."
             );
         }
 
@@ -60,6 +73,7 @@ public class TraderProfileServiceImpl implements TraderProfileService{
                 .onboardingChannel(request.getOnboardingChannel() != null ? request.getOnboardingChannel() : TraderProfile.OnboardingChannel.WEB)
                 .status(TraderProfile.ProfileStatus.PENDING)
                 .build();
+
 
         TraderProfile saved = repository.save(trader);
         log.info("Trader profile created with ID: {}", saved.getId());
@@ -137,40 +151,74 @@ public class TraderProfileServiceImpl implements TraderProfileService{
                 .collect(Collectors.toList());
     }
 
+
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public TraderProfileResponse updateProfile(Long id, UpdateTraderRequest request) {
         log.info("Updating trader profile with ID: {}", id);
         TraderProfile trader = findByIdOrThrow(id);
 
-        //trader can only update fields which don't have a null value
-                if(request.getBusinessName() != null)
-                    trader.setBusinessName(request.getBusinessName());
+        // Determine effective registration state
+        boolean effectivelyRegistered = request.getHasBusinessRegistration() != null
+                ? request.getHasBusinessRegistration()
+                : Boolean.TRUE.equals(trader.getHasBusinessRegistration());
 
-                if(request.getBusinessType() != null)
-                    trader.setBusinessType(request.getBusinessType());
+        boolean incomingCipc = isValid(request.getCipcNumber());
+        boolean existingCipc = isValid(trader.getCipcNumber());
 
-                if(request.getTradingArea() != null)
-                    trader.setTradingArea(request.getTradingArea());
+        // Cross-field validation
+        if (incomingCipc && !effectivelyRegistered) {
+            throw new IllegalArgumentException(
+                    "CIPC number can only be provided if the business is registered."
+            );
+        }
 
-                if(request.getBusinessDescription() != null)
-                    trader.setBusinessDescription(request.getBusinessDescription());
+        if (effectivelyRegistered && !incomingCipc && !existingCipc) {
+            throw new IllegalArgumentException(
+                    "CIPC number is required when business is registered."
+            );
+        }
 
-                if(request.getHasBusinessRegistration() != null)
-                    trader.setHasBusinessRegistration(request.getHasBusinessRegistration());
+        if (isValid(request.getBusinessName()))
+            trader.setBusinessName(request.getBusinessName());
 
-                if(request.getCipcNumber() != null)
-                    trader.setCipcNumber(request.getCipcNumber());
+        if (isValid(request.getBusinessType()))
+            trader.setBusinessType(request.getBusinessType());
 
-                if(request.getHasBankAccount() != null)
-                    trader.setHasBankAccount(request.getHasBankAccount());
+        if (isValid(request.getTradingArea()))
+            trader.setTradingArea(request.getTradingArea());
 
-                if(request.getBankName() != null)
-                    trader.setBankName(request.getBankName());
+        if (isValid(request.getBusinessDescription()))
+            trader.setBusinessDescription(request.getBusinessDescription());
 
-                TraderProfile updated = repository.save(trader);
-                log.info("Trader profile with for ID: {}", id);
-                return TraderProfileResponse.from(updated);
+        if (request.getHasBusinessRegistration() != null) {
+            trader.setHasBusinessRegistration(request.getHasBusinessRegistration());
+
+            // Clear CIPC when unregistering
+            if (Boolean.FALSE.equals(request.getHasBusinessRegistration())) {
+                trader.setCipcNumber(null);
+            }
+        }
+
+        if (incomingCipc)
+            trader.setCipcNumber(request.getCipcNumber());
+
+        if (request.getHasBankAccount() != null)
+            trader.setHasBankAccount(request.getHasBankAccount());
+
+        if (isValid(request.getBankName()))
+            trader.setBankName(request.getBankName());
+
+        TraderProfile updated = repository.save(trader);
+        log.info("Trader profile updated successfully for ID: {}", id);
+
+        return TraderProfileResponse.from(updated);
+    }
+
+
+    //helper method to reject null and blank strings, update only what is provide
+    private boolean isValid(String value){
+        return value != null && !value.isBlank();
     }
 
     @Override
@@ -184,7 +232,7 @@ public class TraderProfileServiceImpl implements TraderProfileService{
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional()
     public void deleteProfile(Long id) {
         log.info("Deleting trader profile with ID: {}", id);
         TraderProfile trader = findByIdOrThrow(id);
