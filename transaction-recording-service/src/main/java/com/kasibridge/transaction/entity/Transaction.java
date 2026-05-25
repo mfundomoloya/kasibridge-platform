@@ -154,6 +154,36 @@ public class Transaction {
         this.status = status;
     }
 
+    //this entity needs a factory method since it does not have setters, it will be needed for the service implementation
+    public static Transaction create(
+            Long traderId,
+            BigDecimal amount,
+            TransactionType type,
+            PaymentMethod paymentMethod,
+            TransactionChannel channel,
+            String description,
+            String customerName,
+            String customerPhone,
+            LocalDateTime occurredAt,
+            String notes
+    ){
+        Transaction t = new Transaction();
+        t.traderId = traderId;
+        t.amount = amount;
+        t.type = type;
+        t.paymentMethod = paymentMethod;
+        t.channel = channel;
+        t.description = description;
+        t.customerName = customerName;
+        t.customerPhone = customerPhone;
+        t.occurredAt = occurredAt;
+        t.notes = notes;
+        // currency, referenceNumber, recordedAt, status
+        // all handled by @PrePersist
+        return t;   
+    }
+
+
     // enums
     public enum TransactionType {
         SALE,

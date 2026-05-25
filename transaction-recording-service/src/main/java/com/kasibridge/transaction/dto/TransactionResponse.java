@@ -26,7 +26,7 @@ public class TransactionResponse {
     private String notes;
     private Transaction.TransactionStatus status;
 
-    // Both timestamps exposed — gap flags late/offline entries
+    // Both timestamps exposed — gap will be used to flag late/offline entries
     private LocalDateTime occurredAt;
     private LocalDateTime recordedAt;
     private LocalDateTime updatedAt;
