@@ -18,7 +18,7 @@ class HighValueTransactionRuleTest {
     @Test
     void shouldDetectHighValueTransaction() {
 
-        // ✅ amount > 50,000 → should trigger
+        // amount > 50,000 = should trigger
         TransactionEvent event = new TransactionEvent(
                 1L,
                 1L,
@@ -44,7 +44,7 @@ class HighValueTransactionRuleTest {
     @Test
     void shouldNotDetectWhenBelowThreshold() {
 
-        // ✅ amount < 50,000 → should NOT trigger
+        // amount < 50,000 = should NOT trigger
         TransactionEvent event = new TransactionEvent(
                 2L,
                 1L,
@@ -63,7 +63,7 @@ class HighValueTransactionRuleTest {
     @Test
     void shouldNotDetectWhenAmountEqualsThreshold() {
 
-        // ✅ amount == 50,000 → should NOT trigger (only > threshold triggers)
+        // amount == 50,000 → should NOT trigger (only > threshold triggers)
         TransactionEvent event = new TransactionEvent(
                 3L,
                 1L,
