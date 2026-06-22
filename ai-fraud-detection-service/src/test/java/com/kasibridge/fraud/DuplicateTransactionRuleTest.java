@@ -33,7 +33,7 @@ public class DuplicateTransactionRuleTest {
                 LocalDateTime.now()
         );
 
-        // ✅ Simulate NO recent alerts
+        // Simulate NO recent alerts
         when(repository.findRecentAlertsForTransaction(
                 anyLong(),
                 any(),
@@ -64,7 +64,7 @@ public class DuplicateTransactionRuleTest {
                 LocalDateTime.now()
         );
 
-        // ✅ Simulate existing duplicate alert
+        // Simulate existing duplicate alert
         when(repository.findRecentAlertsForTransaction(
                 anyLong(),
                 any(),
