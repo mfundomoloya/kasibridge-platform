@@ -96,4 +96,6 @@ public interface FraudAlertRepository extends JpaRepository<FraudAlert, Long> {
             @Param("transactionId") Long transactionId,
             @Param("since") LocalDateTime since
     );
+
+    boolean existsByTransactionIdAndPatternType(Long transactionId, FraudAlert.FraudPatternType patternType);
 }
