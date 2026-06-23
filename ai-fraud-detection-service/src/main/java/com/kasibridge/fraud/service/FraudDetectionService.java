@@ -98,7 +98,6 @@ public class FraudDetectionService {
         return false;
     }
 
-
     private FraudAlert saveSafely(FraudAlert alert) {
         try {
             return alertRepository.save(alert);
@@ -110,4 +109,6 @@ public class FraudDetectionService {
             return null;
         }
     }
+
+
 }
