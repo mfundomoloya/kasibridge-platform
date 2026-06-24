@@ -5,7 +5,7 @@ import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 @Data
-public class ReviewAlertResponse {
+public class ReviewAlertRequest {
 
     @NotBlank(message = "Reviewer name is required")
     private String reviewedBy;

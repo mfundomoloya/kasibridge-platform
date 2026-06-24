@@ -1,14 +1,17 @@
 package com.kasibridge.fraud.service;
 
+import com.kasibridge.fraud.dto.FraudAlertSearchCriteria;
 import com.kasibridge.fraud.dto.FraudDashboardSummary;
 import com.kasibridge.fraud.dto.TransactionEvent;
 import com.kasibridge.fraud.entity.FraudAlert;
 import com.kasibridge.fraud.exception.AlertNotFoundException;
 import com.kasibridge.fraud.repository.FraudAlertRepository;
 import com.kasibridge.fraud.rules.FraudRule;
+import com.kasibridge.fraud.specification.FraudAlertSpecifications;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -200,5 +203,35 @@ public class FraudDetectionService {
                         alertRepository.countByPatternType(FraudAlert.FraudPatternType.DUPLICATE_TRANSACTION)
                 )
                 .build();
+    }
+
+
+    public Page<FraudAlert> searchAlerts(FraudAlertSearchCriteria criteria, Pageable pageable) {
+        validateSearchCriteria(criteria);
+        Specification<FraudAlert> spec = Specification.allOf(
+                FraudAlertSpecifications.hasTraderId(criteria.getTraderId()),
+                FraudAlertSpecifications.hasStatus(criteria.getStatus()),
+                FraudAlertSpecifications.hasPatternType(criteria.getPatternType()),
+                FraudAlertSpecifications.hasSeverity(criteria.getSeverity()),
+                FraudAlertSpecifications.detectedAfter(criteria.getFromDate()),
+                FraudAlertSpecifications.detectedBefore(criteria.getToDate()),
+                FraudAlertSpecifications.amountAtLeast(criteria.getAmountMin()),
+                FraudAlertSpecifications.amountAtMost(criteria.getAmountMax()),
+                FraudAlertSpecifications.hasAlertReferenceLike(criteria.getAlertReference())
+        );
+
+        return alertRepository.findAll(spec, pageable);
+    }
+
+    private void validateSearchCriteria(FraudAlertSearchCriteria criteria) {
+        if (criteria.getFromDate() != null && criteria.getToDate() != null
+                && criteria.getFromDate().isAfter(criteria.getToDate())) {
+            throw new IllegalArgumentException("fromDate cannot be after toDate");
+        }
+
+        if (criteria.getAmountMin() != null && criteria.getAmountMax() != null
+                && criteria.getAmountMin().compareTo(criteria.getAmountMax()) > 0) {
+            throw new IllegalArgumentException("amountMin cannot be greater than amountMax");
+        }
     }
 }

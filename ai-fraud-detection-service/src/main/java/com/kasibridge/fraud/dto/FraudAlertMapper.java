@@ -19,7 +19,11 @@ public class FraudAlertMapper {
                 alert.getEvidence(),
                 alert.getTransactionAmount(),
                 alert.getStatus(),
-                alert.getDetectedAt()
+                alert.getDetectedAt(),
+                alert.getReviewedBy(),
+                alert.getReviewNotes(),
+                alert.getReviewedAt(),
+                alert.getResolvedAt()
         );
     }
 
