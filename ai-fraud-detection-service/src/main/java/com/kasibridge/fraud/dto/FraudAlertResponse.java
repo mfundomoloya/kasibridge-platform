@@ -23,4 +23,8 @@ public class FraudAlertResponse {
     private FraudAlert.AlertStatus status;
     private LocalDateTime detectedAt;
 
+    private String reviewedBy;
+    private String reviewNotes;
+    private LocalDateTime reviewedAt;
+    private LocalDateTime resolvedAt;
 }

@@ -15,6 +15,12 @@ import java.util.Map;
 @RestControllerAdvice
 public class GlobalExceptionHandler extends RuntimeException {
 
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ErrorResponse> handleIllegalArgument(IllegalArgumentException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ErrorResponse.of(HttpStatus.BAD_REQUEST.value(), ex.getMessage()));
+    }
+
     @ExceptionHandler(AlertNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleNotFound(AlertNotFoundException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
@@ -39,6 +45,7 @@ public class GlobalExceptionHandler extends RuntimeException {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(ErrorResponse.of(500, "An unexpected error occurred: " + ex.getMessage()));
     }
+
 
     @lombok.Data
     public static class ErrorResponse {
