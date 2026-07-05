@@ -29,4 +29,4 @@ replay_pid*
 
 #env variables
 .env
-.env.*
+.env.*auth-service/src/main/resources/keys/private.pem
