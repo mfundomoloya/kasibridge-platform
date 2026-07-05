@@ -1,4 +1,4 @@
-package com.kasibridge.authservice;
+package com.kasibridge.auth;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
