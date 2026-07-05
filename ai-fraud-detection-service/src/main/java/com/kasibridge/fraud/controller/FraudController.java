@@ -73,7 +73,7 @@ public class FraudController {
     @Operation(summary = "Get alert by ID")
     @Tag(name = "Alert Queries")
     @GetMapping("/alerts/{id}")
-    public ResponseEntity<FraudAlertResponse> getAlertById(@PathVariable Long id) {
+    public ResponseEntity<FraudAlertResponse> getAlertById(@PathVariable("id") Long id) {
         log.info("GET /api/v1/fraud/alerts/{}", id);
         return ResponseEntity.ok(FraudAlertMapper.toResponse(service.getAlertById(id)));
     }
@@ -82,7 +82,7 @@ public class FraudController {
     @Operation(summary = "Get alert by reference")
     @Tag(name = "Alert Queries")
     @GetMapping("/alerts/reference/{reference}")
-    public ResponseEntity<FraudAlertResponse> getAlertByReference(@PathVariable String reference) {
+    public ResponseEntity<FraudAlertResponse> getAlertByReference(@PathVariable("reference") String reference) {
         log.info("GET /api/v1/fraud/alerts/reference/{}", reference);
         return ResponseEntity.ok(FraudAlertMapper.toResponse(service.getAlertByReference(reference)));
     }
@@ -93,7 +93,7 @@ public class FraudController {
 
     @GetMapping("/alerts/trader/{traderId}")
     public ResponseEntity<Page<FraudAlertResponse>> getAlertsByTrader(
-            @PathVariable Long traderId,
+            @PathVariable("traderId") Long traderId,
             @PageableDefault(size = 10, sort = "detectedAt", direction = Sort.Direction.DESC)
             Pageable pageable) {
         log.info("GET /api/v1/fraud/alerts/trader/{}", traderId);
@@ -107,7 +107,7 @@ public class FraudController {
     @Tag(name = "Alert Queries")
     @GetMapping("/alerts/status/{status}")
     public ResponseEntity<Page<FraudAlertResponse>> getAlertsByStatus(
-            @PathVariable FraudAlert.AlertStatus status,
+            @PathVariable("status") FraudAlert.AlertStatus status,
             @PageableDefault(size = 10, sort = "detectedAt", direction = Sort.Direction.DESC)
             Pageable pageable) {
         log.info("GET /api/v1/fraud/alerts/status/{}", status);
@@ -120,7 +120,7 @@ public class FraudController {
 
     @GetMapping("/alerts/pattern/{patternType}")
     public ResponseEntity<Page<FraudAlertResponse>> getAlertsByPatternType(
-            @PathVariable FraudAlert.FraudPatternType patternType,
+            @PathVariable("patternType") FraudAlert.FraudPatternType patternType,
             @PageableDefault(size = 10, sort = "detectedAt", direction = Sort.Direction.DESC)
             Pageable pageable) {
         log.info("GET /api/v1/fraud/alerts/pattern/{}", patternType);
@@ -134,8 +134,8 @@ public class FraudController {
     @Tag(name = "Alert Queries")
     @GetMapping("/alerts/trader/{traderId}/status/{status}")
     public ResponseEntity<Page<FraudAlertResponse>> getAlertsByTraderAndStatus(
-            @PathVariable Long traderId,
-            @PathVariable FraudAlert.AlertStatus status,
+            @PathVariable("traderId") Long traderId,
+            @PathVariable("status") FraudAlert.AlertStatus status,
             @PageableDefault(size = 10, sort = "detectedAt", direction = Sort.Direction.DESC)
             Pageable pageable) {
         log.info("GET /api/v1/fraud/alerts/trader/{}/status/{}", traderId, status);
@@ -149,7 +149,7 @@ public class FraudController {
     @Tag(name = "Alert Actions")
     @PatchMapping("/alerts/{id}/review")
     public ResponseEntity<FraudAlertResponse> reviewAlert(
-            @PathVariable Long id,
+            @PathVariable("id") Long id,
             @Valid @RequestBody ReviewAlertRequest request) {
         log.info("PATCH /api/v1/fraud/alerts/{}/review", id);
         FraudAlert reviewed = service.reviewAlert(id, request.getReviewedBy(), request.getReviewNotes());
@@ -161,7 +161,7 @@ public class FraudController {
     @Tag(name = "Alert Actions")
     @PatchMapping("/alerts/{id}/dismiss")
     public ResponseEntity<FraudAlertResponse> dismissAlert(
-            @PathVariable Long id,
+            @PathVariable("id") Long id,
             @Valid @RequestBody ReviewAlertRequest request) {
         log.info("PATCH /api/v1/fraud/alerts/{}/dismiss", id);
         FraudAlert dismissed = service.dismissAlert(id, request.getReviewedBy(), request.getReviewNotes());
@@ -172,7 +172,7 @@ public class FraudController {
     @Operation(summary = "Escalate a fraud alert")
     @Tag(name = "Alert Actions")
     @PatchMapping("/alerts/{id}/escalate")
-    public ResponseEntity<FraudAlertResponse> escalateAlert(@PathVariable Long id) {
+    public ResponseEntity<FraudAlertResponse> escalateAlert(@PathVariable("id") Long id) {
         log.info("PATCH /api/v1/fraud/alerts/{}/escalate", id);
         return ResponseEntity.ok(FraudAlertMapper.toResponse(service.escalateAlert(id)));
     }
