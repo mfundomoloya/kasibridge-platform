@@ -29,11 +29,14 @@ public class SecurityConfig {
 
                         //public endpoints
                         .requestMatchers(
+                                "/api/v1/auth/**",
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",
                                 "/v3/api-docs/**",
+                                "/v3/api-docs.yaml",
                                 "/actuator/health",
-                                "/actuator/info").permitAll()
+                                "/actuator/info",
+                                "/error").permitAll()
 
                         //internal service-to-service fraud analysis
                         .requestMatchers("/api/v1/fraud/analyze")

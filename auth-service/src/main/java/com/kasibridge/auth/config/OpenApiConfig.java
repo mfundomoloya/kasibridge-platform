@@ -1,10 +1,10 @@
-package com.kasibridge.fraud.config;
+package com.kasibridge.auth.config;
 
-import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
+import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.info.Info;
-import io.swagger.v3.oas.models.security.SecurityRequirement;
 import io.swagger.v3.oas.models.security.SecurityScheme;
+import io.swagger.v3.oas.models.security.SecurityRequirement;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -14,16 +14,17 @@ public class OpenApiConfig {
     private static final String SECURITY_SCHEME_NAME = "bearerAuth";
 
     @Bean
-    public OpenAPI fraudServiceOpenAPI() {
+    public OpenAPI authServiceOpenAPI() {
         return new OpenAPI()
                 .info(new Info()
-                        .title("Kasibridge Fraud Detection API")
-                        .description("Fraud detection and alert management, dashboard, and search API")
+                        .title("Kasibridge Auth API")
+                        .description("Authentication and JWT issuing service")
                         .version("v1.0"))
                 .addSecurityItem(new SecurityRequirement()
                         .addList(SECURITY_SCHEME_NAME))
                 .components(new Components()
-                        .addSecuritySchemes(SECURITY_SCHEME_NAME,
+                        .addSecuritySchemes(
+                                SECURITY_SCHEME_NAME,
                                 new SecurityScheme()
                                         .name(SECURITY_SCHEME_NAME)
                                         .type(SecurityScheme.Type.HTTP)
