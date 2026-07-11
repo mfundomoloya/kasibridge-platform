@@ -33,6 +33,18 @@ public class DevUserSeeder implements CommandLineRunner {
             );
         }
 
+        if(!appUserRepository.existsByUsername("trader")){
+            appUserRepository.save(
+                    AppUser.create(
+                            "trader",
+                            passwordEncoder.encode("password"),
+                            "trader-org-001",
+                            Set.of(Role.ROLE_TRADER)
+                    )
+            );
+
+        }
+
         if (!appUserRepository.existsByUsername("admin")) {
             appUserRepository.save(
                     AppUser.create(
