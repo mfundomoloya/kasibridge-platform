@@ -81,8 +81,10 @@ public class TenderServiceImpl implements TenderService {
 
         String hash = hashService.generateHash(tender);
 
+        LocalDateTime now = LocalDateTime.now();
         tender.setSpecificationHash(hash);
-        tender.setPublishedAt(LocalDateTime.now());
+        tender.setPublishedAt(now);
+        tender.setUpdatedAt(now);
         tender.setStatus(Tender.TenderStatus.PUBLISHED);
 
         Tender saved = repository.save(tender);
