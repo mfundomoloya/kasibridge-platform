@@ -21,6 +21,15 @@ public class GlobalExceptionHandler {
                 .body(ErrorResponse.of(HttpStatus.NOT_FOUND.value(), ex.getMessage()));
     }
 
+    //400 structured business validation errors
+    @ExceptionHandler(BusinessValidationException.class)
+    public ResponseEntity<ErrorResponse> handleBusinessValidation(BusinessValidationException ex){
+        ErrorResponse response = ErrorResponse.of(HttpStatus.BAD_REQUEST.value(), ex.getMessage());
+
+        response.setFieldErrors(ex.getFieldErrors());
+        return ResponseEntity.badRequest().body(response);
+    }
+
     //500 internal server error
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGeneral(Exception ex){
