@@ -19,6 +19,7 @@
         <module>transaction-recording-service</module>
         <module>ai-fraud-detection-service</module>
         <module>auth-service</module>
+        <module>procurement-service</module>
     </modules>
 
     <properties>
