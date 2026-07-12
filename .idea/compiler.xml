@@ -8,6 +8,15 @@
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
       </profile>
+      <profile name="Annotation profile for procurement-service" enabled="true">
+        <sourceOutputDir name="target/generated-sources/annotations" />
+        <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
+        <outputRelativeToContentRoot value="true" />
+        <processorPath useClasspath="false">
+          <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/1.18.36/lombok-1.18.36.jar" />
+        </processorPath>
+        <module name="procurement-service" />
+      </profile>
       <profile name="Annotation profile for kasibridge-platform" enabled="true">
         <sourceOutputDir name="target/generated-sources/annotations" />
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
@@ -28,6 +37,7 @@
       <module name="ai-fraud-detection-service" options="-parameters" />
       <module name="auth-service" options="-parameters" />
       <module name="kasibridge-security-common" options="-parameters" />
+      <module name="procurement-service" options="-parameters" />
       <module name="trader-profile-service" options="-parameters" />
       <module name="transaction-recording-service" options="-parameters" />
     </option>
