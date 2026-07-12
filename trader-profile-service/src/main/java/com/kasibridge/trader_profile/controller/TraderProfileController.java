@@ -43,42 +43,42 @@ public class TraderProfileController {
 
     // api/v1/traders/{id}
     @GetMapping("/{id}")
-    public ResponseEntity<TraderProfileResponse> getProfileById(@PathVariable Long id){
+    public ResponseEntity<TraderProfileResponse> getProfileById(@PathVariable("id") Long id){
         log.info("GET /api/v1/traders/{} - fetching profile", id);
                 return ResponseEntity.ok(service.getProfileById(id));
     }
 
     // api/v1/traders/phone/{phoneNumber}
     @GetMapping("/phone/{phoneNumber}")
-    public ResponseEntity<TraderProfileResponse> getProfileByPhone(@PathVariable String phoneNumber){
+    public ResponseEntity<TraderProfileResponse> getProfileByPhone(@PathVariable("phoneNumber") String phoneNumber){
         log.info("GET /api/v1/traders/phone/{} - fetching profile", phoneNumber);
         return ResponseEntity.ok(service.getProfileByPhone(phoneNumber));
     }
 
     // api/v1/traders/area/{tradingArea}
     @GetMapping("/area/{tradingArea}")
-    public ResponseEntity<List<TraderProfileResponse>> getProfileByArea(@PathVariable String tradingArea){
+    public ResponseEntity<List<TraderProfileResponse>> getProfileByArea(@PathVariable("tradingArea") String tradingArea){
         log.info("GET - /api/v1/traders/area/{}", tradingArea);
         return ResponseEntity.ok(service.getProfilesByArea(tradingArea));
     }
 
     // api/v1/traders/status/{status}
     @GetMapping("/status/{status}")
-    public ResponseEntity<List<TraderProfileResponse>> getProfilesByStatus(@PathVariable TraderProfile.ProfileStatus status){
+    public ResponseEntity<List<TraderProfileResponse>> getProfilesByStatus(@PathVariable("status") TraderProfile.ProfileStatus status){
         log.info("GET - /api/v1/traders/status/{} - fetching profiles", status);
         return ResponseEntity.ok(service.getProfilesByStatus(status));
     }
 
     // api/v1/traders/channel/{channel}
     @GetMapping("/channel/{channel}")
-    public ResponseEntity<List<TraderProfileResponse>> getProfilesByChannel(@PathVariable TraderProfile.OnboardingChannel channel){
+    public ResponseEntity<List<TraderProfileResponse>> getProfilesByChannel(@PathVariable("channel") TraderProfile.OnboardingChannel channel){
         log.info("GET - /api/v1/traders/channel/{} - fetching profiles", channel);
         return ResponseEntity.ok(service.getProfilesByChannel(channel));
     }
 
     // api/v1/traders/{id}
     @PutMapping("/{id}")
-    public ResponseEntity<TraderProfileResponse> updateProfile(@PathVariable Long id,
+    public ResponseEntity<TraderProfileResponse> updateProfile(@PathVariable("id") Long id,
                                                                @RequestBody UpdateTraderRequest request){
         log.info("PUT - /api/v1/traders/{} - updating profile", id);
         return ResponseEntity.ok(service.updateProfile(id, request));
@@ -87,7 +87,7 @@ public class TraderProfileController {
     // api/v1/traders/{id}/status
     // Change a trader's status (ACTIVE, SUSPENDED, INACTIVE)
     @PatchMapping("/{id}/status")
-    public ResponseEntity<TraderProfileResponse> updateStatus(@PathVariable Long id,
+    public ResponseEntity<TraderProfileResponse> updateStatus(@PathVariable("id") Long id,
                                                               @RequestParam TraderProfile.ProfileStatus status){
         log.info("PATCH - /api/v1/traders/{}/status - new status: {}", id, status);
         return ResponseEntity.ok(service.updateStatus(id, status));
@@ -96,7 +96,7 @@ public class TraderProfileController {
     // api/v1/traders/{id}
     //delete a trader profile
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteProfile(@PathVariable Long id){
+    public ResponseEntity<Void> deleteProfile(@PathVariable("id") Long id){
         log.info("DELETE - /api/v1/traders/{} - deleting profile:", id);
         service.deleteProfile(id);
         return ResponseEntity.noContent().build();

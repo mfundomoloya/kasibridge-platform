@@ -4,6 +4,7 @@ import com.kasibridge.trader_profile.dto.CreateTraderRequest;
 import com.kasibridge.trader_profile.dto.TraderProfileResponse;
 import com.kasibridge.trader_profile.dto.UpdateTraderRequest;
 import com.kasibridge.trader_profile.entity.TraderProfile;
+import com.kasibridge.trader_profile.exception.BusinessValidationException;
 import com.kasibridge.trader_profile.exception.DuplicateTraderException;
 import com.kasibridge.trader_profile.exception.TraderNotFoundException;
 import com.kasibridge.trader_profile.repository.TraderProfileRepository;
@@ -13,7 +14,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -42,19 +45,7 @@ public class TraderProfileServiceImpl implements TraderProfileService{
             );
         }
 
-        //CIPC only valid if business is registered
-        if (request.hasCipc() && !request.isRegistered()) {
-            throw new IllegalArgumentException(
-                    "CIPC number can only be provided if the business is registered."
-            );
-        }
-
-        //if registered, CIPC number is required
-        if (request.isRegistered() && !request.hasCipc()) {
-            throw new IllegalArgumentException(
-                    "CIPC number is required when business is registered."
-            );
-        }
+        validateCreatTraderRequest(request);
 
         //create the trader profile
         TraderProfile trader = TraderProfile.builder()
@@ -78,6 +69,48 @@ public class TraderProfileServiceImpl implements TraderProfileService{
         TraderProfile saved = repository.save(trader);
         log.info("Trader profile created with ID: {}", saved.getId());
         return TraderProfileResponse.from(saved);
+    }
+
+    private void validateCreatTraderRequest(CreateTraderRequest request) {
+
+        Map<String, String> fieldErrors = new HashMap<>();
+
+        //cipc only valid if business is required
+        if(request.hasCipc() && !request.isRegistered()) {
+            fieldErrors.put(
+                    "cipcNumber",
+                    "CIPC number can only be provided if the business is registered."
+            );
+        }
+
+        //if registered, CIPC number is required
+        if (request.isRegistered() && !request.hasCipc()) {
+            fieldErrors.put(
+                    "cipcNumber",
+                    "CIPC number is required when business is registered."
+            );
+        }
+
+        //bank name only valid if trader has a bank account
+        if (request.hasBankName() && !request.hasBankAccount()) {
+            fieldErrors.put(
+                    "bankName",
+                    "Bank name can only be provided if the trader has a bank account."
+            );
+        }
+
+        //if trader has a bank account, bank name is required
+        if (request.hasBankAccount() && !request.hasBankName()) {
+            fieldErrors.put(
+                    "bankName",
+                    "Bank name is required when trader has a bank account."
+            );
+        }
+
+        if(!fieldErrors.isEmpty()) {
+            throw new BusinessValidationException("Validation failed", fieldErrors);
+        }
+
     }
 
     @Override
@@ -216,7 +249,7 @@ public class TraderProfileServiceImpl implements TraderProfileService{
     }
 
 
-    //helper method to reject null and blank strings, update only what is provide
+    //helper method to reject null and blank strings, update only what is provided
     private boolean isValid(String value){
         return value != null && !value.isBlank();
     }
