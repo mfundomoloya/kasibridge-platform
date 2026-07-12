@@ -1,4 +1,4 @@
-package com.kasibridge.procurementservice;
+package com.kasibridge.procurement;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;

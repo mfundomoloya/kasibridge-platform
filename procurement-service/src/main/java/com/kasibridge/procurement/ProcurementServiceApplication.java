@@ -1,4 +1,4 @@
-package com.kasibridge.procurementservice;
+package com.kasibridge.procurement;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
