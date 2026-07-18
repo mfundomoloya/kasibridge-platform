@@ -56,6 +56,28 @@ public class DevUserSeeder implements CommandLineRunner {
             );
         }
 
+        if(!appUserRepository.existsByUsername("evaluator")) {
+            appUserRepository.save(
+                    AppUser.create(
+                            "evaluator",
+                            passwordEncoder.encode("password"),
+                            "buyer-org-001",
+                            Set.of(Role.ROLE_EVALUATOR)
+                    )
+            );
+        }
+
+        if(!appUserRepository.existsByUsername("adjudicator")) {
+            appUserRepository.save(
+                    AppUser.create(
+                            "adjudicator",
+                            passwordEncoder.encode("password"),
+                            "buyer-org-001",
+                            Set.of(Role.ROLE_ADJUDICATOR)
+                    )
+            );
+        }
+
         if (!appUserRepository.existsByUsername("admin")) {
             appUserRepository.save(
                     AppUser.create(
