@@ -61,7 +61,13 @@ public class CommitteeAssignmentServiceImpl implements CommitteeAssignmentServic
 
     @Override
     public List<CommitteeAssignmentResponse> getCommitteeAssignments(Long tenderId) {
-        return List.of();
+
+        validateTenderExists(tenderId);
+
+        return assignmentRepository.findByTenderIdAndActiveTrue(tenderId)
+                .stream()
+                .map(CommitteeAssignmentResponse::from)
+                .toList();
     }
 
     private void validateTenderExists(Long tenderId) {
