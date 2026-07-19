@@ -65,6 +65,18 @@ public class GlobalExceptionHandler {
                         "Invalid request body. Please check enum values and JSON structure."));
     }
 
+    @ExceptionHandler(BidNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleBidNotFound(BidNotFoundException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(ErrorResponse.of(HttpStatus.NOT_FOUND.value(), ex.getMessage()));
+    }
+
+    @ExceptionHandler(DuplicateBidException.class)
+    public ResponseEntity<ErrorResponse> handleDuplicateBid(DuplicateBidException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ErrorResponse.of(HttpStatus.CONFLICT.value(), ex.getMessage()));
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGeneral(Exception ex) {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
