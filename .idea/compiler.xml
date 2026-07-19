@@ -20,6 +20,7 @@
         <module name="trader-profile-service" />
         <module name="transaction-recording-service" />
         <module name="procurement-service" />
+        <module name="ai-fraud-detection-service" />
       </profile>
     </annotationProcessing>
   </component>
