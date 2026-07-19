@@ -71,7 +71,7 @@ public class EvaluationServiceImpl implements EvaluationService {
         boolean alreadyScored = scoreRepository.existsByBidIdAndEvaluatorUserId(bidId, request.getEvaluatorUserId());
 
         if(alreadyScored){
-            throw new BidEvaluationException("Evaluation has already scored this bid");
+            throw new BidEvaluationException("Evaluator has already scored this bid");
         }
 
         BigDecimal totalScore = request.getTechnicalScore()
