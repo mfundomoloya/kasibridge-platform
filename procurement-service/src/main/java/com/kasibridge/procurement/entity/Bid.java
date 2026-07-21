@@ -43,7 +43,7 @@ public class Bid {
     private String technicalProposal;
 
     @Column(name = "price_amount", nullable = false, precision = 15, scale = 2)
-    private BigDecimal   priceAmount;
+    private BigDecimal priceAmount;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 40)

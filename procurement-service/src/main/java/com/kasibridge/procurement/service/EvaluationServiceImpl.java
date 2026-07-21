@@ -21,6 +21,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.List;
 
 @Service
@@ -76,21 +77,34 @@ public class EvaluationServiceImpl implements EvaluationService {
             throw new BidEvaluationException("Only compliant bids can be evaluated.");
         }
 
-        boolean alreadyScored = scoreRepository.existsByBidIdAndEvaluatorUserId(bidId, request.getEvaluatorUserId());
+        boolean alreadyScored = scoreRepository.existsByTenderIdAndBidIdAndEvaluatorUserId(tenderId,bidId, request.getEvaluatorUserId());
 
         if(alreadyScored){
             throw new BidEvaluationException("Evaluator has already scored this bid.");
         }
 
-        BigDecimal totalScore = request.getTechnicalScore()
-                .add(request.getPriceScore());
+
+        BigDecimal lowestBidPrice = bidRepository.findLowestBidPriceByTenderId(tenderId);
+
+        BigDecimal maxPricePoints = new BigDecimal("20.00");
+
+        BigDecimal priceScore = calculatePriceScore(
+                lowestBidPrice,
+                bid.getPriceAmount(),
+                maxPricePoints
+        );
+
+        BigDecimal totalScore = calculateTotalScore(
+                request.getTechnicalScore(),
+                priceScore
+        );
 
         BidEvaluationScore score = BidEvaluationScore.builder()
                 .tenderId(tenderId)
                 .bidId(bidId)
                 .evaluatorUserId(request.getEvaluatorUserId())
                 .technicalScore(request.getTechnicalScore())
-                .priceScore(request.getPriceScore())
+                .priceScore(priceScore)
                 .totalScore(totalScore)
                 .comments(request.getComments())
                 .build();
@@ -103,10 +117,12 @@ public class EvaluationServiceImpl implements EvaluationService {
         }
 
         log.info(
-                "Bid scored: tenderId={} bidId={} evaluatorUserId={} totalScore={}",
+                "Bid scored: tenderId={} bidId={} evaluatorUserId={} technicalScore={} totalScore={} priceScore={}",
                 tenderId,
                 bidId,
                 request.getEvaluatorUserId(),
+                request.getTechnicalScore(),
+                priceScore,
                 totalScore
         );
 
@@ -121,5 +137,45 @@ public class EvaluationServiceImpl implements EvaluationService {
         if(!assigned){
             throw new ProcurementAuthorizationException("User is not assigned as evaluator to this tender.");
         }
+    }
+
+
+    private BigDecimal calculatePriceScore(
+            BigDecimal lowestBidPrice,
+            BigDecimal currentBidPrice,
+            BigDecimal maxPricePoints
+    ) {
+        if (lowestBidPrice == null || lowestBidPrice.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalStateException("Lowest bid price must be greater than 0");
+        }
+
+        if (currentBidPrice == null || currentBidPrice.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalStateException("Current bid price must be greater than 0");
+        }
+
+        return lowestBidPrice
+                .divide(currentBidPrice, 6, RoundingMode.HALF_UP)
+                .multiply(maxPricePoints)
+                .setScale(2, RoundingMode.HALF_UP);
+    }
+
+
+    private BigDecimal calculateWeightedTechnicalScore(BigDecimal technicalScore) {
+        BigDecimal technicalWeight = new BigDecimal("0.80");
+
+        return technicalScore
+                .multiply(technicalWeight)
+                .setScale(2, RoundingMode.HALF_UP);
+    }
+
+    private BigDecimal calculateTotalScore(
+            BigDecimal technicalScore,
+            BigDecimal priceScore
+    ) {
+        BigDecimal weightedTechnicalScore = calculateWeightedTechnicalScore(technicalScore);
+
+        return weightedTechnicalScore
+                .add(priceScore)
+                .setScale(2, RoundingMode.HALF_UP);
     }
 }

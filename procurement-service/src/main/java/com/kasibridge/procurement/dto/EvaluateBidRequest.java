@@ -16,12 +16,7 @@ public class EvaluateBidRequest {
     @DecimalMax(value = "100.0", message = "Technical score cannot exceed 100")
     private BigDecimal technicalScore;
 
-    @NotNull(message = "Price score is required")
-    @DecimalMin(value = "0.00", message = "Technical score cannot be below 0")
-    @DecimalMax(value = "100.00", message = "Technical score cannot exceed 100")
-    private BigDecimal priceScore;
-
     @NotBlank(message = "Comments are required")
-    @Size(min = 10, max = 1000, message = "Comments cannot exceed 1000 characters")
+    @Size(min = 10, max = 1000, message = "Comments must be between 10 and 1000 characters")
     private String comments;
 }
