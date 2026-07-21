@@ -79,8 +79,14 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(BidEvaluationException.class)
     public ResponseEntity<ErrorResponse> handleBidEvaluation(BidEvaluationException ex) {
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(ErrorResponse.of(HttpStatus.BAD_REQUEST.value(), ex.getMessage()));
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ErrorResponse.of(HttpStatus.CONFLICT.value(), ex.getMessage()));
+    }
+
+    @ExceptionHandler(ProcurementAuthorizationException.class)
+    public ResponseEntity<ErrorResponse> handleProcurementAuthorization(ProcurementAuthorizationException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(ErrorResponse.of(HttpStatus.FORBIDDEN.value(), ex.getMessage()));
     }
 
     @ExceptionHandler(Exception.class)
