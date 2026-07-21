@@ -12,4 +12,6 @@ public interface TenderCommitteeAssignmentRepository extends JpaRepository<Tende
     List<TenderCommitteeAssignment> findByTenderIdAndActiveTrue(Long tenderId);
 
     boolean existsByTenderIdAndUserIdAndActiveTrue(Long tenderId, Long userId);
+
+    boolean existsByTenderIdAndUserIdAndCommitteeRoleAndActiveTrue(Long tenderId, Long userId, TenderCommitteeAssignment.CommitteeRole committeeRole);
 }

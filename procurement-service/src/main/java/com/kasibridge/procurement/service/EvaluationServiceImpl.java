@@ -6,11 +6,14 @@ import com.kasibridge.procurement.dto.EvaluateBidRequest;
 import com.kasibridge.procurement.entity.Bid;
 import com.kasibridge.procurement.entity.BidEvaluationScore;
 import com.kasibridge.procurement.entity.Tender;
+import com.kasibridge.procurement.entity.TenderCommitteeAssignment;
 import com.kasibridge.procurement.exception.BidEvaluationException;
 import com.kasibridge.procurement.exception.BidNotFoundException;
+import com.kasibridge.procurement.exception.ProcurementAuthorizationException;
 import com.kasibridge.procurement.exception.TenderNotFoundException;
 import com.kasibridge.procurement.repository.BidEvaluationScoreRepository;
 import com.kasibridge.procurement.repository.BidRepository;
+import com.kasibridge.procurement.repository.TenderCommitteeAssignmentRepository;
 import com.kasibridge.procurement.repository.TenderRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,11 +31,14 @@ public class EvaluationServiceImpl implements EvaluationService {
     private final TenderRepository tenderRepository;
     private final BidRepository bidRepository;
     private final BidEvaluationScoreRepository scoreRepository;
+    private final TenderCommitteeAssignmentRepository assignmentRepository;
 
     @Override
-    public List<BlindBidResponse> getBlindBidsForEvaluation(Long tenderId) {
+    public List<BlindBidResponse> getBlindBidsForEvaluation(Long tenderId, Long evaluatorUserId) {
         Tender tender = tenderRepository.findById(tenderId)
                 .orElseThrow(() -> new TenderNotFoundException("Tender not found with ID: " + tenderId));
+
+        assertAssignedEvaluator(tenderId, evaluatorUserId);
 
         if(tender.getStatus() != Tender.TenderStatus.PUBLISHED &&  tender.getStatus() != Tender.TenderStatus.EVALUATION){
 
@@ -52,6 +58,8 @@ public class EvaluationServiceImpl implements EvaluationService {
         Tender tender = tenderRepository.findById(tenderId)
                 .orElseThrow(() -> new TenderNotFoundException("Tender not found with ID: " + tenderId));
 
+        assertAssignedEvaluator(tenderId, request.getEvaluatorUserId());
+
         if(tender.getStatus() != Tender.TenderStatus.PUBLISHED &&  tender.getStatus() != Tender.TenderStatus.EVALUATION){
 
             throw new BidEvaluationException("Bid scoring is only allowed when tender is PUBLISHED or EVALUATION");
@@ -65,13 +73,13 @@ public class EvaluationServiceImpl implements EvaluationService {
         }
 
         if(bid.getStatus() != Bid.BidStatus.COMPLIANT && bid.getStatus() != Bid.BidStatus.UNDER_EVALUATION){
-            throw new BidEvaluationException("Only compliant bids can be evaluated");
+            throw new BidEvaluationException("Only compliant bids can be evaluated.");
         }
 
         boolean alreadyScored = scoreRepository.existsByBidIdAndEvaluatorUserId(bidId, request.getEvaluatorUserId());
 
         if(alreadyScored){
-            throw new BidEvaluationException("Evaluator has already scored this bid");
+            throw new BidEvaluationException("Evaluator has already scored this bid.");
         }
 
         BigDecimal totalScore = request.getTechnicalScore()
@@ -103,5 +111,15 @@ public class EvaluationServiceImpl implements EvaluationService {
         );
 
         return BidEvaluationResponse.from(savedScore);
+    }
+
+    //helper method
+    private void assertAssignedEvaluator(Long tenderId, Long evaluatorUserId) {
+        boolean assigned = assignmentRepository.
+                existsByTenderIdAndUserIdAndCommitteeRoleAndActiveTrue(tenderId, evaluatorUserId, TenderCommitteeAssignment.CommitteeRole.EVALUATOR);
+
+        if(!assigned){
+            throw new ProcurementAuthorizationException("User is not assigned as evaluator to this tender.");
+        }
     }
 }

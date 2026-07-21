@@ -21,12 +21,13 @@ public class EvaluationController {
     private final EvaluationService service;
 
     @GetMapping("/bids")
-    public ResponseEntity<List<BlindBidResponse>> getBlindBidsForEvaluation(@PathVariable("tenderId") Long tenderId) {
+    public ResponseEntity<List<BlindBidResponse>> getBlindBidsForEvaluation(@PathVariable("tenderId") Long tenderId,
+                                                                            @RequestParam("evaluatorUserId") Long evaluatorUserId) {
         log.info(
-                "GET /api/v1/tenders/{}/evaluation/bids - fetching blind bids", tenderId
+                "GET /api/v1/tenders/{}/evaluation/bids - evaluatorUserId={}", tenderId, evaluatorUserId
         );
 
-        return ResponseEntity.ok(service.getBlindBidsForEvaluation(tenderId));
+        return ResponseEntity.ok(service.getBlindBidsForEvaluation(tenderId, evaluatorUserId));
     }
 
     @PostMapping("/bids/{bidId}/score")
