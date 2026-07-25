@@ -1,14 +1,15 @@
 package com.kasibridge.procurement.controller;
 
+import com.kasibridge.procurement.dto.AwardTenderRequest;
+import com.kasibridge.procurement.dto.AwardTenderResponse;
 import com.kasibridge.procurement.dto.BidRankingResponse;
 import com.kasibridge.procurement.service.AdjudicationService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -24,5 +25,13 @@ public class AdjudicationController {
         log.info("GET /api/v1/tenders/{}/adjudication/summary - generating summary", tenderId);
 
         return ResponseEntity.ok(service.getEvaluationSummary(tenderId));
+    }
+
+    @PostMapping("/award")
+    public ResponseEntity<AwardTenderResponse> awardTender(@PathVariable("tenderId") Long tenderId,
+                                                           @Valid @RequestBody AwardTenderRequest request) {
+        log.info("POST /api/v1/tenders/{}/adjudication/award awarding tender", tenderId);
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(service.awardTender(tenderId, request));
     }
 }

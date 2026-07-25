@@ -55,6 +55,18 @@ public class Tender {
     @Column(name = "specification_hash", length = 128)
     private String specificationHash;
 
+    @Column(name = "awarded_bid_id")
+    private Long awardedBidId;
+
+    @Column(name = "awarded_by_user_id")
+    private Long awardedByUserId;
+
+    @Column(name = "awarded_at")
+    private LocalDateTime awardedAt;
+
+    @Column(name = "award_reason", length = 1000)
+    private String awardReason;
+
     @Column(name = "published_at")
     private LocalDateTime publishedAt;
 
