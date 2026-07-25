@@ -26,4 +26,6 @@ public interface BidEvaluationScoreRepository extends JpaRepository<BidEvaluatio
             GROUP BY s.bidId
 """)
     List<Object[]> findAverageScoresByTenderId(@Param("tenderId") Long tenderId);
+
+    boolean existsByTenderIdAndBidId(Long tenderId, Long bidId);
 }

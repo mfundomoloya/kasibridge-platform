@@ -89,6 +89,12 @@ public class GlobalExceptionHandler {
                 .body(ErrorResponse.of(HttpStatus.FORBIDDEN.value(), ex.getMessage()));
     }
 
+    @ExceptionHandler(AdjudicationException.class)
+    public ResponseEntity<ErrorResponse> handleAdjudication(AdjudicationException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ErrorResponse.of(HttpStatus.BAD_REQUEST.value(), ex.getMessage()));
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGeneral(Exception ex) {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
