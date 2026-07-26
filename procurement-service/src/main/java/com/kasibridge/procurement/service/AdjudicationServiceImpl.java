@@ -4,10 +4,10 @@ import com.kasibridge.procurement.dto.AwardTenderRequest;
 import com.kasibridge.procurement.dto.AwardTenderResponse;
 import com.kasibridge.procurement.dto.BidRankingResponse;
 import com.kasibridge.procurement.entity.Bid;
+import com.kasibridge.procurement.entity.ProcurementAuditEvent;
 import com.kasibridge.procurement.entity.Tender;
 import com.kasibridge.procurement.exception.AdjudicationException;
 import com.kasibridge.procurement.exception.BidEvaluationException;
-import com.kasibridge.procurement.exception.BidNotFoundException;
 import com.kasibridge.procurement.exception.TenderNotFoundException;
 import com.kasibridge.procurement.repository.BidEvaluationScoreRepository;
 import com.kasibridge.procurement.repository.BidRepository;
@@ -19,7 +19,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
@@ -35,6 +34,7 @@ public class AdjudicationServiceImpl implements AdjudicationService {
     private final TenderRepository tenderRepository;
     private final BidRepository bidRepository;
     private final BidEvaluationScoreRepository scoreRepository;
+    private final ProcurementAuditService auditService;
 
     @Override
     public List<BidRankingResponse> getEvaluationSummary(Long tenderId) {
@@ -50,6 +50,15 @@ public class AdjudicationServiceImpl implements AdjudicationService {
             throw new BidEvaluationException("No evaluation scores found for tender ID: " + tenderId
             );
         }
+
+        auditService.recordSuccess(
+                ProcurementAuditEvent.AuditEventType.BID_SCORE_VIEWED,
+                tenderId,
+                null,
+                null,
+                "Adjudication summary viewed",
+                "Evaluation ranking summary generated for tenderId=" + tenderId
+        );
 
         Map<Long, Bid> bidMap = bidRepository.findByTenderId(tenderId)
                 .stream()
@@ -104,6 +113,14 @@ public class AdjudicationServiceImpl implements AdjudicationService {
                 .orElseThrow(() -> new TenderNotFoundException("Tender not found with ID: " + tenderId));
 
         if(tender.getStatus() == Tender.TenderStatus.AWARDED){
+            auditService.recordFailure(
+                    ProcurementAuditEvent.AuditEventType.TENDER_AWARD_REJECTED,
+                    tenderId,
+                    request.getWinningBidId(),
+                    request.getAdjudicatorUserId(),
+                    "Tender award rejected",
+                    "Tender has already been awarded"
+            );
             throw new AdjudicationException("Tender has already been awarded.");
         }
 
@@ -144,6 +161,15 @@ public class AdjudicationServiceImpl implements AdjudicationService {
 
         Tender savedTender = tenderRepository.save(tender);
 
+        auditService.recordSuccess(
+                ProcurementAuditEvent.AuditEventType.BID_SCORE_VIEWED,
+                tenderId,
+                winningBid.getId(),
+                request.getAdjudicatorUserId(),
+                "Tender awarded",
+                "Winning bid alias: " + winningBid.getBidderAlias() + ", reason: " + savedTender.getAwardReason()
+        );
+
         log.info("Tender awarded: tenderId={} winningBidId={} adjudicatorUserId={}",
                 tenderId,
                 winningBid.getId(),
@@ -155,7 +181,7 @@ public class AdjudicationServiceImpl implements AdjudicationService {
                 .tenderStatus(savedTender.getStatus())
                 .winningBidId(winningBid.getId())
                 .winningBidReference(winningBid.getBidReference())
-                .winningBidAlias(winningBid.getBidderAlias())
+                .winningBidderAlias(winningBid.getBidderAlias())
                 .winningBidStatus(winningBid.getStatus())
                 .adjudicatorUserId(request.getAdjudicatorUserId())
                 .awardReason(savedTender.getAwardReason())

@@ -2,6 +2,7 @@ package com.kasibridge.procurement.service;
 
 import com.kasibridge.procurement.dto.CreateTenderRequest;
 import com.kasibridge.procurement.dto.TenderResponse;
+import com.kasibridge.procurement.entity.ProcurementAuditEvent;
 import com.kasibridge.procurement.entity.Tender;
 import com.kasibridge.procurement.exception.TenderNotFoundException;
 import com.kasibridge.procurement.exception.TenderStateException;
@@ -23,6 +24,7 @@ public class TenderServiceImpl implements TenderService {
 
     private final TenderRepository repository;
     private final SpecificationHashService hashService;
+    private final ProcurementAuditService auditService;
 
     @Override
     @Transactional
@@ -41,6 +43,15 @@ public class TenderServiceImpl implements TenderService {
                 .build();
 
         Tender saved = repository.save(tender);
+
+        auditService.recordSuccess(
+                ProcurementAuditEvent.AuditEventType.TENDER_CREATED,
+                saved.getId(),
+                null,
+                saved.getCreatedByUserId(),
+                "Tender created",
+                "Tender reference: " + saved.getTenderReference()
+        );
 
         log.info("Tender created with id={} reference={}", saved.getId(), saved.getTenderReference());
 
@@ -88,6 +99,15 @@ public class TenderServiceImpl implements TenderService {
         tender.setStatus(Tender.TenderStatus.PUBLISHED);
 
         Tender saved = repository.save(tender);
+
+        auditService.recordSuccess(
+                ProcurementAuditEvent.AuditEventType.TENDER_PUBLISHED,
+                saved.getId(),
+                null,
+                saved.getCreatedByUserId(),
+                "Tender published with specification hash",
+                "Specification hash: " + saved.getSpecificationHash()
+        );
 
         log.info("Tender id={} published with specificationHash={}", saved.getId(), hash);
 
