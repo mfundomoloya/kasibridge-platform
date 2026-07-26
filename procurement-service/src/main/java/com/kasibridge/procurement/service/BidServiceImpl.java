@@ -5,6 +5,7 @@ import com.kasibridge.procurement.dto.BidResponse;
 import com.kasibridge.procurement.dto.SubmitBidRequest;
 import com.kasibridge.procurement.entity.Bid;
 import com.kasibridge.procurement.entity.BidComplianceResult;
+import com.kasibridge.procurement.entity.ProcurementAuditEvent;
 import com.kasibridge.procurement.entity.Tender;
 import com.kasibridge.procurement.exception.DuplicateBidException;
 import com.kasibridge.procurement.exception.TenderNotFoundException;
@@ -29,6 +30,7 @@ public class BidServiceImpl implements BidService {
     private final BidComplianceResultRepository complianceRepository;
     private final TenderRepository tenderRepository;
     private final ComplianceGatekeeperService gatekeeperService;
+    private final ProcurementAuditService auditService;
 
     @Override
     @Transactional
@@ -91,6 +93,35 @@ public class BidServiceImpl implements BidService {
         }
 
         Bid finalBid = bidRepository.save(savedBid);
+
+        auditService.recordSuccess(
+                ProcurementAuditEvent.AuditEventType.BID_SUBMITTED,
+                tenderId,
+                finalBid.getId(),
+                request.getTraderId(),
+                "Bid submitted",
+                "Bid reference: " + finalBid.getBidReference() + ", bidderAlias: " + finalBid.getBidderAlias()
+        );
+
+        if (decision.passed()) {
+            auditService.recordSuccess(
+                    ProcurementAuditEvent.AuditEventType.BID_COMPLIANCE_PASSED,
+                    tenderId,
+                    finalBid.getId(),
+                    request.getTraderId(),
+                    "Bid compliance passed",
+                    "All baseline compliance checks passed"
+            );
+        } else {
+            auditService.recordFailure(
+                    ProcurementAuditEvent.AuditEventType.BID_COMPLIANCE_FAILED,
+                    tenderId,
+                    finalBid.getId(),
+                    request.getTraderId(),
+                    "Bid compliance failed",
+                    decision.failureReason()
+            );
+        }
 
         return BidResponse.from(
                 finalBid,

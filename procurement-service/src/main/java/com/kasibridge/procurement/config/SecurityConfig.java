@@ -50,6 +50,9 @@ public class SecurityConfig {
                                                    "SPECIFICATION_OFFICER", "PLATFORM_ADMIN"
                 )
 
+
+
+
                                 //committee assignment / admin oversight
                                 .requestMatchers(
                                        "/api/v1/tenders/*/committee/**"
@@ -58,6 +61,9 @@ public class SecurityConfig {
                                 "PLATFORM_ADMIN", "SPECIFICATION_OFFICER"
                 )
 
+
+
+
                                 //bid submission by traders
                                 .requestMatchers(
                                     "/api/v1/tenders/*/bids/**"
@@ -65,6 +71,9 @@ public class SecurityConfig {
                                 .hasAnyRole(
                                         "TRADER", "SYSTEM", "PLATFORM_ADMIN"
                 )
+
+
+
 
                                 //evaluation endpoints
                                 .requestMatchers(
@@ -80,6 +89,19 @@ public class SecurityConfig {
                 )
                                 .hasAnyRole("ADJUDICATOR", "PLATFORM_ADMIN"
                 )
+
+
+
+                                //Procurement logging
+                                .requestMatchers(
+                                        "/api/v1/procurement/audit-events/**",
+                                        "/api/v1/tenders/*/audit-events",
+                                        "/api/v1/bids/*/audit-events"
+                                )
+                                .hasAnyRole("PLATFORM_ADMIN", "ADJUDICATOR", "SPECIFICATION_OFFICER")
+
+
+
 
                                 //general tender read access
                                 .requestMatchers(

@@ -2,6 +2,7 @@ package com.kasibridge.procurement.service;
 
 import com.kasibridge.procurement.dto.AssignCommitteeMemberRequest;
 import com.kasibridge.procurement.dto.CommitteeAssignmentResponse;
+import com.kasibridge.procurement.entity.ProcurementAuditEvent;
 import com.kasibridge.procurement.entity.TenderCommitteeAssignment;
 import com.kasibridge.procurement.exception.SegregationOfDutiesException;
 import com.kasibridge.procurement.exception.TenderNotFoundException;
@@ -21,6 +22,7 @@ public class CommitteeAssignmentServiceImpl implements CommitteeAssignmentServic
 
     private final TenderCommitteeAssignmentRepository assignmentRepository;
     private final TenderRepository tenderRepository;
+    private final ProcurementAuditService auditService;
 
     @Override
     @Transactional
@@ -33,7 +35,7 @@ public class CommitteeAssignmentServiceImpl implements CommitteeAssignmentServic
 
         validateTenderExists(tenderId);
 
-        enforceSegregationOfDuties(tenderId, request.getUserId());
+        enforceSegregationOfDuties(tenderId, request.getUserId(), request.getAssignedByUserId());
 
 
         TenderCommitteeAssignment assignment = TenderCommitteeAssignment.builder()
@@ -46,6 +48,15 @@ public class CommitteeAssignmentServiceImpl implements CommitteeAssignmentServic
                 .build();
 
         TenderCommitteeAssignment saved = assignmentRepository.save(assignment);
+
+        auditService.recordSuccess(
+                ProcurementAuditEvent.AuditEventType.COMMITTEE_MEMBER_ASSIGNED,
+                tenderId,
+                null,
+                request.getAssignedByUserId(),
+                "Committee member assigned",
+                "Assigned userId=" + request.getUserId() + " role=" + request.getCommitteeRole()
+        );
 
         log.info(
                 "Committee assignment created: id={} tenderId={} userId={} role={}",
@@ -76,9 +87,17 @@ public class CommitteeAssignmentServiceImpl implements CommitteeAssignmentServic
         }
     }
 
-    private void enforceSegregationOfDuties(Long tenderId, Long userId) {
+    private void enforceSegregationOfDuties(Long tenderId, Long userId, Long actorUserId) {
         boolean alreadyAssigned = assignmentRepository.existsByTenderIdAndUserIdAndActiveTrue(tenderId, userId);
         if (alreadyAssigned) {
+            auditService.recordFailure(
+                    ProcurementAuditEvent.AuditEventType.COMMITTEE_ASSIGNMENT_REJECTED_SOD,
+                    tenderId,
+                    null,
+                    actorUserId,
+                    "Committee assignment rejected due to a segregation of duties",
+                    "UserId=" + userId + " already has an active committee role on tenderId=" + tenderId
+            );
             throw new SegregationOfDutiesException(
                     "User cannot hold multiple committee roles on the same tender."
             );

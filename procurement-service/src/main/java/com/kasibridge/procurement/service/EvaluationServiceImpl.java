@@ -3,10 +3,7 @@ package com.kasibridge.procurement.service;
 import com.kasibridge.procurement.dto.BidEvaluationResponse;
 import com.kasibridge.procurement.dto.BlindBidResponse;
 import com.kasibridge.procurement.dto.EvaluateBidRequest;
-import com.kasibridge.procurement.entity.Bid;
-import com.kasibridge.procurement.entity.BidEvaluationScore;
-import com.kasibridge.procurement.entity.Tender;
-import com.kasibridge.procurement.entity.TenderCommitteeAssignment;
+import com.kasibridge.procurement.entity.*;
 import com.kasibridge.procurement.exception.BidEvaluationException;
 import com.kasibridge.procurement.exception.BidNotFoundException;
 import com.kasibridge.procurement.exception.ProcurementAuthorizationException;
@@ -33,6 +30,7 @@ public class EvaluationServiceImpl implements EvaluationService {
     private final BidRepository bidRepository;
     private final BidEvaluationScoreRepository scoreRepository;
     private final TenderCommitteeAssignmentRepository assignmentRepository;
+    private final ProcurementAuditService auditService;
 
     @Override
     public List<BlindBidResponse> getBlindBidsForEvaluation(Long tenderId, Long evaluatorUserId) {
@@ -41,8 +39,16 @@ public class EvaluationServiceImpl implements EvaluationService {
 
         assertAssignedEvaluator(tenderId, evaluatorUserId);
 
-        if(tender.getStatus() != Tender.TenderStatus.PUBLISHED &&  tender.getStatus() != Tender.TenderStatus.EVALUATION){
+        auditService.recordSuccess(
+                ProcurementAuditEvent.AuditEventType.BID_SCORE_VIEWED,
+                tenderId,
+                null,
+                evaluatorUserId,
+                "Evaluator viewed blind bids",
+                "Blind bid list accessed for tenderId=" + tenderId
+        );
 
+        if(tender.getStatus() != Tender.TenderStatus.PUBLISHED &&  tender.getStatus() != Tender.TenderStatus.EVALUATION){
                 throw new BidEvaluationException("Bids can only be evaluated when tender is PUBLISHED or EVALUATION");
         }
 
@@ -62,7 +68,14 @@ public class EvaluationServiceImpl implements EvaluationService {
         assertAssignedEvaluator(tenderId, request.getEvaluatorUserId());
 
         if(tender.getStatus() != Tender.TenderStatus.PUBLISHED &&  tender.getStatus() != Tender.TenderStatus.EVALUATION){
-
+            auditService.recordFailure(
+                    ProcurementAuditEvent.AuditEventType.BID_SCORE_REJECTED_INVALID_TENDER_STATUS,
+                    tenderId,
+                    bidId,
+                    request.getEvaluatorUserId(),
+                    "Bid scoring rejected due to invalid tender status",
+                    "Current tender status=" + tender.getStatus() + ". Scoring is only allowed when tender is PUBLISHED or EVALUATION."
+            );
             throw new BidEvaluationException("Bid scoring is only allowed when tender is PUBLISHED or EVALUATION");
         }
 
@@ -80,6 +93,15 @@ public class EvaluationServiceImpl implements EvaluationService {
         boolean alreadyScored = scoreRepository.existsByTenderIdAndBidIdAndEvaluatorUserId(tenderId,bidId, request.getEvaluatorUserId());
 
         if(alreadyScored){
+            auditService.recordFailure(
+                    ProcurementAuditEvent.AuditEventType.BID_SCORE_REJECTED_DUPLICATE,
+                    tenderId,
+                    bidId,
+                    request.getEvaluatorUserId(),
+                    "Duplicate bid score rejected",
+                    "Evaluator has already scored this bid"
+            );
+
             throw new BidEvaluationException("Evaluator has already scored this bid.");
         }
 
@@ -111,6 +133,17 @@ public class EvaluationServiceImpl implements EvaluationService {
 
         BidEvaluationScore savedScore = scoreRepository.save(score);
 
+        auditService.recordSuccess(
+                ProcurementAuditEvent.AuditEventType.BID_SCORE_SUBMITTED,
+                tenderId,
+                bidId,
+                request.getEvaluatorUserId(),
+                "Bid score submitted",
+                "technicalScore=" + savedScore.getTechnicalScore()
+                        +", priceScore=" + savedScore.getPriceScore()
+                        +", totalScore=" + savedScore.getTotalScore()
+        );
+
         if(bid.getStatus() == Bid.BidStatus.COMPLIANT){
             bid.setStatus(Bid.BidStatus.UNDER_EVALUATION);
             bidRepository.save(bid);
@@ -135,6 +168,15 @@ public class EvaluationServiceImpl implements EvaluationService {
                 existsByTenderIdAndUserIdAndCommitteeRoleAndActiveTrue(tenderId, evaluatorUserId, TenderCommitteeAssignment.CommitteeRole.EVALUATOR);
 
         if(!assigned){
+            auditService.recordFailure(
+                    ProcurementAuditEvent.AuditEventType.BID_SCORE_REJECTED_UNASSIGNED_EVALUATOR,
+                    tenderId,
+                    null,
+                    evaluatorUserId,
+                    "Evaluator access rejected",
+                    "User is not assigned as evaluator to tenderId=" + tenderId
+            );
+
             throw new ProcurementAuthorizationException("User is not assigned as evaluator to this tender.");
         }
     }
