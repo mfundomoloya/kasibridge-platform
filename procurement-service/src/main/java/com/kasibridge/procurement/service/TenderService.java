@@ -16,4 +16,9 @@ public interface TenderService {
 
     TenderResponse publishTender(Long id);
 
+    TenderResponse closeBidding(Long id);
+
+    TenderResponse startEvaluation(Long id);
+
+    TenderResponse startAdjudication(Long id);
 }

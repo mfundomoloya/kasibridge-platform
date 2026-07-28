@@ -44,6 +44,9 @@ public class SecurityConfig {
                                 .requestMatchers(
                                         "/api/v1/tenders",
                                         "/api/v1/tenders/*/publish",
+                                        "/api/v1/tenders/*/close-bidding",
+                                        "/api/v1/tenders/*/start-evaluation",
+                                        "/api/v1/tenders/*/start-adjudication",
                                         "/api/v1/tenders/*/specification/**"
                                 )
                                            .hasAnyRole(

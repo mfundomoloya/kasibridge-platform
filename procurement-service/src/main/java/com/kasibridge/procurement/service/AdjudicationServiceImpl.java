@@ -128,6 +128,19 @@ public class AdjudicationServiceImpl implements AdjudicationService {
             throw new AdjudicationException("Cancelled tender cannot be awarded.");
         }
 
+
+        if(tender.getStatus() != Tender.TenderStatus.ADJUDICATION){
+            auditService.recordFailure(
+                    ProcurementAuditEvent.AuditEventType.TENDER_AWARD_REJECTED,
+                    tenderId,
+                    request.getWinningBidId(),
+                    request.getAdjudicatorUserId(),
+                    "Tender award rejected",
+                    "Current tender status=" +  tender.getStatus() + ". Award is only allowed when tender is in ADJUDICATION status."
+            );
+            throw new AdjudicationException("Tender can only be awarded when it is in ADJUDICATION status.");
+        }
+
         Bid winningBid = bidRepository.findById(request.getWinningBidId())
                 .orElseThrow(() -> new AdjudicationException("Winning bid not found with ID: " + request.getWinningBidId()));
 

@@ -65,4 +65,24 @@ public class TenderController {
         return ResponseEntity.ok(service.publishTender(id));
     }
 
+    @PatchMapping("/{id}/close-bidding")
+    public ResponseEntity<TenderResponse> closeBidding(@PathVariable("id") Long id){
+        log.info("PATCH /api/v1/tenders/{}/close-bidding - closing bidding", id);
+
+        return ResponseEntity.ok(service.closeBidding(id));
+    }
+
+    @PatchMapping("/{id}/start-evaluation")
+    public ResponseEntity<TenderResponse> startEvaluation(@PathVariable("id") Long id){
+        log.info("PATCH /api/v1/tenders/{}/start-evalution - starting evaluation", id);
+
+        return ResponseEntity.ok(service.startEvaluation(id));
+    }
+
+    @PatchMapping("/{id}/start-adjudication")
+    public ResponseEntity<TenderResponse> startAdjudication(@PathVariable("id") Long id){
+        log.info("PATCH /api/v1/tenders/{}/start-adjudication - starting adjudication", id);
+
+        return ResponseEntity.ok(service.startAdjudication(id));
+    }
 }

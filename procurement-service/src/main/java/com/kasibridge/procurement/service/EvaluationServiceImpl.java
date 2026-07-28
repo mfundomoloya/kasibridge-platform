@@ -48,8 +48,8 @@ public class EvaluationServiceImpl implements EvaluationService {
                 "Blind bid list accessed for tenderId=" + tenderId
         );
 
-        if(tender.getStatus() != Tender.TenderStatus.PUBLISHED &&  tender.getStatus() != Tender.TenderStatus.EVALUATION){
-                throw new BidEvaluationException("Bids can only be evaluated when tender is PUBLISHED or EVALUATION");
+        if(tender.getStatus() != Tender.TenderStatus.EVALUATION){
+                throw new BidEvaluationException("Blind bids can only be viewed when tender is in EVALUATION status");
         }
 
         return bidRepository.findByTenderId(tenderId)
@@ -67,16 +67,16 @@ public class EvaluationServiceImpl implements EvaluationService {
 
         assertAssignedEvaluator(tenderId, request.getEvaluatorUserId());
 
-        if(tender.getStatus() != Tender.TenderStatus.PUBLISHED &&  tender.getStatus() != Tender.TenderStatus.EVALUATION){
+        if(tender.getStatus() != Tender.TenderStatus.EVALUATION){
             auditService.recordFailure(
                     ProcurementAuditEvent.AuditEventType.BID_SCORE_REJECTED_INVALID_TENDER_STATUS,
                     tenderId,
                     bidId,
                     request.getEvaluatorUserId(),
                     "Bid scoring rejected due to invalid tender status",
-                    "Current tender status=" + tender.getStatus() + ". Scoring is only allowed when tender is PUBLISHED or EVALUATION."
+                    "Current tender status=" + tender.getStatus() + ". Scoring is only allowed when tender is in EVALUATION."
             );
-            throw new BidEvaluationException("Bid scoring is only allowed when tender is PUBLISHED or EVALUATION");
+            throw new BidEvaluationException("Bid scoring is only allowed when tender is in EVALUATION status.");
         }
 
         Bid bid = bidRepository.findById(bidId)
