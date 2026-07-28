@@ -114,6 +114,98 @@ public class TenderServiceImpl implements TenderService {
         return TenderResponse.from(saved);
     }
 
+    @Override
+    @Transactional
+    public TenderResponse closeBidding(Long id) {
+        Tender tender = findTender(id);
+
+        if (tender.getStatus() != Tender.TenderStatus.PUBLISHED) {
+            throw new TenderStateException(
+                    "Only PUBLISHED tenders can have bidding closed."
+            );
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+
+        tender.setStatus(Tender.TenderStatus.BIDDING_CLOSED);
+        tender.setClosedAt(now);
+        tender.setUpdatedAt(now);
+
+        Tender saved = repository.save(tender);
+
+        auditService.recordSuccess(
+                ProcurementAuditEvent.AuditEventType.TENDER_BIDDING_CLOSED,
+                saved.getId(),
+                null,
+                saved.getCreatedByUserId(),
+                "Tender bidding closed",
+                "Tender reference: " + saved.getTenderReference()
+        );
+
+        return TenderResponse.from(saved);
+    }
+
+    @Override
+    @Transactional
+    public TenderResponse startEvaluation(Long id) {
+        Tender tender = findTender(id);
+
+        if (tender.getStatus() != Tender.TenderStatus.BIDDING_CLOSED) {
+            throw new TenderStateException(
+                    "Only BIDDING_CLOSED tenders can move to EVALUATION."
+            );
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+
+        tender.setStatus(Tender.TenderStatus.EVALUATION);
+        tender.setClosedAt(now);
+        tender.setUpdatedAt(now);
+
+        Tender saved = repository.save(tender);
+
+        auditService.recordSuccess(
+                ProcurementAuditEvent.AuditEventType.TENDER_EVALUATION_STARTED,
+                saved.getId(),
+                null,
+                saved.getCreatedByUserId(),
+                "Tender moved to evaluation",
+                "Tender reference: " + saved.getTenderReference()
+        );
+
+        return TenderResponse.from(saved);
+    }
+
+    @Override
+    public TenderResponse startAdjudication(Long id) {
+        Tender tender = findTender(id);
+
+        if (tender.getStatus() != Tender.TenderStatus.EVALUATION) {
+            throw new TenderStateException(
+                    "Only EVALUATION tenders can move to ADJUDICATION."
+            );
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+
+        tender.setStatus(Tender.TenderStatus.ADJUDICATION);
+        tender.setClosedAt(now);
+        tender.setUpdatedAt(now);
+
+        Tender saved = repository.save(tender);
+
+        auditService.recordSuccess(
+                ProcurementAuditEvent.AuditEventType.TENDER_EVALUATION_STARTED,
+                saved.getId(),
+                null,
+                saved.getCreatedByUserId(),
+                "Tender moved to adjudication",
+                "Tender reference: " + saved.getTenderReference()
+        );
+
+        return TenderResponse.from(saved);
+    }
+
     private Tender findTender(Long id) {
         return repository.findById(id)
                 .orElseThrow(() -> new TenderNotFoundException(
