@@ -31,9 +31,13 @@ public class EvaluationServiceImpl implements EvaluationService {
     private final BidEvaluationScoreRepository scoreRepository;
     private final TenderCommitteeAssignmentRepository assignmentRepository;
     private final ProcurementAuditService auditService;
+    private final CurrentUserService currentUserService;
 
     @Override
-    public List<BlindBidResponse> getBlindBidsForEvaluation(Long tenderId, Long evaluatorUserId) {
+    public List<BlindBidResponse> getBlindBidsForEvaluation(Long tenderId) {
+
+        Long evaluatorUserId = currentUserService.getCurrentUserId();
+
         Tender tender = tenderRepository.findById(tenderId)
                 .orElseThrow(() -> new TenderNotFoundException("Tender not found with ID: " + tenderId));
 
@@ -62,17 +66,20 @@ public class EvaluationServiceImpl implements EvaluationService {
     @Override
     @Transactional
     public BidEvaluationResponse scoreBid(Long tenderId, Long bidId, EvaluateBidRequest request) {
+
+        Long evaluatorUserId = currentUserService.getCurrentUserId();
+
         Tender tender = tenderRepository.findById(tenderId)
                 .orElseThrow(() -> new TenderNotFoundException("Tender not found with ID: " + tenderId));
 
-        assertAssignedEvaluator(tenderId, request.getEvaluatorUserId());
+        assertAssignedEvaluator(tenderId, evaluatorUserId);
 
         if(tender.getStatus() != Tender.TenderStatus.EVALUATION){
             auditService.recordFailure(
                     ProcurementAuditEvent.AuditEventType.BID_SCORE_REJECTED_INVALID_TENDER_STATUS,
                     tenderId,
                     bidId,
-                    request.getEvaluatorUserId(),
+                    evaluatorUserId,
                     "Bid scoring rejected due to invalid tender status",
                     "Current tender status=" + tender.getStatus() + ". Scoring is only allowed when tender is in EVALUATION."
             );
@@ -90,14 +97,14 @@ public class EvaluationServiceImpl implements EvaluationService {
             throw new BidEvaluationException("Only compliant bids can be evaluated.");
         }
 
-        boolean alreadyScored = scoreRepository.existsByTenderIdAndBidIdAndEvaluatorUserId(tenderId,bidId, request.getEvaluatorUserId());
+        boolean alreadyScored = scoreRepository.existsByTenderIdAndBidIdAndEvaluatorUserId(tenderId,bidId, evaluatorUserId);
 
         if(alreadyScored){
             auditService.recordFailure(
                     ProcurementAuditEvent.AuditEventType.BID_SCORE_REJECTED_DUPLICATE,
                     tenderId,
                     bidId,
-                    request.getEvaluatorUserId(),
+                    evaluatorUserId,
                     "Duplicate bid score rejected",
                     "Evaluator has already scored this bid"
             );
@@ -124,7 +131,7 @@ public class EvaluationServiceImpl implements EvaluationService {
         BidEvaluationScore score = BidEvaluationScore.builder()
                 .tenderId(tenderId)
                 .bidId(bidId)
-                .evaluatorUserId(request.getEvaluatorUserId())
+                .evaluatorUserId(evaluatorUserId)
                 .technicalScore(request.getTechnicalScore())
                 .priceScore(priceScore)
                 .totalScore(totalScore)
@@ -137,7 +144,7 @@ public class EvaluationServiceImpl implements EvaluationService {
                 ProcurementAuditEvent.AuditEventType.BID_SCORE_SUBMITTED,
                 tenderId,
                 bidId,
-                request.getEvaluatorUserId(),
+                evaluatorUserId,
                 "Bid score submitted",
                 "technicalScore=" + savedScore.getTechnicalScore()
                         +", priceScore=" + savedScore.getPriceScore()
@@ -153,7 +160,7 @@ public class EvaluationServiceImpl implements EvaluationService {
                 "Bid scored: tenderId={} bidId={} evaluatorUserId={} technicalScore={} totalScore={} priceScore={}",
                 tenderId,
                 bidId,
-                request.getEvaluatorUserId(),
+                evaluatorUserId,
                 request.getTechnicalScore(),
                 priceScore,
                 totalScore

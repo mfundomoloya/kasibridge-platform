@@ -8,7 +8,7 @@ import java.util.List;
 
 public interface EvaluationService {
 
-    List<BlindBidResponse> getBlindBidsForEvaluation(Long tenderId, Long evaluatorUserId);
+    List<BlindBidResponse> getBlindBidsForEvaluation(Long tenderId);
 
     BidEvaluationResponse scoreBid(
             Long tenderId,

@@ -8,9 +8,6 @@ import java.math.BigDecimal;
 @Data
 public class EvaluateBidRequest {
 
-    @NotNull(message = "Evaluator user ID is required")
-    private Long evaluatorUserId;
-
     @NotNull(message = "Technical score is required")
     @DecimalMin(value = "0.00", message = "Technical score cannot be below 0")
     @DecimalMax(value = "100.0", message = "Technical score cannot exceed 100")

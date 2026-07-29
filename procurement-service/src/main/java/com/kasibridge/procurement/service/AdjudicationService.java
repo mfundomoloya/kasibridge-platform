@@ -8,6 +8,5 @@ import java.util.List;
 
 public interface AdjudicationService {
     List<BidRankingResponse> getEvaluationSummary(Long tenderId);
-
     AwardTenderResponse awardTender(Long tenderId, AwardTenderRequest request);
 }
