@@ -13,6 +13,7 @@ public interface BidEvaluationScoreRepository extends JpaRepository<BidEvaluatio
 
     List<BidEvaluationScore> findByTenderId(Long tenderId);
     List<BidEvaluationScore> findByBidId(Long bidId);
+    boolean existsByTenderId(Long tenderId);
     boolean existsByTenderIdAndBidIdAndEvaluatorUserId(Long tenderId, Long bidId, Long evaluatorUserId);
 
     @Query("""

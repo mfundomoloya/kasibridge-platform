@@ -6,6 +6,7 @@ import com.kasibridge.procurement.entity.ProcurementAuditEvent;
 import com.kasibridge.procurement.entity.Tender;
 import com.kasibridge.procurement.exception.TenderNotFoundException;
 import com.kasibridge.procurement.exception.TenderStateException;
+import com.kasibridge.procurement.repository.BidEvaluationScoreRepository;
 import com.kasibridge.procurement.repository.TenderRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +26,7 @@ public class TenderServiceImpl implements TenderService {
     private final TenderRepository repository;
     private final SpecificationHashService hashService;
     private final ProcurementAuditService auditService;
+    private final BidEvaluationScoreRepository scoreRepository;
 
     @Override
     @Transactional
@@ -184,6 +186,12 @@ public class TenderServiceImpl implements TenderService {
             throw new TenderStateException(
                     "Only EVALUATION tenders can move to ADJUDICATION."
             );
+        }
+
+        boolean hasEvaluationScores = scoreRepository.existsByTenderId(id);
+
+        if(!hasEvaluationScores){
+            throw new TenderStateException("Tender cannot move to ADJUDICATION until at least one bid has been evaluated.");
         }
 
         LocalDateTime now = LocalDateTime.now();
