@@ -35,6 +35,7 @@ public class AdjudicationServiceImpl implements AdjudicationService {
     private final BidRepository bidRepository;
     private final BidEvaluationScoreRepository scoreRepository;
     private final ProcurementAuditService auditService;
+    private final CurrentUserService currentUserService;
 
     @Override
     public List<BidRankingResponse> getEvaluationSummary(Long tenderId) {
@@ -104,10 +105,13 @@ public class AdjudicationServiceImpl implements AdjudicationService {
     @Override
     @Transactional
     public AwardTenderResponse awardTender(Long tenderId, AwardTenderRequest request) {
+
+        Long adjudicatorUserId = currentUserService.getCurrentUserId();
+
         log.info("Awarding tenderId={} to bidId={} by adjudicatorUserId={}",
                 tenderId,
                 request.getWinningBidId(),
-                request.getAdjudicatorUserId());
+                adjudicatorUserId);
 
         Tender tender = tenderRepository.findById(tenderId)
                 .orElseThrow(() -> new TenderNotFoundException("Tender not found with ID: " + tenderId));
@@ -117,7 +121,7 @@ public class AdjudicationServiceImpl implements AdjudicationService {
                     ProcurementAuditEvent.AuditEventType.TENDER_AWARD_REJECTED,
                     tenderId,
                     request.getWinningBidId(),
-                    request.getAdjudicatorUserId(),
+                    adjudicatorUserId,
                     "Tender award rejected",
                     "Tender has already been awarded"
             );
@@ -134,7 +138,7 @@ public class AdjudicationServiceImpl implements AdjudicationService {
                     ProcurementAuditEvent.AuditEventType.TENDER_AWARD_REJECTED,
                     tenderId,
                     request.getWinningBidId(),
-                    request.getAdjudicatorUserId(),
+                    adjudicatorUserId,
                     "Tender award rejected",
                     "Current tender status=" +  tender.getStatus() + ". Award is only allowed when tender is in ADJUDICATION status."
             );
@@ -167,7 +171,7 @@ public class AdjudicationServiceImpl implements AdjudicationService {
 
         tender.setStatus(Tender.TenderStatus.AWARDED);
         tender.setAwardedBidId(winningBid.getId());
-        tender.setAwardedByUserId(request.getAdjudicatorUserId());
+        tender.setAwardedByUserId(adjudicatorUserId);
         tender.setAwardedAt(now);
         tender.setAwardReason(request.getAwardReason().trim());
         tender.setUpdatedAt(now);
@@ -178,7 +182,7 @@ public class AdjudicationServiceImpl implements AdjudicationService {
                 ProcurementAuditEvent.AuditEventType.BID_SCORE_VIEWED,
                 tenderId,
                 winningBid.getId(),
-                request.getAdjudicatorUserId(),
+                adjudicatorUserId,
                 "Tender awarded",
                 "Winning bid alias: " + winningBid.getBidderAlias() + ", reason: " + savedTender.getAwardReason()
         );
@@ -186,7 +190,7 @@ public class AdjudicationServiceImpl implements AdjudicationService {
         log.info("Tender awarded: tenderId={} winningBidId={} adjudicatorUserId={}",
                 tenderId,
                 winningBid.getId(),
-                request.getAdjudicatorUserId());
+                adjudicatorUserId);
 
         return AwardTenderResponse.builder()
                 .tenderId(savedTender.getId())
@@ -196,7 +200,7 @@ public class AdjudicationServiceImpl implements AdjudicationService {
                 .winningBidReference(winningBid.getBidReference())
                 .winningBidderAlias(winningBid.getBidderAlias())
                 .winningBidStatus(winningBid.getStatus())
-                .adjudicatorUserId(request.getAdjudicatorUserId())
+                .adjudicatorUserId(adjudicatorUserId)
                 .awardReason(savedTender.getAwardReason())
                 .awardedAt(savedTender.getAwardedAt())
                 .build();
