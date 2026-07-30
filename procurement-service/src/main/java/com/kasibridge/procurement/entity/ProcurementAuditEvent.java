@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 
 @Entity
 @Table(
@@ -50,13 +51,22 @@ public class ProcurementAuditEvent {
     @Column(name = "details", length = 3000)
     private String details;
 
+    @Column(name = "previous_event_hash", length = 128)
+    private String previousEventHash;
+
+    @Column(name = "event_hash", nullable = false, length = 128)
+    private String eventHash;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
     @PrePersist
     protected void onCreate() {
-        createdAt = LocalDateTime.now();
-    }
+        if(createdAt == null) {
+            createdAt = LocalDateTime.now()
+                    .truncatedTo(ChronoUnit.MICROS);
+            }
+        }
 
     public enum AuditResult {
         SUCCESS,

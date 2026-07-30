@@ -1,5 +1,6 @@
 package com.kasibridge.procurement.controller;
 
+import com.kasibridge.procurement.dto.AuditChainVerificationResponse;
 import com.kasibridge.procurement.dto.ProcurementAuditResponse;
 import com.kasibridge.procurement.service.ProcurementAuditService;
 import lombok.RequiredArgsConstructor;
@@ -52,5 +53,14 @@ public class ProcurementAuditController {
     ) {
         log.info("GET /api/v1/procurement/audit-events/actor/{} - fetching audit events", actorUserId);
         return ResponseEntity.ok(service.getAuditEventsByActor(actorUserId, pageable));
+    }
+
+    @GetMapping("/api/v1/procurement/audit-events/verify-chain")
+    public ResponseEntity<AuditChainVerificationResponse> verifyAuditChain() {
+        log.info("GET /api/v1/procurement/audit-events/verify-chain - verifying audit hash chain");
+
+        return ResponseEntity.ok(
+                service.verifyAuditChain()
+        );
     }
 }

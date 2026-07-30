@@ -18,6 +18,8 @@ public class ProcurementAuditResponse {
     private ProcurementAuditEvent.AuditResult result;
     private String message;
     private String details;
+    private String previousEventHash;
+    private String eventHash;
     private LocalDateTime createdAt;
 
     public static ProcurementAuditResponse from(ProcurementAuditEvent event) {
@@ -31,6 +33,8 @@ public class ProcurementAuditResponse {
                 .result(event.getResult())
                 .message(event.getMessage())
                 .details(event.getDetails())
+                .previousEventHash(event.getPreviousEventHash())
+                .eventHash(event.getEventHash())
                 .createdAt(event.getCreatedAt())
                 .build();
     }
