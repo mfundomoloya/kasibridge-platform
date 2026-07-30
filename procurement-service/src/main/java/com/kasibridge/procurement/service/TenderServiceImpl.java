@@ -1,6 +1,7 @@
 package com.kasibridge.procurement.service;
 
 import com.kasibridge.procurement.dto.CreateTenderRequest;
+import com.kasibridge.procurement.dto.SpecificationIntegrityResponse;
 import com.kasibridge.procurement.dto.TenderResponse;
 import com.kasibridge.procurement.entity.ProcurementAuditEvent;
 import com.kasibridge.procurement.entity.Tender;
@@ -212,6 +213,44 @@ public class TenderServiceImpl implements TenderService {
         );
 
         return TenderResponse.from(saved);
+    }
+
+    @Override
+    public SpecificationIntegrityResponse verifySpecificationIntegrity(Long id) {
+        Tender tender = findTender(id);
+
+        if(tender.getSpecificationHash() == null || tender.getSpecificationHash().isBlank()){
+            throw new TenderStateException("Tender has not been published and does not have a specification hash.");
+        }
+
+        String currentHash = hashService.generateHash(tender);
+        boolean integrityValid = tender.getSpecificationHash().equals(currentHash);
+
+        String message = integrityValid
+                ? "Tender specification has been verified."
+                : "Tender specification integrity check failed. Current specification does not match published hash.";
+
+        auditService.recordSuccess(
+                integrityValid
+                        ?
+                ProcurementAuditEvent.AuditEventType.TENDER_SPECIFICATION_VERIFIED
+                        :
+                ProcurementAuditEvent.AuditEventType.TENDER_SPECIFICATION_TAMPER_DETECTED,
+                tender.getId(),
+                null,
+                null,
+                message,
+                "Stored hash=" + tender.getSpecificationHash() + ", current hash=" + currentHash
+        );
+
+        return SpecificationIntegrityResponse.builder()
+                .tenderId(tender.getId())
+                .tenderReference(tender.getTenderReference())
+                .storedHash(tender.getSpecificationHash())
+                .currentHash(currentHash)
+                .integrityValid(integrityValid)
+                .message(message)
+                .build();
     }
 
     private Tender findTender(Long id) {
