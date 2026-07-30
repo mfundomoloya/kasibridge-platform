@@ -104,6 +104,12 @@ public class SecurityConfig {
                                 .hasAnyRole("PLATFORM_ADMIN", "ADJUDICATOR", "SPECIFICATION_OFFICER")
 
 
+                                //Tender anomaly detection
+                                .requestMatchers(
+                                        "/api/v1/tenders/*/anomalies"
+                                )
+                                .hasAnyRole("PLATFORM_ADMIN", "ADJUDICATOR","SPECIFICATION_OFFICER")
+
 
 
                                 //general tender read access
