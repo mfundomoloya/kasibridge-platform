@@ -1,5 +1,6 @@
 package com.kasibridge.procurement.service;
 
+import com.kasibridge.procurement.dto.AuditChainVerificationResponse;
 import com.kasibridge.procurement.dto.ProcurementAuditResponse;
 import com.kasibridge.procurement.entity.ProcurementAuditEvent;
 import org.springframework.data.domain.Page;
@@ -29,4 +30,5 @@ public interface ProcurementAuditService {
     Page<ProcurementAuditResponse> getAuditEventsByTender(Long tenderId, Pageable pageable);
     Page<ProcurementAuditResponse> getAuditEventsByBid(Long bidId, Pageable pageable);
     Page<ProcurementAuditResponse> getAuditEventsByActor(Long actorUserId, Pageable pageable);
+    AuditChainVerificationResponse verifyAuditChain();
 }
