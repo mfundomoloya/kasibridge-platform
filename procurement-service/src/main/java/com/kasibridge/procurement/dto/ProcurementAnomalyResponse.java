@@ -7,6 +7,8 @@ import lombok.Data;
 @Builder
 public class ProcurementAnomalyResponse {
 
+    private Long tenderId;
+    private Long bidId;
     private String type;
     private String severity;
     private String message;

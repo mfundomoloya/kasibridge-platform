@@ -111,8 +111,18 @@ public class SecurityConfig {
                                 .hasAnyRole("PLATFORM_ADMIN", "ADJUDICATOR","SPECIFICATION_OFFICER")
 
 
+                                //Review Anomaly Records
+                                .requestMatchers(
+                                        "/api/v1/procurement/anomalies/**",
+                                        "/api/v1/tenders/*/anomalies/**",
+                                        "/api/v1/tenders/*/anomaly-records"
+                                )
+                                .hasAnyRole(
+                                        "PLATFORM_ADMIN", "ADJUDICATOR", "SPECIFICATION_OFFICER")
 
-                                //general tender read access
+
+
+                                //GENERAL tender read access
                                 .requestMatchers(
                                             "/api/v1/tenders/**"
                 )

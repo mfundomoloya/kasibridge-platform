@@ -171,6 +171,11 @@ public class EvaluationServiceImpl implements EvaluationService {
 
     //helper method
     private void assertAssignedEvaluator(Long tenderId, Long evaluatorUserId) {
+
+        if(currentUserService.hasRole("ROLE_PLATFORM_ADMIN")) {
+            return;
+        }
+
         boolean assigned = assignmentRepository.
                 existsByTenderIdAndUserIdAndCommitteeRoleAndActiveTrue(tenderId, evaluatorUserId, TenderCommitteeAssignment.CommitteeRole.EVALUATOR);
 
