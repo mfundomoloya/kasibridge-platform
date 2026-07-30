@@ -6,11 +6,14 @@ import com.kasibridge.procurement.dto.BidRankingResponse;
 import com.kasibridge.procurement.entity.Bid;
 import com.kasibridge.procurement.entity.ProcurementAuditEvent;
 import com.kasibridge.procurement.entity.Tender;
+import com.kasibridge.procurement.entity.TenderCommitteeAssignment;
 import com.kasibridge.procurement.exception.AdjudicationException;
 import com.kasibridge.procurement.exception.BidEvaluationException;
+import com.kasibridge.procurement.exception.ProcurementAuthorizationException;
 import com.kasibridge.procurement.exception.TenderNotFoundException;
 import com.kasibridge.procurement.repository.BidEvaluationScoreRepository;
 import com.kasibridge.procurement.repository.BidRepository;
+import com.kasibridge.procurement.repository.TenderCommitteeAssignmentRepository;
 import com.kasibridge.procurement.repository.TenderRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -36,14 +39,29 @@ public class AdjudicationServiceImpl implements AdjudicationService {
     private final BidEvaluationScoreRepository scoreRepository;
     private final ProcurementAuditService auditService;
     private final CurrentUserService currentUserService;
+    private final TenderCommitteeAssignmentRepository assignmentRepository;
 
     @Override
     public List<BidRankingResponse> getEvaluationSummary(Long tenderId) {
+
         log.info("Generating adjudication summary for tenderId={}", tenderId);
 
         if (!tenderRepository.existsById(tenderId)) {
             throw new TenderNotFoundException("Tender not found with ID: " + tenderId);
         }
+
+        Long adjudicatorUserId = currentUserService.getCurrentUserId();
+
+        assertAssignedAdjudicator(tenderId, adjudicatorUserId);
+
+        auditService.recordSuccess(
+                ProcurementAuditEvent.AuditEventType.TENDER_ADJUDICATION_SUMMARY_VIEWED,
+                tenderId,
+                null,
+                adjudicatorUserId,
+                "Adjudication summary viewed",
+                "Evaluation ranking summary generated for tenderId=" + tenderId
+        );
 
         List<Object[]> averages = scoreRepository.findAverageScoresByTenderId(tenderId);
 
@@ -115,6 +133,8 @@ public class AdjudicationServiceImpl implements AdjudicationService {
 
         Tender tender = tenderRepository.findById(tenderId)
                 .orElseThrow(() -> new TenderNotFoundException("Tender not found with ID: " + tenderId));
+
+        assertAssignedAdjudicator(tenderId, adjudicatorUserId);
 
         if(tender.getStatus() == Tender.TenderStatus.AWARDED){
             auditService.recordFailure(
@@ -206,7 +226,6 @@ public class AdjudicationServiceImpl implements AdjudicationService {
                 .build();
     }
 
-
     private void rejectOtherEligibleBids(Long tenderId, Long winningBidId) {
         Set<Bid.BidStatus> eligibleStatuses = Set.of(
                 Bid.BidStatus.COMPLIANT,
@@ -250,5 +269,26 @@ public class AdjudicationServiceImpl implements AdjudicationService {
                         .setScale(2, RoundingMode.HALF_UP);
             }
             throw new BidEvaluationException("Unable to convert score average to number");
+    }
+
+    private void assertAssignedAdjudicator(Long tenderId, Long adjudicatorUserId) {
+        boolean assigned = assignmentRepository.existsByTenderIdAndUserIdAndCommitteeRoleAndActiveTrue(
+                tenderId,
+                adjudicatorUserId,
+                TenderCommitteeAssignment.CommitteeRole.ADJUDICATOR
+        );
+
+        if(!assigned) {
+            auditService.recordFailure(
+                    ProcurementAuditEvent.AuditEventType.TENDER_AWARD_REJECTED,
+                    tenderId,
+                   null,
+                    adjudicatorUserId,
+                    "Tender award rejected",
+                    "User is not assigned as adjudicator to tenderId=" + tenderId
+            );
+
+            throw new ProcurementAuthorizationException("User is not assigned as adjudicator to this tender.");
+        }
     }
 }
