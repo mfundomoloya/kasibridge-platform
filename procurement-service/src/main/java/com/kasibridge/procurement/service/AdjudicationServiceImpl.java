@@ -272,6 +272,11 @@ public class AdjudicationServiceImpl implements AdjudicationService {
     }
 
     private void assertAssignedAdjudicator(Long tenderId, Long adjudicatorUserId) {
+
+        if(currentUserService.hasRole("ROLE_PLATFORM_ADMIN")) {
+            return;
+        }
+
         boolean assigned = assignmentRepository.existsByTenderIdAndUserIdAndCommitteeRoleAndActiveTrue(
                 tenderId,
                 adjudicatorUserId,

@@ -22,6 +22,19 @@ public class CurrentUserServiceImpl implements CurrentUserService {
         return getPrincipal().orgId();
     }
 
+    @Override
+    public boolean hasRole(String role) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
+        if (authentication == null) {
+            return false;
+        }
+
+        return authentication.getAuthorities()
+                .stream()
+                .anyMatch(authority -> authority.getAuthority().equals(role));
+    }
+
     private KasiBridgeUserPrincipal getPrincipal(){
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
