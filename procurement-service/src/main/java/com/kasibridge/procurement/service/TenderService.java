@@ -1,6 +1,7 @@
 package com.kasibridge.procurement.service;
 
 import com.kasibridge.procurement.dto.CreateTenderRequest;
+import com.kasibridge.procurement.dto.SpecificationIntegrityResponse;
 import com.kasibridge.procurement.dto.TenderResponse;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -21,4 +22,6 @@ public interface TenderService {
     TenderResponse startEvaluation(Long id);
 
     TenderResponse startAdjudication(Long id);
+
+    SpecificationIntegrityResponse verifySpecificationIntegrity(Long id);
 }

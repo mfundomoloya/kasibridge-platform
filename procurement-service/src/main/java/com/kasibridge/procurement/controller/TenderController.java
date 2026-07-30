@@ -2,6 +2,7 @@ package com.kasibridge.procurement.controller;
 
 
 import com.kasibridge.procurement.dto.CreateTenderRequest;
+import com.kasibridge.procurement.dto.SpecificationIntegrityResponse;
 import com.kasibridge.procurement.dto.TenderResponse;
 import com.kasibridge.procurement.service.TenderService;
 import jakarta.validation.Valid;
@@ -85,4 +86,11 @@ public class TenderController {
 
         return ResponseEntity.ok(service.startAdjudication(id));
     }
+
+    @GetMapping("/{id}/specification/verify")
+    public ResponseEntity<SpecificationIntegrityResponse> verifySpecificationIntegrity(@PathVariable("id") Long id){
+        log.info("GET /api/v1/tenders/{}/specification/verify - verifying specification integrity", id);
+
+        return ResponseEntity.ok(service.verifySpecificationIntegrity(id));
+    };
 }
