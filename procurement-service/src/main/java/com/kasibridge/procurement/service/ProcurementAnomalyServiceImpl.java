@@ -7,6 +7,7 @@ import com.kasibridge.procurement.dto.ReviewProcurementAnomalyRequest;
 import com.kasibridge.procurement.entity.ProcurementAnomaly;
 import com.kasibridge.procurement.entity.ProcurementAuditEvent;
 import com.kasibridge.procurement.entity.Tender;
+import com.kasibridge.procurement.exception.AnomalyStateException;
 import com.kasibridge.procurement.exception.TenderNotFoundException;
 import com.kasibridge.procurement.repository.ProcurementAnomalyRepository;
 import com.kasibridge.procurement.repository.TenderRepository;
@@ -89,10 +90,13 @@ public class ProcurementAnomalyServiceImpl implements ProcurementAnomalyService 
                         "Procurement anomaly not found with ID: " + anomalyId
                 ));
 
+        assertAnomalyIsOpen(anomaly);
+
         anomaly.setStatus(ProcurementAnomaly.AnomalyStatus.REVIEWED);
         anomaly.setReviewedByUserId(reviewerUserId);
         anomaly.setReviewNotes(request.getReviewNotes().trim());
         anomaly.setReviewedAt(LocalDateTime.now());
+
         ProcurementAnomaly saved = anomalyRepository.save(anomaly);
 
         auditService.recordSuccess(
@@ -115,6 +119,8 @@ public class ProcurementAnomalyServiceImpl implements ProcurementAnomalyService 
                 .orElseThrow(() -> new IllegalArgumentException(
                         "Procurement anomaly not found with ID: " + anomalyId
                 ));
+
+        assertAnomalyIsOpen(anomaly);
 
         anomaly.setStatus(ProcurementAnomaly.AnomalyStatus.DISMISSED);
         anomaly.setReviewedByUserId(reviewerUserId);
@@ -281,5 +287,25 @@ public class ProcurementAnomalyServiceImpl implements ProcurementAnomalyService 
                 .replace("-", "")
                 .substring(0, 8)
                 .toUpperCase();
+    }
+
+    private void assertAnomalyIsOpen(ProcurementAnomaly anomaly) {
+        if (anomaly.getStatus() != ProcurementAnomaly.AnomalyStatus.OPEN) {
+            Long actorUserId = currentUserService.getCurrentUserId();
+
+            auditService.recordFailure(
+                    ProcurementAuditEvent.AuditEventType.PROCUREMENT_ANOMALY_TRANSITION_REJECTED,
+                    anomaly.getTenderId(),
+                    anomaly.getBidId(),
+                    actorUserId,
+                    "Procurement anomaly transition rejected",
+                    "Anomaly reference=" + anomaly.getAnomalyReference()
+                            + ", currentStatus=" + anomaly.getStatus()
+            );
+
+            throw new AnomalyStateException(
+                    "Only OPEN anomalies can be reviewed or dismissed."
+            );
+        }
     }
 }
