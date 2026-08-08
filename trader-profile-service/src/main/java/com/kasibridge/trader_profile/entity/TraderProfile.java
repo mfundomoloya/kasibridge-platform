@@ -17,6 +17,9 @@ public class TraderProfile {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "user_id", unique = true)
+    private Long userId;
+
     //this is personal info
     @Column(nullable = false)
     private String fullName;

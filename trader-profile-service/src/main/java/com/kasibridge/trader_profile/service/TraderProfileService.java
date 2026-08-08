@@ -18,6 +18,10 @@ public interface TraderProfileService {
     // Get a profile by phone number (used by WhatsApp adapter)
     TraderProfileResponse getProfileByPhone(String phoneNumber);
 
+    TraderProfileResponse getProfileByUserId(Long userId);
+
+    TraderProfileResponse linkUser(Long traderId,Long userId);
+
     // Get all profiles
     List<TraderProfileResponse> getAllProfiles();
 

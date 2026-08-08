@@ -31,3 +31,20 @@ replay_pid*
 .env
 .env.*auth-service/src/main/resources/keys/private.pem
 /auth-service/src/main/resources/keys/private.pem
+
+# Build tools (Maven & Gradle)
+target/
+!.mvn/wrapper/maven-wrapper.jar
+!gradle/wrapper/gradle-wrapper.jar
+build/
+.gradle/
+
+# IDE Specific (IntelliJ, Eclipse, VS Code)
+.idea/
+*.iml
+*.iws
+.classpath
+.project
+.settings/
+.factorypath
+.vscode/

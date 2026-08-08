@@ -15,6 +15,8 @@ public interface TraderProfileRepository extends JpaRepository<TraderProfile, Lo
     // Find by email
     Optional<TraderProfile> findByEmail(String email);
 
+    Optional<TraderProfile> findByUserId(Long userId);
+
     // Find all traders in a specific area
     List<TraderProfile> findByTradingArea(String tradingArea);
 
@@ -29,4 +31,6 @@ public interface TraderProfileRepository extends JpaRepository<TraderProfile, Lo
 
     // Check if email already registered
     boolean existsByEmail(String email);
+
+    boolean existsByUserId(Long userId);
 }
