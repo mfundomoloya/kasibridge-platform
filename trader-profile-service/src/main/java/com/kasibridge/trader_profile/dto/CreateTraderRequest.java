@@ -6,6 +6,9 @@ import lombok.Data;
 
 @Data
 public class CreateTraderRequest {
+
+    private Long userId;
+
     @NotBlank(message = "Full name is required")
     private String fullName;
 

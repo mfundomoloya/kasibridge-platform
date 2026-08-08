@@ -45,10 +45,15 @@ public class TraderProfileServiceImpl implements TraderProfileService{
             );
         }
 
+        if(request.getUserId() != null && repository.existsByUserId(request.getUserId())) {
+            throw new DuplicateTraderException("A trader profile already exists for user ID: " + request.getUserId());
+        }
+
         validateCreatTraderRequest(request);
 
         //create the trader profile
         TraderProfile trader = TraderProfile.builder()
+                .userId(request.getUserId())
                 .fullName(request.getFullName())
                 .phoneNumber(request.getPhoneNumber())
                 .email(request.getEmail())
@@ -140,6 +145,38 @@ public class TraderProfileServiceImpl implements TraderProfileService{
     }
 
     @Override
+    public TraderProfileResponse getProfileByUserId(Long userId) {
+        TraderProfile trader = repository.findByUserId(userId)
+                .orElseThrow(() -> new TraderNotFoundException(
+                        "Trader profile not found with ID: " + userId
+                ));
+
+        return TraderProfileResponse.from(trader);
+    }
+
+    @Override
+    public TraderProfileResponse linkUser(Long traderId, Long userId) {
+        log.info("Linking trader profile ID {} to user ID {}", traderId, userId);
+
+        TraderProfile trader = repository.findById(traderId)
+                .orElseThrow(() -> new TraderNotFoundException("Trader profile not found with ID: " + traderId));
+
+        boolean userIdAlreadyUsed = repository.existsByUserId(userId);
+
+        if (userIdAlreadyUsed && !userId.equals(trader.getUserId())) {
+            throw new DuplicateTraderException("A trader profile already exists for user ID: " + userId);
+        }
+
+        trader.setUserId(userId);
+
+        TraderProfile saved = repository.save(trader);
+
+        log.info("Trader profile ID {} linked to user ID {}", saved.getId(), saved.getUserId());
+
+        return TraderProfileResponse.from(saved);
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public List<TraderProfileResponse> getAllProfiles() {
         log.info("Fetching all trader profiles");
@@ -200,6 +237,19 @@ public class TraderProfileServiceImpl implements TraderProfileService{
         boolean existingCipc = isValid(trader.getCipcNumber());
 
         // Cross-field validation
+
+        if (request.getUserId() != null) {
+            boolean userIdAlreadyUsed = repository.existsByUserId(request.getUserId());
+
+            if (userIdAlreadyUsed && !request.getUserId().equals(trader.getUserId())) {
+                throw new DuplicateTraderException(
+                        "A trader profile already exists for user ID: " + request.getUserId()
+                );
+            }
+
+            trader.setUserId(request.getUserId());
+        }
+
         if (incomingCipc && !effectivelyRegistered) {
             throw new IllegalArgumentException(
                     "CIPC number can only be provided if the business is registered."

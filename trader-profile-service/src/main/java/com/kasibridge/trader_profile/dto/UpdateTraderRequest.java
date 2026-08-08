@@ -4,6 +4,7 @@ import lombok.Data;
 
 @Data
 public class UpdateTraderRequest {
+    private Long userId;
     private String businessName;
     private String businessType;
     private String tradingArea;

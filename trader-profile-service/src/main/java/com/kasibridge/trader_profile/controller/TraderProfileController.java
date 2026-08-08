@@ -101,4 +101,18 @@ public class TraderProfileController {
         service.deleteProfile(id);
         return ResponseEntity.noContent().build();
     }
+
+    @GetMapping("/user/{userId}")
+    public ResponseEntity<TraderProfileResponse> getProfileByUserId(@PathVariable("userId") Long userId) {
+        log.info("GET /api/v1/traders/user/{} - fetching profile", userId);
+
+        return ResponseEntity.ok(service.getProfileByUserId(userId));
+    }
+
+    @PatchMapping("/{id}/link-user/{userId}")
+    public ResponseEntity<TraderProfileResponse> linkUser(@PathVariable("id") Long id, @PathVariable("userId") Long userId)
+    {
+        log.info("PATCH /api/v1/traders/{}/link-user/{} - linking trader profile to auth user", id, userId);
+
+        return ResponseEntity.ok(service.linkUser(id, userId));}
 }

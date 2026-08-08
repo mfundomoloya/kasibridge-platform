@@ -10,6 +10,7 @@ import java.time.LocalDateTime;
 @Builder
 public class TraderProfileResponse {
     private Long id;
+    private Long userId;
     private String fullName;
     private String phoneNumber;
     private String email;
@@ -33,6 +34,7 @@ public class TraderProfileResponse {
     public static TraderProfileResponse from(TraderProfile trader) {
         return TraderProfileResponse.builder()
                 .id(trader.getId())
+                .userId(trader.getUserId())
                 .fullName(trader.getFullName())
                 .phoneNumber(trader.getPhoneNumber())
                 .email(trader.getEmail())
