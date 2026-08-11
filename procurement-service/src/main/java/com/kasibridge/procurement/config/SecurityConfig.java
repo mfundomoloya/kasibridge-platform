@@ -121,6 +121,17 @@ public class SecurityConfig {
                                         "PLATFORM_ADMIN", "ADJUDICATOR", "SPECIFICATION_OFFICER")
 
 
+                                //Ticket logging
+                                .requestMatchers("/api/v1/tickets/*/respond",
+                                        "/api/v1/tickets/*/close")
+                                .hasAnyRole("PLATFORM_ADMIN", "SPECIFICATION_OFFICER")
+
+                                .requestMatchers("/api/v1/tenders/*/tickets",
+                                        "/api/v1/tickets/my",
+                                        "/api/v1/tickets/*",
+                                        "/api/v1/tenders/*/clarifications")
+                                .hasAnyRole("TRADER","PLATFORM_ADMIN", "SPECIFICATION_OFFICER")
+
 
                                 //GENERAL tender read access
                                 .requestMatchers(
