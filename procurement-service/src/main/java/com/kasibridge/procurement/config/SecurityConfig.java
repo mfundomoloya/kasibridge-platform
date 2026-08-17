@@ -133,6 +133,12 @@ public class SecurityConfig {
                                 .hasAnyRole("TRADER","PLATFORM_ADMIN", "SPECIFICATION_OFFICER")
 
 
+                                //Notification outbox
+                                .requestMatchers("/api/v1/notifications/outbox/**")
+                                .hasAnyRole("PLATFORM_ADMIN","SPECIFICATION_OFFICER")
+
+
+
                                 //GENERAL tender read access
                                 .requestMatchers(
                                             "/api/v1/tenders/**"

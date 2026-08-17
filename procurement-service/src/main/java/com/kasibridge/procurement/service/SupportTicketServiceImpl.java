@@ -1,6 +1,7 @@
 package com.kasibridge.procurement.service;
 
 import com.kasibridge.procurement.dto.*;
+import com.kasibridge.procurement.entity.NotificationOutbox;
 import com.kasibridge.procurement.entity.ProcurementAuditEvent;
 import com.kasibridge.procurement.entity.SupportTicket;
 import com.kasibridge.procurement.exception.SupportTicketException;
@@ -27,6 +28,7 @@ public class SupportTicketServiceImpl implements SupportTicketService{
     private final CurrentUserService currentUserService;
     private final TraderProfileClient traderProfileClient;
     private final ProcurementAuditService auditService;
+    private final NotificationOutboxService notificationOutboxService;
 
     @Override
     @Transactional
@@ -57,6 +59,8 @@ public class SupportTicketServiceImpl implements SupportTicketService{
                 .build();
 
         SupportTicket saved = ticketRepository.save(ticket);
+
+        queueTicketCreatedNotification(saved);
 
         auditService.recordSuccess(
 
@@ -118,6 +122,8 @@ public class SupportTicketServiceImpl implements SupportTicketService{
 
         SupportTicket saved = ticketRepository.save(ticket);
 
+        queueTicketRespondedNotification(saved);
+
         auditService.recordSuccess(
                 ProcurementAuditEvent.AuditEventType.SUPPORT_TICKET_RESPONDED,
                 saved.getTenderId(),
@@ -127,6 +133,8 @@ public class SupportTicketServiceImpl implements SupportTicketService{
                 "Ticket reference=" + saved.getTicketReference()
         );
         if (publicClarification) {
+
+            queueOfficialClarificationNotification(saved);
 
             auditService.recordSuccess(
                     ProcurementAuditEvent.AuditEventType.OFFICIAL_CLARIFICATION_PUBLISHED,
@@ -161,6 +169,8 @@ public class SupportTicketServiceImpl implements SupportTicketService{
         ticket.setClosureNotes(request.getClosureNotes().trim());
 
         SupportTicket saved = ticketRepository.save(ticket);
+
+        queueTicketClosedNotification(saved);
 
         auditService.recordSuccess(
                 ProcurementAuditEvent.AuditEventType.SUPPORT_TICKET_CLOSED,
@@ -197,5 +207,81 @@ public class SupportTicketServiceImpl implements SupportTicketService{
                 .replace("-", "")
                 .substring(0, 8)
                 .toUpperCase();
+    }
+
+    private void queueTicketCreatedNotification(SupportTicket ticket) {
+        String message = "✅ Ticket created: "
+                + ticket.getTicketReference()
+                + ". We have received your "
+                + ticket.getTicketType()
+                + " request and will respond as soon as possible.";
+
+        notificationOutboxService.queueNotification(
+                NotificationOutbox.NotificationChannel.WHATSAPP,
+                NotificationOutbox.NotificationTemplateType.SUPPORT_TICKET_CREATED,
+                ticket.getCreatedByUserId(),
+                ticket.getContactPhoneNumber(),
+                ticket.getContactEmail(),
+                message,
+                ticket.getTenderId(),
+                ticket.getBidId(),
+                ticket.getId()
+        );
+    }
+
+    private void queueOfficialClarificationNotification(SupportTicket ticket) {
+        String message = "📢 Official clarification published for tender ID "
+                + ticket.getTenderId()
+                + ". Ticket reference: "
+                + ticket.getTicketReference()
+                + ". All bidders can now view the same response.";
+
+        notificationOutboxService.queueNotification(
+                NotificationOutbox.NotificationChannel.WHATSAPP,
+                NotificationOutbox.NotificationTemplateType.OFFICIAL_CLARIFICATION_PUBLISHED,
+                ticket.getCreatedByUserId(),
+                ticket.getContactPhoneNumber(),
+                ticket.getContactEmail(),
+                message,
+                ticket.getTenderId(),
+                ticket.getBidId(),
+                ticket.getId()
+        );
+    }
+
+    private void queueTicketClosedNotification(SupportTicket ticket) {
+        String message = "✅ Ticket closed: "
+                + ticket.getTicketReference()
+                + ". Closure notes are available in your ticket history.";
+
+        notificationOutboxService.queueNotification(
+                NotificationOutbox.NotificationChannel.WHATSAPP,
+                NotificationOutbox.NotificationTemplateType.SUPPORT_TICKET_CLOSED,
+                ticket.getCreatedByUserId(),
+                ticket.getContactPhoneNumber(),
+                ticket.getContactEmail(),
+                message,
+                ticket.getTenderId(),
+                ticket.getBidId(),
+                ticket.getId()
+        );
+    }
+
+    private void queueTicketRespondedNotification(SupportTicket ticket) {
+        String message = "📩 Ticket update: "
+                + ticket.getTicketReference()
+                + " has been responded to. Please log in to view the official response.";
+
+        notificationOutboxService.queueNotification(
+                NotificationOutbox.NotificationChannel.WHATSAPP,
+                NotificationOutbox.NotificationTemplateType.SUPPORT_TICKET_RESPONDED,
+                ticket.getCreatedByUserId(),
+                ticket.getContactPhoneNumber(),
+                ticket.getContactEmail(),
+                message,
+                ticket.getTenderId(),
+                ticket.getBidId(),
+                ticket.getId()
+        );
     }
 }
