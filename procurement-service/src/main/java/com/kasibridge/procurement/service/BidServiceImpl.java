@@ -3,6 +3,7 @@ package com.kasibridge.procurement.service;
 import com.kasibridge.procurement.dto.BidComplianceResponse;
 import com.kasibridge.procurement.dto.BidResponse;
 import com.kasibridge.procurement.dto.SubmitBidRequest;
+import com.kasibridge.procurement.dto.TraderProfileClientResponse;
 import com.kasibridge.procurement.entity.Bid;
 import com.kasibridge.procurement.entity.BidComplianceResult;
 import com.kasibridge.procurement.entity.ProcurementAuditEvent;
@@ -31,11 +32,12 @@ public class BidServiceImpl implements BidService {
     private final TenderRepository tenderRepository;
     private final ComplianceGatekeeperService gatekeeperService;
     private final ProcurementAuditService auditService;
+    private final CurrentUserService currentUserService;
+    private final TraderProfileClient traderProfileClient;
 
     @Override
     @Transactional
     public BidResponse submitBid(Long tenderId, SubmitBidRequest request) {
-
 
         log.info("Submitting bid for tenderId={} traderId={}", tenderId, request.getTraderId());
 
@@ -50,7 +52,7 @@ public class BidServiceImpl implements BidService {
             );
         }
 
-        if (bidRepository.existsByTenderIdAndTraderId(tenderId, request.getTraderId())) {
+        if (bidRepository.existsByTenderIdAndTraderProfileId(tenderId, request.getTraderId())) {
             throw new DuplicateBidException(
                     "Trader has already submitted a bid for this tender."
             );
@@ -59,10 +61,15 @@ public class BidServiceImpl implements BidService {
         long existingBidCount = bidRepository.countByTenderId(tenderId);
         String alias = generateBidderAlias(existingBidCount);
 
+        Long userId = currentUserService.getCurrentUserId();
+
+        TraderProfileClientResponse trader = traderProfileClient.getTraderProfileByUserId(userId);
+
         Bid bid = Bid.builder()
                 .bidReference(generateBidReference())
                 .tenderId(tenderId)
-                .traderId(request.getTraderId())
+                .traderProfileId(trader.getId())
+                .submittedByUserId(userId)
                 .bidderAlias(alias)
                 .technicalProposal(request.getTechnicalProposal())
                 .priceAmount(request.getPriceAmount())

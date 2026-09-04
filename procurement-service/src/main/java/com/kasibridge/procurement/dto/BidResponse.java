@@ -29,7 +29,7 @@ public class BidResponse {
                 .id(bid.getId())
                 .bidReference(bid.getBidReference())
                 .tenderId(bid.getTenderId())
-                .traderId(bid.getTraderId())
+                .traderId(bid.getTraderProfileId())
                 .bidderAlias(bid.getBidderAlias())
                 .technicalProposal(bid.getTechnicalProposal())
                 .priceAmount(bid.getPriceAmount())
