@@ -69,6 +69,62 @@ public class TradeProfileClientImpl implements TraderProfileClient {
         }
     }
 
+    @Override
+    public TraderProfileClientResponse getTraderProfileById(Long traderId) {
+        String url = traderProfileBaseUrl + "/api/v1/traders/" + traderId;
+
+        try {
+
+            HttpHeaders headers = new HttpHeaders();
+
+            headers.setBearerAuth(extractBearerToken());
+
+            HttpEntity<Void> entity = new HttpEntity<>(headers);
+
+            ResponseEntity<TraderProfileClientResponse> response =
+            restTemplate.exchange(
+                    url,
+                    HttpMethod.GET,
+                    entity,
+                    TraderProfileClientResponse.class
+            );
+
+            if (response.getBody() == null) {
+
+                throw new SupportTicketException("Trader profile not found with ID: " + traderId);
+            }
+
+            return response.getBody();
+
+        } catch (HttpClientErrorException.NotFound ex) {
+
+            log.error("Trader profile not found for traderId={}", traderId, ex);
+
+            throw new SupportTicketException("Trader profile not found with ID: " + traderId);
+
+        } catch (HttpClientErrorException.Unauthorized ex) {
+
+            log.error("Unauthorized calling trader-profile-service for traderId={}", traderId, ex);
+
+            throw new SupportTicketException("Unable to authenticate with trader profile service.");
+
+        } catch (HttpClientErrorException.Forbidden ex) {
+            log.error("Forbidden calling trader-profile-service for traderId={}", traderId, ex);
+
+            throw new SupportTicketException("Not allowed to access trader profile ID: " + traderId);
+
+        } catch (Exception ex) {
+            log.error(
+                    "Failed to load trader profile for traderId={} from url={}",
+                    traderId,
+                    url,
+                    ex
+            );
+
+            throw new SupportTicketException("Unable to load trader profile with ID: " + traderId);
+        }
+    }
+
     private String extractBearerToken() {
         ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
 

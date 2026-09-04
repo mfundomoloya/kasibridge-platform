@@ -32,8 +32,11 @@ public class Bid {
     @Column(name = "tender_id", nullable = false)
     private Long tenderId;
 
-    @Column(name = "trader_id", nullable = false)
-    private Long traderId;
+    @Column(name = "trader_profile_id", nullable = false)
+    private Long traderProfileId;
+
+    @Column(name = "submitted_by_user_id", nullable = false)
+    private Long submittedByUserId;
 
 
     @Column(name = "bidder_alias", nullable = false, length = 50)

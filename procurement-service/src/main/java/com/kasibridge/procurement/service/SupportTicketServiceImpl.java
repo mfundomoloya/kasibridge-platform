@@ -1,11 +1,13 @@
 package com.kasibridge.procurement.service;
 
 import com.kasibridge.procurement.dto.*;
+import com.kasibridge.procurement.entity.Bid;
 import com.kasibridge.procurement.entity.NotificationOutbox;
 import com.kasibridge.procurement.entity.ProcurementAuditEvent;
 import com.kasibridge.procurement.entity.SupportTicket;
 import com.kasibridge.procurement.exception.SupportTicketException;
 import com.kasibridge.procurement.exception.TenderNotFoundException;
+import com.kasibridge.procurement.repository.BidRepository;
 import com.kasibridge.procurement.repository.SupportTicketRepository;
 import com.kasibridge.procurement.repository.TenderRepository;
 import jakarta.transaction.Transactional;
@@ -16,6 +18,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -29,6 +34,7 @@ public class SupportTicketServiceImpl implements SupportTicketService{
     private final TraderProfileClient traderProfileClient;
     private final ProcurementAuditService auditService;
     private final NotificationOutboxService notificationOutboxService;
+    private final BidRepository bidRepository;
 
     @Override
     @Transactional
@@ -122,8 +128,6 @@ public class SupportTicketServiceImpl implements SupportTicketService{
 
         SupportTicket saved = ticketRepository.save(ticket);
 
-        queueTicketRespondedNotification(saved);
-
         auditService.recordSuccess(
                 ProcurementAuditEvent.AuditEventType.SUPPORT_TICKET_RESPONDED,
                 saved.getTenderId(),
@@ -132,10 +136,10 @@ public class SupportTicketServiceImpl implements SupportTicketService{
                 "Support ticket responded",
                 "Ticket reference=" + saved.getTicketReference()
         );
+
+        queueTicketRespondedNotification(saved);
+
         if (publicClarification) {
-
-            queueOfficialClarificationNotification(saved);
-
             auditService.recordSuccess(
                     ProcurementAuditEvent.AuditEventType.OFFICIAL_CLARIFICATION_PUBLISHED,
                     saved.getTenderId(),
@@ -144,6 +148,8 @@ public class SupportTicketServiceImpl implements SupportTicketService{
                     "Official clarification published",
                     "Ticket reference=" + saved.getTicketReference()
             );
+
+            queueOfficialClarificationBroadcast(saved);
         }
 
         return SupportTicketResponse.from(saved);
@@ -264,6 +270,64 @@ public class SupportTicketServiceImpl implements SupportTicketService{
                 ticket.getTenderId(),
                 ticket.getBidId(),
                 ticket.getId()
+        );
+    }
+
+    private void queueOfficialClarificationBroadcast(SupportTicket ticket) {
+        List<Bid> bids = bidRepository.findByTenderId(ticket.getTenderId());
+
+        Set<Long> notifiedUserIds = new HashSet<>();
+
+        for (Bid bid : bids) {
+            try {
+                TraderProfileClientResponse trader =
+                        traderProfileClient.getTraderProfileById(bid.getTraderProfileId());
+
+                if (trader.getUserId() == null) {
+                    log.warn(
+                            "Skipping clarification notification for traderId={} because userId is null",
+                            trader.getId()
+                    );
+                    continue;
+                }
+
+                if (!notifiedUserIds.add(trader.getUserId())) {
+                    continue;
+                }
+
+                String message = "📢 Official clarification published for tender ID "
+                        + ticket.getTenderId()
+                        + ". Ticket reference: "
+                        + ticket.getTicketReference()
+                        + ". All bidders can now view the same response.";
+
+                notificationOutboxService.queueNotification(
+                        NotificationOutbox.NotificationChannel.WHATSAPP,
+                        NotificationOutbox.NotificationTemplateType.OFFICIAL_CLARIFICATION_PUBLISHED,
+                        trader.getUserId(),
+                        trader.getPhoneNumber(),
+                        trader.getEmail(),
+                        message,
+                        ticket.getTenderId(),
+                        bid.getId(),
+                        ticket.getId()
+                );
+
+            } catch (Exception ex) {
+                log.error(
+                        "Failed to queue official clarification notification for bidId={} traderProfileId={}",
+                        bid.getId(),
+                        bid.getTraderProfileId(),
+                        ex
+                );
+            }
+        }
+
+        log.info(
+                "Official clarification broadcast queued for tenderId={} ticketId={} recipients={}",
+                ticket.getTenderId(),
+                ticket.getId(),
+                notifiedUserIds.size()
         );
     }
 
