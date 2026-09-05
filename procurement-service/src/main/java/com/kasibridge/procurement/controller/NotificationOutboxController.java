@@ -1,8 +1,10 @@
 package com.kasibridge.procurement.controller;
 
 import com.kasibridge.procurement.dto.MarkNotificationFailedRequest;
+import com.kasibridge.procurement.dto.NotificationDispatchResponse;
 import com.kasibridge.procurement.dto.NotificationOutboxResponse;
 import com.kasibridge.procurement.entity.NotificationOutbox;
+import com.kasibridge.procurement.service.NotificationDispatcherService;
 import com.kasibridge.procurement.service.NotificationOutboxService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +22,7 @@ import org.springframework.web.bind.annotation.*;
 @Slf4j
 public class NotificationOutboxController {
     private final NotificationOutboxService service;
+    private final NotificationDispatcherService dispatcherService;
 
     @GetMapping
     public ResponseEntity<Page<NotificationOutboxResponse>> getNotifications(@PageableDefault(sort = "createdAt", direction = Sort.Direction.DESC)
@@ -52,5 +55,41 @@ public class NotificationOutboxController {
                                                                  @Valid @RequestBody MarkNotificationFailedRequest request
     ) {
         return ResponseEntity.ok(service.markFailed(id, request));
+    }
+
+    @PostMapping("/dispatch-pending")
+    public ResponseEntity<NotificationDispatchResponse> dispatchPending() {
+        log.info(
+                "POST /api/v1/notifications/outbox/dispatch-pending"
+        );
+
+        return ResponseEntity.ok(
+                dispatcherService.dispatchPending()
+        );
+    }
+
+    @PostMapping("/retry-failed")
+    public ResponseEntity<NotificationDispatchResponse> retryFailed() {
+        log.info(
+                "POST /api/v1/notifications/outbox/retry-failed"
+        );
+
+        return ResponseEntity.ok(
+                dispatcherService.retryFailed()
+        );
+    }
+
+    @PostMapping("/{id}/dispatch")
+    public ResponseEntity<NotificationOutboxResponse> dispatchOne(
+            @PathVariable("id") Long id
+    ) {
+        log.info(
+                "POST /api/v1/notifications/outbox/{}/dispatch",
+                id
+        );
+
+        return ResponseEntity.ok(
+                dispatcherService.dispatchOne(id)
+        );
     }
 }

@@ -81,43 +81,83 @@ public class NotificationOutboxServiceImpl implements  NotificationOutboxService
     @Override
     @Transactional
     public NotificationOutboxResponse markSent(Long id) {
+        return markSent(id, "MANUAL");
+    }
+
+    @Override
+    @Transactional
+    public NotificationOutboxResponse markFailed(Long id, MarkNotificationFailedRequest request) {
+        return markDeliveryFailed(
+                id,
+                request.getFailureReason().trim()
+        );
+    }
+
+    @Override
+    @Transactional
+    public NotificationOutboxResponse markSent(Long id, String providerMessageId) {
         NotificationOutbox notification = findNotification(id);
 
         if (notification.getStatus() == NotificationOutbox.NotificationStatus.SENT) {
+
             throw new NotificationOutboxException("Notification has already been marked as sent.");
+        }
+
+        if (notification.getStatus() == NotificationOutbox.NotificationStatus.CANCELLED) {
+            throw new NotificationOutboxException("Cancelled notification cannot be marked as sent.");
         }
 
         LocalDateTime now = LocalDateTime.now();
 
         notification.setStatus(NotificationOutbox.NotificationStatus.SENT);
+        notification.setProviderMessageId(providerMessageId);
         notification.setSentAt(now);
         notification.setUpdatedAt(now);
         notification.setFailureReason(null);
 
         NotificationOutbox saved = repository.save(notification);
 
+        log.info(
+                "Notification marked as sent: id={} providerMessageId={}",
+                saved.getId(),
+                saved.getProviderMessageId()
+        );
+
         return NotificationOutboxResponse.from(saved);
     }
 
     @Override
     @Transactional
-    public NotificationOutboxResponse markFailed(Long id, MarkNotificationFailedRequest request) {
-            NotificationOutbox notification = findNotification(id);
+    public NotificationOutboxResponse markDeliveryFailed(Long id, String failureReason) {
+        NotificationOutbox notification = findNotification(id);
 
-            if (notification.getStatus() == NotificationOutbox.NotificationStatus.SENT) {
-                throw new NotificationOutboxException("Sent notifications cannot be marked as failed.");
-            }
+        if (notification.getStatus() == NotificationOutbox.NotificationStatus.SENT) {
 
-            LocalDateTime now = LocalDateTime.now();
+            throw new NotificationOutboxException("Sent notification cannot be marked as failed.");
+        }
 
-            notification.setStatus(NotificationOutbox.NotificationStatus.FAILED);
-            notification.setFailureReason(request.getFailureReason().trim());
-            notification.setRetryCount(notification.getRetryCount() + 1);
-            notification.setUpdatedAt(now);
+        if (notification.getStatus() == NotificationOutbox.NotificationStatus.CANCELLED) {
+            throw new NotificationOutboxException("Cancelled notification cannot be marked as failed.");
+        }
 
-            NotificationOutbox saved = repository.save(notification);
+        LocalDateTime now = LocalDateTime.now();
 
-            return NotificationOutboxResponse.from(saved);
+        notification.setStatus(NotificationOutbox.NotificationStatus.FAILED);
+        notification.setFailureReason(failureReason);
+        notification.setRetryCount(notification.getRetryCount() + 1);
+        notification.setProviderMessageId(null);
+        notification.setUpdatedAt(now);
+
+        NotificationOutbox saved = repository.save(notification);
+
+        log.warn(
+                "Notification marked as failed: id={} retryCount={} reason={}",
+                saved.getId(),
+                saved.getRetryCount(),
+                saved.getFailureReason()
+        );
+
+        return NotificationOutboxResponse.from(saved);
     }
 
 
