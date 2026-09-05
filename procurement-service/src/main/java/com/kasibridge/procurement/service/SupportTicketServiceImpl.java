@@ -35,6 +35,7 @@ public class SupportTicketServiceImpl implements SupportTicketService{
     private final ProcurementAuditService auditService;
     private final NotificationOutboxService notificationOutboxService;
     private final BidRepository bidRepository;
+    private final WhatsAppMessageTemplateService whatsAppMessageTemplateService;
 
     @Override
     @Transactional
@@ -216,11 +217,31 @@ public class SupportTicketServiceImpl implements SupportTicketService{
     }
 
     private void queueTicketCreatedNotification(SupportTicket ticket) {
-        String message = "✅ Ticket created: "
-                + ticket.getTicketReference()
-                + ". We have received your "
-                + ticket.getTicketType()
-                + " request and will respond as soon as possible.";
+        WhatsAppTemplateContext context = WhatsAppTemplateContext.builder()
+                        .recipientName(ticket.getContactName())
+                .tenderId(ticket.getTenderId())
+                .ticketId(ticket.getId())
+                .ticketReference(ticket.getTicketReference())
+                .ticketType(ticket.getTicketType().name())
+                .ticketSubject(ticket.getSubject())
+                .build();
+
+        String message = whatsAppMessageTemplateService.generateMessage(
+                NotificationOutbox.NotificationTemplateType.SUPPORT_TICKET_CREATED,
+                context
+        );
+
+        notificationOutboxService.queueNotification(
+                NotificationOutbox.NotificationChannel.WHATSAPP,
+                NotificationOutbox.NotificationTemplateType.SUPPORT_TICKET_CREATED,
+                ticket.getCreatedByUserId(),
+                ticket.getContactPhoneNumber(),
+                ticket.getContactEmail(),
+                message,
+                ticket.getTenderId(),
+                ticket.getBidId(),
+                ticket.getId()
+        );
 
         notificationOutboxService.queueNotification(
                 NotificationOutbox.NotificationChannel.WHATSAPP,
@@ -256,9 +277,20 @@ public class SupportTicketServiceImpl implements SupportTicketService{
     }
 
     private void queueTicketClosedNotification(SupportTicket ticket) {
-        String message = "✅ Ticket closed: "
-                + ticket.getTicketReference()
-                + ". Closure notes are available in your ticket history.";
+        WhatsAppTemplateContext context = WhatsAppTemplateContext.builder()
+
+                .recipientName(ticket.getContactName())
+                .tenderId(ticket.getTenderId())
+                .ticketId(ticket.getId())
+                .ticketReference(ticket.getTicketReference())
+                .ticketType(ticket.getTicketType().name())
+                .closureNotes(ticket.getClosureNotes())
+                .build();
+
+        String message = whatsAppMessageTemplateService.generateMessage(
+                NotificationOutbox.NotificationTemplateType.SUPPORT_TICKET_CLOSED,
+                context
+        );
 
         notificationOutboxService.queueNotification(
                 NotificationOutbox.NotificationChannel.WHATSAPP,
@@ -295,11 +327,20 @@ public class SupportTicketServiceImpl implements SupportTicketService{
                     continue;
                 }
 
-                String message = "📢 Official clarification published for tender ID "
-                        + ticket.getTenderId()
-                        + ". Ticket reference: "
-                        + ticket.getTicketReference()
-                        + ". All bidders can now view the same response.";
+                WhatsAppTemplateContext context = WhatsAppTemplateContext.builder()
+
+                        .recipientName(trader.getFullName())
+                        .tenderId(ticket.getTenderId())
+                        .ticketId(ticket.getId())
+                        .ticketReference(ticket.getTicketReference())
+                        .ticketSubject(ticket.getSubject())
+                        .ticketResponse(ticket.getResponse())
+                        .build();
+
+                String message = whatsAppMessageTemplateService.generateMessage(
+                        NotificationOutbox.NotificationTemplateType.OFFICIAL_CLARIFICATION_PUBLISHED,
+                        context
+                );
 
                 notificationOutboxService.queueNotification(
                         NotificationOutbox.NotificationChannel.WHATSAPP,
@@ -332,9 +373,20 @@ public class SupportTicketServiceImpl implements SupportTicketService{
     }
 
     private void queueTicketRespondedNotification(SupportTicket ticket) {
-        String message = "📩 Ticket update: "
-                + ticket.getTicketReference()
-                + " has been responded to. Please log in to view the official response.";
+        WhatsAppTemplateContext context = WhatsAppTemplateContext.builder()
+                .recipientName(ticket.getContactName())
+                .tenderId(ticket.getTenderId())
+                .ticketId(ticket.getId())
+                .ticketReference(ticket.getTicketReference())
+                .ticketType(ticket.getTicketType().name())
+                .ticketSubject(ticket.getSubject())
+                .ticketResponse(ticket.getResponse())
+                .build();
+
+        String message = whatsAppMessageTemplateService.generateMessage(
+                NotificationOutbox.NotificationTemplateType.SUPPORT_TICKET_RESPONDED,
+                context
+        );
 
         notificationOutboxService.queueNotification(
                 NotificationOutbox.NotificationChannel.WHATSAPP,
