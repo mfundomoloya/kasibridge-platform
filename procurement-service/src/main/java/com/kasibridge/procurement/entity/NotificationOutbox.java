@@ -71,6 +71,9 @@ public class NotificationOutbox {
     @Column(name = "failure_reason", length = 1000)
     private String failureReason;
 
+    @Column(name = "provider_message_id", length = 100)
+    private String providerMessageId;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

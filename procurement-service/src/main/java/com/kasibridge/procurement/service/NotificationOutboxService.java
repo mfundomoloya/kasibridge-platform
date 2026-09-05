@@ -27,4 +27,8 @@ public interface NotificationOutboxService {
     NotificationOutboxResponse markSent(Long id);
 
     NotificationOutboxResponse markFailed(Long id, MarkNotificationFailedRequest request);
+
+    NotificationOutboxResponse markSent(Long id, String providerMessageId);
+
+    NotificationOutboxResponse markDeliveryFailed(Long id, String failureReason);
 }

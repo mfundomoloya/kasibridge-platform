@@ -2,8 +2,12 @@ package com.kasibridge.procurement.repository;
 
 import com.kasibridge.procurement.entity.NotificationOutbox;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.Collection;
+import java.util.List;
 
 public interface NotificationOutboxRepository extends JpaRepository<NotificationOutbox, Long> {
     Page<NotificationOutbox> findByStatus(NotificationOutbox.NotificationStatus status, Pageable pageable);
@@ -13,4 +17,15 @@ public interface NotificationOutboxRepository extends JpaRepository<Notification
     Page<NotificationOutbox> findByRelatedTenderId(Long relatedTenderId, Pageable pageable);
 
     Page<NotificationOutbox> findByRelatedTicketId(Long relatedTicketId, Pageable pageable);
+
+    List<NotificationOutbox> findByStatusOrderByCreatedAtAsc(
+            NotificationOutbox.NotificationStatus status,
+            Pageable pageable
+    );
+
+    List<NotificationOutbox> findByStatusInAndRetryCountLessThanOrderByCreatedAtAsc(
+            Collection<NotificationOutbox.NotificationStatus> statuses,
+            int retryCount,
+            Pageable pageable
+    );
 }
