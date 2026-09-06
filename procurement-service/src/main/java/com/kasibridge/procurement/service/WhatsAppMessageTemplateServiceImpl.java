@@ -6,7 +6,7 @@ import com.kasibridge.procurement.exception.NotificationOutboxException;
 import org.springframework.stereotype.Service;
 
 @Service
-public class WhatsAppMessageTemplateImpl implements WhatsAppMessageTemplateService {
+public class WhatsAppMessageTemplateServiceImpl implements WhatsAppMessageTemplateService {
 
     @Override
     public String generateMessage(NotificationOutbox.NotificationTemplateType templateType, WhatsAppTemplateContext context) {
@@ -98,7 +98,7 @@ public class WhatsAppMessageTemplateImpl implements WhatsAppMessageTemplateServi
 
         String recipientName = greetingName(context.getRecipientName());
 
-        return "✅ Hi "
+        return "Hi "
                 + recipientName
                 + ", ticket "
                 + context.getTicketReference()
@@ -136,7 +136,7 @@ public class WhatsAppMessageTemplateImpl implements WhatsAppMessageTemplateServi
         String recipientName = greetingName(context.getRecipientName());
         String tenderIdentifier = tenderIdentifier(context);
 
-        return "✅ Hi "
+        return "Hi "
                 + recipientName
                 + ", your bid "
                 + context.getBidReference()
@@ -167,6 +167,12 @@ public class WhatsAppMessageTemplateImpl implements WhatsAppMessageTemplateServi
                 "One or more mandatory compliance requirements were not satisfied."
         );
 
+        if(!failureReason.endsWith(".")
+                && !failureReason.endsWith("!")
+                && !failureReason.endsWith("?")){
+            failureReason = failureReason + ".";
+
+        }
         return "Compliance failed for bid "
                 + context.getBidReference()
                 + ". Reason: "
@@ -185,19 +191,19 @@ public class WhatsAppMessageTemplateImpl implements WhatsAppMessageTemplateServi
 
     private String buildProcurementAnomalyDetected(WhatsAppTemplateContext context) {
 
-        String anomalyReference = displayValue(
-                context.getAnomalyReference(),
-                "Not available"
-        );
+        String anomalyReference = hasText(context.getAnomalyReference())
+                ? context.getAnomalyReference().trim()
+                : "Not available";
 
-        String anomalyType = friendlyEnumValue(displayValue(context.getAnomalyType(), "Unknown anomaly"));
+        String anomalyType = hasText(context.getAnomalyType())
+                ? friendlyEnumValue(context.getAnomalyType().trim())
+                : "unknown anomaly";
 
-        String severity = displayValue(
-                context.getAnomalySeverity(),
-                "UNKNOWN"
-        );
+        String severity = hasText(context.getAnomalySeverity())
+                ? context.getAnomalySeverity().trim().toUpperCase()
+                : "UNKNOWN";
 
-        return "Procurement anomaly detected. Reference: "
+        return "⚠Procurement anomaly detected. Reference: "
                 + anomalyReference
                 + ". Type: "
                 + anomalyType

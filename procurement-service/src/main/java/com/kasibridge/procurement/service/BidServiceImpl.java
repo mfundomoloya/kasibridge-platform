@@ -8,9 +8,7 @@ import com.kasibridge.procurement.entity.Bid;
 import com.kasibridge.procurement.entity.BidComplianceResult;
 import com.kasibridge.procurement.entity.ProcurementAuditEvent;
 import com.kasibridge.procurement.entity.Tender;
-import com.kasibridge.procurement.exception.DuplicateBidException;
-import com.kasibridge.procurement.exception.TenderNotFoundException;
-import com.kasibridge.procurement.exception.TenderStateException;
+import com.kasibridge.procurement.exception.*;
 import com.kasibridge.procurement.repository.BidComplianceResultRepository;
 import com.kasibridge.procurement.repository.BidRepository;
 import com.kasibridge.procurement.repository.TenderRepository;
@@ -34,12 +32,26 @@ public class BidServiceImpl implements BidService {
     private final ProcurementAuditService auditService;
     private final CurrentUserService currentUserService;
     private final TraderProfileClient traderProfileClient;
+    private final ProcurementNotificationService procurementNotificationService;
 
     @Override
     @Transactional
     public BidResponse submitBid(Long tenderId, SubmitBidRequest request) {
 
-        log.info("Submitting bid for tenderId={} traderId={}", tenderId, request.getTraderId());
+        Long submittedByUserId = currentUserService.getCurrentUserId();
+        TraderProfileClientResponse trader = traderProfileClient.getTraderProfileByUserId(submittedByUserId);
+
+        if (trader.getId() == null) {
+            throw new BidSubmissionException(
+                    "Authenticated user does not have a linked trader profile."
+            );
+        }
+
+        log.info("Submitting bid for tenderId={} traderProfileId={} submittedByUserId={}",
+                tenderId,
+                trader.getId(),
+                submittedByUserId
+        );
 
         Tender tender = tenderRepository.findById(tenderId)
                 .orElseThrow(() -> new TenderNotFoundException(
@@ -52,7 +64,7 @@ public class BidServiceImpl implements BidService {
             );
         }
 
-        if (bidRepository.existsByTenderIdAndTraderProfileId(tenderId, request.getTraderId())) {
+        if (bidRepository.existsByTenderIdAndTraderProfileId(tenderId, trader.getId())) {
             throw new DuplicateBidException(
                     "Trader has already submitted a bid for this tender."
             );
@@ -61,17 +73,14 @@ public class BidServiceImpl implements BidService {
         long existingBidCount = bidRepository.countByTenderId(tenderId);
         String alias = generateBidderAlias(existingBidCount);
 
-        Long userId = currentUserService.getCurrentUserId();
-
-        TraderProfileClientResponse trader = traderProfileClient.getTraderProfileByUserId(userId);
 
         Bid bid = Bid.builder()
                 .bidReference(generateBidReference())
                 .tenderId(tenderId)
                 .traderProfileId(trader.getId())
-                .submittedByUserId(userId)
+                .submittedByUserId(submittedByUserId)
                 .bidderAlias(alias)
-                .technicalProposal(request.getTechnicalProposal())
+                .technicalProposal(request.getTechnicalProposal().trim())
                 .priceAmount(request.getPriceAmount())
                 .status(Bid.BidStatus.SUBMITTED)
                 .build();
@@ -105,7 +114,7 @@ public class BidServiceImpl implements BidService {
                 ProcurementAuditEvent.AuditEventType.BID_SUBMITTED,
                 tenderId,
                 finalBid.getId(),
-                request.getTraderId(),
+                submittedByUserId,
                 "Bid submitted",
                 "Bid reference: " + finalBid.getBidReference() + ", bidderAlias: " + finalBid.getBidderAlias()
         );
@@ -115,7 +124,7 @@ public class BidServiceImpl implements BidService {
                     ProcurementAuditEvent.AuditEventType.BID_COMPLIANCE_PASSED,
                     tenderId,
                     finalBid.getId(),
-                    request.getTraderId(),
+                    submittedByUserId,
                     "Bid compliance passed",
                     "All baseline compliance checks passed"
             );
@@ -124,12 +133,29 @@ public class BidServiceImpl implements BidService {
                     ProcurementAuditEvent.AuditEventType.BID_COMPLIANCE_FAILED,
                     tenderId,
                     finalBid.getId(),
-                    request.getTraderId(),
+                    submittedByUserId,
                     "Bid compliance failed",
                     decision.failureReason()
             );
         }
 
+        procurementNotificationService.queueBidReceived(
+                finalBid,
+                tender
+        );
+
+        if (decision.passed()) {
+            procurementNotificationService.queueCompliancePassed(
+                    finalBid,
+                    tender
+            );
+        } else {
+            procurementNotificationService.queueComplianceFailed(
+                    finalBid,
+                    tender,
+                    decision.failureReason()
+            );
+        }
         return BidResponse.from(
                 finalBid,
                 BidComplianceResponse.from(savedCompliance)

@@ -33,6 +33,7 @@ public class ProcurementAnomalyServiceImpl implements ProcurementAnomalyService 
     private final ProcurementAnomalyRepository anomalyRepository;
     private final ProcurementAuditService auditService;
     private final CurrentUserService currentUserService;
+    private final ProcurementNotificationService procurementNotificationService;
 
     private static final long RAPID_AWARD_THRESHOLD_MINUTES = 10;
 
@@ -155,7 +156,7 @@ public class ProcurementAnomalyServiceImpl implements ProcurementAnomalyService 
                 return;
             }
 
-            BidRankingResponse topRanked = ranking.get(0);
+            BidRankingResponse topRanked = ranking.getFirst();
 
             if (!topRanked.getBidId().equals(tender.getAwardedBidId())) {
                 anomalies.add(
@@ -277,6 +278,8 @@ public class ProcurementAnomalyServiceImpl implements ProcurementAnomalyService 
                         + ", type=" + saved.getType()
                         + ", severity=" + saved.getSeverity()
         );
+
+        procurementNotificationService.queueAnomalyDetected(saved);
 
         return ProcurementAnomalyRecordResponse.from(saved);
     }

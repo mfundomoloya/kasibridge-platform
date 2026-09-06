@@ -34,8 +34,9 @@ public class NotificationDispatcherServiceImpl implements NotificationDispatcher
     @Override
     public NotificationDispatchResponse dispatchPending() {
         List<NotificationOutbox> pendingNotifications =
-        repository.findByStatusOrderByCreatedAtAsc(
+        repository.findByStatusAndChannelOrderByCreatedAtAsc(
                 NotificationOutbox.NotificationStatus.PENDING,
+                NotificationOutbox.NotificationChannel.WHATSAPP,
                 PageRequest.of(0, batchSize)
         );
 
@@ -45,8 +46,9 @@ public class NotificationDispatcherServiceImpl implements NotificationDispatcher
     @Override
     public NotificationDispatchResponse retryFailed() {
         List<NotificationOutbox> retryableNotifications =
-        repository.findByStatusInAndRetryCountLessThanOrderByCreatedAtAsc(
+        repository.findByStatusInAndChannelAndRetryCountLessThanOrderByCreatedAtAsc(
                 Set.of(NotificationOutbox.NotificationStatus.FAILED),
+                NotificationOutbox.NotificationChannel.WHATSAPP,
                 maxRetries,
                 PageRequest.of(0, batchSize)
         );
