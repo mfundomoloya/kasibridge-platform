@@ -5,12 +5,13 @@ import com.kasibridge.procurement.dto.NotificationOutboxResponse;
 import com.kasibridge.procurement.entity.NotificationOutbox;
 import com.kasibridge.procurement.exception.NotificationOutboxException;
 import com.kasibridge.procurement.repository.NotificationOutboxRepository;
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -23,7 +24,7 @@ public class NotificationOutboxServiceImpl implements  NotificationOutboxService
     private final NotificationOutboxRepository repository;
 
     @Override
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public NotificationOutboxResponse queueNotification(NotificationOutbox.NotificationChannel channel,
                                                         NotificationOutbox.NotificationTemplateType templateType,
                                                         Long recipientUserId,
@@ -48,7 +49,7 @@ public class NotificationOutboxServiceImpl implements  NotificationOutboxService
                 .retryCount(0)
                 .build();
 
-        NotificationOutbox saved = repository.save(notification);
+        NotificationOutbox saved = repository.saveAndFlush(notification);
 
         log.info(
                 "Notification queued: id={} reference={} templateType={} recipientUserId={}",

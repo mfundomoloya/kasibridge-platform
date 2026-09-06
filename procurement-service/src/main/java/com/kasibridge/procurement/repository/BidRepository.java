@@ -17,7 +17,7 @@ public interface BidRepository extends JpaRepository<Bid, Long> {
 
     long countByTenderId(Long tenderId);
 
-    boolean existsByTenderIdAndTraderProfileId(Long tenderId, Long traderId);
+    boolean existsByTenderIdAndTraderProfileId(Long tenderId, Long traderProfileId);
 
 
     @Query("""

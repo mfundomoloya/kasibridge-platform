@@ -40,6 +40,7 @@ public class AdjudicationServiceImpl implements AdjudicationService {
     private final ProcurementAuditService auditService;
     private final CurrentUserService currentUserService;
     private final TenderCommitteeAssignmentRepository assignmentRepository;
+    private final ProcurementNotificationService procurementNotificationService;
 
     @Override
     public List<BidRankingResponse> getEvaluationSummary(Long tenderId) {
@@ -206,6 +207,8 @@ public class AdjudicationServiceImpl implements AdjudicationService {
                 "Tender awarded",
                 "Winning bid alias: " + winningBid.getBidderAlias() + ", reason: " + savedTender.getAwardReason()
         );
+
+        procurementNotificationService.queueTenderAwarded(winningBid, savedTender);
 
         log.info("Tender awarded: tenderId={} winningBidId={} adjudicatorUserId={}",
                 tenderId,

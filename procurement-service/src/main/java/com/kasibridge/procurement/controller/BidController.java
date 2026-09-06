@@ -27,11 +27,7 @@ public class BidController {
             @PathVariable("tenderId") Long tenderId,
             @Valid @RequestBody SubmitBidRequest request
     ) {
-        log.info(
-                "POST /api/v1/tenders/{}/bids - submitting bid for traderId={}",
-                tenderId,
-                request.getTraderId()
-        );
+        log.info("POST /api/v1/tenders/{}/bids - submitting bid for authenticated trader", tenderId);
 
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(service.submitBid(tenderId, request));
