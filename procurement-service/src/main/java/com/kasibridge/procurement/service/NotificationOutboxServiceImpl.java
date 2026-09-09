@@ -4,6 +4,7 @@ import com.kasibridge.procurement.dto.MarkNotificationFailedRequest;
 import com.kasibridge.procurement.dto.NotificationOutboxResponse;
 import com.kasibridge.procurement.entity.NotificationOutbox;
 import com.kasibridge.procurement.exception.NotificationOutboxException;
+import com.kasibridge.procurement.exception.NotificationStateException;
 import com.kasibridge.procurement.repository.NotificationOutboxRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -22,6 +23,7 @@ import java.util.UUID;
 public class NotificationOutboxServiceImpl implements  NotificationOutboxService {
 
     private final NotificationOutboxRepository repository;
+    private final CurrentUserService currentUserService;
 
     @Override
     @Transactional(propagation = Propagation.REQUIRES_NEW)
@@ -77,6 +79,62 @@ public class NotificationOutboxServiceImpl implements  NotificationOutboxService
     @Override
     public NotificationOutboxResponse getNotificationById(Long id) {
         return NotificationOutboxResponse.from(findNotification(id));
+    }
+
+    @Override
+    public Page<NotificationOutboxResponse> getInAppNotifications(Pageable pageable) {
+        return repository.findByChannel(
+                NotificationOutbox.NotificationChannel.IN_APP,
+                        pageable
+                )
+                .map(NotificationOutboxResponse::from);
+    }
+
+    @Override
+    public Page<NotificationOutboxResponse> getUnreadInAppNotifications(Pageable pageable) {
+        return repository.findByChannelAndReadAtIsNull(
+
+                NotificationOutbox.NotificationChannel.IN_APP,
+                        pageable
+                )
+                .map(NotificationOutboxResponse::from);
+    }
+
+    @Override
+    public Page<NotificationOutboxResponse> getReadInAppNotifications(Pageable pageable) {
+        return repository.findByChannelAndReadAtIsNotNull(
+                NotificationOutbox.NotificationChannel.IN_APP,
+                pageable
+                )
+                .map(NotificationOutboxResponse::from);
+    }
+
+    @Override
+    public NotificationOutboxResponse markInAppNotificationRead(Long notificationId) {
+        Long actorUserId = currentUserService.getCurrentUserId();
+
+        NotificationOutbox notification = findNotification(notificationId);
+
+        if (notification.getChannel()
+                != NotificationOutbox.NotificationChannel.IN_APP) {
+            throw new NotificationOutboxException("Only IN_APP notifications can be marked as read.");
+        }
+
+        if (notification.getReadAt() != null) {
+            throw new NotificationStateException("In-app notification has already been marked as read.");
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+
+        notification.setReadByUserId(actorUserId);
+        notification.setReadAt(now);
+        notification.setUpdatedAt(now);
+
+        NotificationOutbox saved = repository.saveAndFlush(notification);
+
+        log.info("In-app notification marked as read: notificationId={} readByUserId={}", saved.getId(), actorUserId);
+
+        return NotificationOutboxResponse.from(saved);
     }
 
     @Override

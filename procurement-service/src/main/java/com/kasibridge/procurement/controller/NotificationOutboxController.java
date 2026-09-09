@@ -31,6 +31,68 @@ public class NotificationOutboxController {
         return ResponseEntity.ok(service.getNotifications(pageable));
     }
 
+    @GetMapping("/in-app")
+    public ResponseEntity<Page<NotificationOutboxResponse>> getInAppNotifications(
+            @PageableDefault(
+                    sort = "createdAt",
+                    direction = Sort.Direction.DESC
+            )
+            Pageable pageable
+    ) {
+        log.info(
+                "GET /api/v1/notifications/outbox/in-app"
+        );
+
+        return ResponseEntity.ok(
+                service.getInAppNotifications(pageable)
+        );
+    }
+
+    @GetMapping("/in-app/unread")
+    public ResponseEntity<Page<NotificationOutboxResponse>> getUnreadInAppNotifications(
+            @PageableDefault(
+                    sort = "createdAt",
+                    direction = Sort.Direction.DESC
+            )
+            Pageable pageable
+    ) {
+        log.info(
+                "GET /api/v1/notifications/outbox/in-app/unread"
+        );
+
+        return ResponseEntity.ok(
+                service.getUnreadInAppNotifications(pageable)
+        );
+    }
+
+    @GetMapping("/in-app/read")
+    public ResponseEntity<Page<NotificationOutboxResponse>> getReadInAppNotifications(
+            @PageableDefault(
+                    sort = "readAt",
+                    direction = Sort.Direction.DESC
+            )
+            Pageable pageable
+    ) {
+        log.info(
+                "GET /api/v1/notifications/outbox/in-app/read"
+        );
+
+        return ResponseEntity.ok(
+                service.getReadInAppNotifications(pageable)
+        );
+    }
+
+    @PatchMapping("/in-app/{id}/read")
+    public ResponseEntity<NotificationOutboxResponse> markInAppNotificationRead(@PathVariable("id") Long id) {
+        log.info(
+                "PATCH /api/v1/notifications/outbox/in-app/{}/read",
+                id
+        );
+        return ResponseEntity.ok(
+                service.markInAppNotificationRead(id)
+        );
+    }
+
     @GetMapping("/status/{status}")
     public ResponseEntity<Page<NotificationOutboxResponse>> getNotificationsByStatus(@PathVariable("status") NotificationOutbox.NotificationStatus status,
                                                                                      @PageableDefault(sort = "createdAt", direction = Sort.Direction.DESC)

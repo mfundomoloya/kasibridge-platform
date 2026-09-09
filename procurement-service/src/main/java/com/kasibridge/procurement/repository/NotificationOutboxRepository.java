@@ -18,6 +18,21 @@ public interface NotificationOutboxRepository extends JpaRepository<Notification
 
     Page<NotificationOutbox> findByRelatedTicketId(Long relatedTicketId, Pageable pageable);
 
+    Page<NotificationOutbox> findByChannel(
+            NotificationOutbox.NotificationChannel channel,
+            Pageable pageable
+    );
+
+    Page<NotificationOutbox> findByChannelAndReadAtIsNull(
+            NotificationOutbox.NotificationChannel channel,
+            Pageable pageable
+    );
+
+    Page<NotificationOutbox> findByChannelAndReadAtIsNotNull(
+            NotificationOutbox.NotificationChannel channel,
+            Pageable pageable
+    );
+
     List<NotificationOutbox> findByStatusAndChannelOrderByCreatedAtAsc(
             NotificationOutbox.NotificationStatus status,
             NotificationOutbox.NotificationChannel channel,

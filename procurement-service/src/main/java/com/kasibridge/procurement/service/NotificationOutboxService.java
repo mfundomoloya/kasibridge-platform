@@ -24,6 +24,22 @@ public interface NotificationOutboxService {
 
     NotificationOutboxResponse getNotificationById(Long id);
 
+    Page<NotificationOutboxResponse> getInAppNotifications(
+            Pageable pageable
+    );
+
+    Page<NotificationOutboxResponse> getUnreadInAppNotifications(
+            Pageable pageable
+    );
+
+    Page<NotificationOutboxResponse> getReadInAppNotifications(
+            Pageable pageable
+    );
+
+    NotificationOutboxResponse markInAppNotificationRead(
+            Long notificationId
+    );
+
     NotificationOutboxResponse markSent(Long id);
 
     NotificationOutboxResponse markFailed(Long id, MarkNotificationFailedRequest request);
