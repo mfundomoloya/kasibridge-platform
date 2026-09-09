@@ -133,6 +133,16 @@ public class SecurityConfig {
                                 .hasAnyRole("TRADER","PLATFORM_ADMIN", "SPECIFICATION_OFFICER")
 
 
+                                //in-app notifications
+
+                                .requestMatchers(
+                                "/api/v1/notifications/outbox/in-app/**"
+                                )
+                                .hasAnyRole(
+                                "PLATFORM_ADMIN", "ADJUDICATOR", "SPECIFICATION_OFFICER"
+                                )
+
+
                                 //Notification outbox
                                 .requestMatchers("/api/v1/notifications/outbox/**")
                                 .hasAnyRole("PLATFORM_ADMIN","SPECIFICATION_OFFICER")

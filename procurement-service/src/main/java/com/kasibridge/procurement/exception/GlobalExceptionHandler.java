@@ -121,6 +121,12 @@ public class GlobalExceptionHandler {
                 );
     }
 
+    @ExceptionHandler(NotificationStateException.class)
+    public ResponseEntity<ErrorResponse> handleNotificationStateException(NotificationStateException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ErrorResponse.of(HttpStatus.CONFLICT.value(), ex.getMessage()));
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGeneral(Exception ex) {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)

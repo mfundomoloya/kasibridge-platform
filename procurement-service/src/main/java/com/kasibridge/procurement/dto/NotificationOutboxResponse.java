@@ -28,6 +28,11 @@ public class NotificationOutboxResponse {
     private int retryCount;
     private String failureReason;
     private String providerMessageId;
+
+    private Long readByUserId;
+    private LocalDateTime readAt;
+    private boolean read;
+
     private LocalDateTime createdAt;
     private LocalDateTime sentAt;
     private LocalDateTime updatedAt;
@@ -50,6 +55,9 @@ public class NotificationOutboxResponse {
                 .retryCount(notification.getRetryCount())
                 .failureReason(notification.getFailureReason())
                 .providerMessageId(notification.getProviderMessageId())
+                .readByUserId(notification.getReadByUserId())
+                .readAt(notification.getReadAt())
+                .read(notification.getReadAt() != null)
                 .createdAt(notification.getCreatedAt())
                 .sentAt(notification.getSentAt())
                 .updatedAt(notification.getUpdatedAt())

@@ -15,7 +15,8 @@ import java.time.LocalDateTime;
                 @Index(name = "idx_notification_tender_id", columnList = "related_tender_id"),
                 @Index(name = "idx_notification_bid_id", columnList = "related_bid_id"),
                 @Index(name = "idx_notification_ticket_id", columnList = "related_ticket_id"),
-                @Index(name = "idx_notification_created_at", columnList = "created_at")}
+                @Index(name = "idx_notification_created_at", columnList = "created_at"),
+                @Index(name = "idx_notification_read_at", columnList = "read_at")}
         )
 
 @Getter
@@ -79,6 +80,12 @@ public class NotificationOutbox {
 
     @Column(name = "sent_at")
     private LocalDateTime sentAt;
+
+    @Column(name = "read_by_user_id")
+    private Long readByUserId;
+
+    @Column(name = "read_at")
+    private LocalDateTime readAt;
 
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
