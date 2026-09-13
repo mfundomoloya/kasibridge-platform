@@ -2,13 +2,15 @@ package com.kasibridge.procurement.service;
 
 import com.kasibridge.procurement.dto.TraderProfileClientResponse;
 import com.kasibridge.procurement.dto.WhatsAppTemplateContext;
-import com.kasibridge.procurement.entity.Bid;
-import com.kasibridge.procurement.entity.NotificationOutbox;
-import com.kasibridge.procurement.entity.ProcurementAnomaly;
-import com.kasibridge.procurement.entity.Tender;
+import com.kasibridge.procurement.entity.*;
+import com.kasibridge.procurement.repository.TenderCommitteeAssignmentRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -18,6 +20,7 @@ public class ProcurementNotificationServiceImpl implements ProcurementNotificati
     private final TraderProfileClient traderProfileClient;
     private final NotificationOutboxService notificationOutboxService;
     private final WhatsAppMessageTemplateService templateService;
+    private final TenderCommitteeAssignmentRepository assignmentRepository;
 
     @Override
     public void queueBidReceived(Bid bid, Tender tender) {
@@ -146,7 +149,6 @@ public class ProcurementNotificationServiceImpl implements ProcurementNotificati
     public void queueAnomalyDetected(ProcurementAnomaly anomaly) {
 
         try {
-
             WhatsAppTemplateContext context = WhatsAppTemplateContext.builder()
 
                     .tenderId(anomaly.getTenderId())
@@ -161,17 +163,81 @@ public class ProcurementNotificationServiceImpl implements ProcurementNotificati
                     context
             );
 
-            notificationOutboxService.queueNotification(
-                    NotificationOutbox.NotificationChannel.IN_APP,
-                    NotificationOutbox.NotificationTemplateType.PROCUREMENT_ANOMALY_DETECTED,
-                    null,
-                    null,
-                    null,
-                    message,
+            List<TenderCommitteeAssignment> adjudicators = assignmentRepository
+                    .findByTenderIdAndCommitteeRoleAndActiveTrue(anomaly.getTenderId(),
 
+                            TenderCommitteeAssignment.CommitteeRole.ADJUDICATOR);
+
+            Set<Long> notifiedUserIds = new HashSet<>();
+
+            for (TenderCommitteeAssignment assignment : adjudicators) {
+                Long recipientUserId = assignment.getUserId();
+
+                if (recipientUserId == null) {
+                    log.warn("Skipping anomaly notification because committee assignment ID {} has no user ID",
+                            assignment.getId()
+                    );
+                    continue;
+                }
+
+                if (!notifiedUserIds.add(recipientUserId)) {
+                    log.debug("Skipping duplicate anomaly notification for userId={} tenderId={}", recipientUserId,
+                            anomaly.getTenderId()
+                    );
+                    continue;
+                }
+
+                notificationOutboxService.queueNotification(
+                        NotificationOutbox.NotificationChannel.IN_APP,
+                        NotificationOutbox.NotificationTemplateType.PROCUREMENT_ANOMALY_DETECTED,
+                        recipientUserId,
+                        null,
+                        null,
+                        message,
+
+                        anomaly.getTenderId(),
+                        anomaly.getBidId(),
+                        null
+                );
+            }
+
+            if (notifiedUserIds.isEmpty()) {
+                log.warn("No active adjudicator found for anomalyId={} tenderId={}. Creating admin-only fallback notification.",
+                        anomaly.getId(),
+                        anomaly.getTenderId()
+                );
+
+                notificationOutboxService.queueNotification(
+                        NotificationOutbox.NotificationChannel.IN_APP,
+                        NotificationOutbox.NotificationTemplateType
+                                .PROCUREMENT_ANOMALY_DETECTED,
+                        null,
+                        null,
+                        null,
+                        message,
+                        anomaly.getTenderId(),
+                        anomaly.getBidId(),
+                        null
+                );
+            }
+
+            if (notifiedUserIds.isEmpty()) {
+                queueAdminFallbackAnomalyNotification(
+                        anomaly,
+                        message
+                );
+            }
+
+            log.info("Procurement anomaly notifications queued: anomalyId={} tenderId={} assignedRecipients={}",
+                    anomaly.getId(),
                     anomaly.getTenderId(),
-                    anomaly.getBidId(),
-                    null
+                    notifiedUserIds.size()
+            );
+
+            log.info("Procurement anomaly notifications queued: anomalyId={} tenderId={} recipients={}",
+                    anomaly.getId(),
+                    anomaly.getTenderId(),
+                    notifiedUserIds.size()
             );
         } catch (Exception ex) {
             log.error(
@@ -182,6 +248,29 @@ public class ProcurementNotificationServiceImpl implements ProcurementNotificati
             );
         }
     }
+
+    private void queueAdminFallbackAnomalyNotification(
+            ProcurementAnomaly anomaly,
+            String message
+    ) {
+        notificationOutboxService.queueNotification(
+                NotificationOutbox.NotificationChannel.IN_APP,
+                NotificationOutbox.NotificationTemplateType
+                        .PROCUREMENT_ANOMALY_DETECTED,
+                null,
+                null,
+                null,
+                message,
+                anomaly.getTenderId(),
+                anomaly.getBidId(),
+                null
+        );
+
+        log.warn("No active adjudicator found for anomalyId={} tenderId={}. Admin-only fallback notification queued.",
+                anomaly.getId(),
+                anomaly.getTenderId());
+    }
+
 
     private TraderProfileClientResponse loadTrader(Bid bid) {
 

@@ -5,6 +5,7 @@ import com.kasibridge.procurement.dto.NotificationOutboxResponse;
 import com.kasibridge.procurement.entity.NotificationOutbox;
 import com.kasibridge.procurement.exception.NotificationOutboxException;
 import com.kasibridge.procurement.exception.NotificationStateException;
+import com.kasibridge.procurement.exception.ProcurementAuthorizationException;
 import com.kasibridge.procurement.repository.NotificationOutboxRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -83,8 +84,17 @@ public class NotificationOutboxServiceImpl implements  NotificationOutboxService
 
     @Override
     public Page<NotificationOutboxResponse> getInAppNotifications(Pageable pageable) {
-        return repository.findByChannel(
+
+        if(currentUserService.hasRole("ROLE_PLATFORM_ADMIN")){
+            return repository.findByChannel(NotificationOutbox.NotificationChannel.IN_APP, pageable)
+                    .map(NotificationOutboxResponse::from);
+        }
+
+        Long currentUserId = currentUserService.getCurrentUserId();
+
+        return repository.findByChannelAndRecipientUserId(
                 NotificationOutbox.NotificationChannel.IN_APP,
+                        currentUserId,
                         pageable
                 )
                 .map(NotificationOutboxResponse::from);
@@ -92,9 +102,24 @@ public class NotificationOutboxServiceImpl implements  NotificationOutboxService
 
     @Override
     public Page<NotificationOutboxResponse> getUnreadInAppNotifications(Pageable pageable) {
-        return repository.findByChannelAndReadAtIsNull(
 
+        boolean isPlatformAdmin = currentUserService.hasRole("ROLE_PLATFORM_ADMIN");
+
+        if (isPlatformAdmin) {
+            return repository.findByChannelAndReadAtIsNull(
+                    NotificationOutbox.NotificationChannel.IN_APP,
+                    pageable
+            )
+                    .map(NotificationOutboxResponse::from);
+        }
+
+        Long currentUserId = currentUserService.getCurrentUserId();
+
+        log.info("Loading unread in-app notifications for scoped userId={}", currentUserId);
+
+        return repository.findByChannelAndRecipientUserIdAndReadAtIsNull(
                 NotificationOutbox.NotificationChannel.IN_APP,
+                        currentUserId,
                         pageable
                 )
                 .map(NotificationOutboxResponse::from);
@@ -102,8 +127,18 @@ public class NotificationOutboxServiceImpl implements  NotificationOutboxService
 
     @Override
     public Page<NotificationOutboxResponse> getReadInAppNotifications(Pageable pageable) {
-        return repository.findByChannelAndReadAtIsNotNull(
+
+        if (currentUserService.hasRole("ROLE_PLATFORM_ADMIN")) {
+            return repository.findByChannelAndReadAtIsNull(
+                            NotificationOutbox.NotificationChannel.IN_APP, pageable)
+                    .map(NotificationOutboxResponse::from);
+        }
+
+        Long currentUserId = currentUserService.getCurrentUserId();
+
+        return repository.findByChannelAndRecipientUserIdAndReadAtIsNotNull(
                 NotificationOutbox.NotificationChannel.IN_APP,
+                currentUserId,
                 pageable
                 )
                 .map(NotificationOutboxResponse::from);
@@ -118,6 +153,15 @@ public class NotificationOutboxServiceImpl implements  NotificationOutboxService
         if (notification.getChannel()
                 != NotificationOutbox.NotificationChannel.IN_APP) {
             throw new NotificationOutboxException("Only IN_APP notifications can be marked as read.");
+        }
+
+        boolean platformAdmin = currentUserService.hasRole("ROLE_PLATFORM_ADMIN");
+
+        boolean intendedRecipient = notification.getRecipientUserId() != null
+                && notification.getRecipientUserId().equals(actorUserId);
+
+        if(!platformAdmin && !intendedRecipient){
+            throw new ProcurementAuthorizationException("User is not authorized to acknowledge this notification.");
         }
 
         if (notification.getReadAt() != null) {

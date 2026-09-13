@@ -49,4 +49,22 @@ public interface NotificationOutboxRepository extends JpaRepository<Notification
             NotificationOutbox.NotificationChannel channel,
             int retryCount,
             Pageable pageable);
+
+    Page<NotificationOutbox> findByChannelAndRecipientUserId(
+            NotificationOutbox.NotificationChannel channel,
+            Long recipientUserId,
+            Pageable pageable
+    );
+
+    Page<NotificationOutbox> findByChannelAndRecipientUserIdAndReadAtIsNull(
+            NotificationOutbox.NotificationChannel channel,
+            Long recipientUserId,
+            Pageable pageable
+    );
+
+    Page<NotificationOutbox> findByChannelAndRecipientUserIdAndReadAtIsNotNull(
+            NotificationOutbox.NotificationChannel channel,
+            Long recipientUserId,
+            Pageable pageable
+    );
 }
