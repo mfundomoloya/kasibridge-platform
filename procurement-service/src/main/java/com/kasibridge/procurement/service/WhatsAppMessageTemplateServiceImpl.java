@@ -203,7 +203,7 @@ public class WhatsAppMessageTemplateServiceImpl implements WhatsAppMessageTempla
                 ? context.getAnomalySeverity().trim().toUpperCase()
                 : "UNKNOWN";
 
-        return "⚠Procurement anomaly detected. Reference: "
+        return "Procurement anomaly detected. Reference: "
                 + anomalyReference
                 + ". Type: "
                 + anomalyType

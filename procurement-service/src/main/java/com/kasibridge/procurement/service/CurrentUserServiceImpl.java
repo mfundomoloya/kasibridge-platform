@@ -26,13 +26,13 @@ public class CurrentUserServiceImpl implements CurrentUserService {
     public boolean hasRole(String role) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
-        if (authentication == null) {
+        if (authentication == null || !authentication.isAuthenticated()) {
             return false;
         }
 
         return authentication.getAuthorities()
                 .stream()
-                .anyMatch(authority -> authority.getAuthority().equals(role));
+                .anyMatch(authority -> role.equals(authority.getAuthority()));
     }
 
     private KasiBridgeUserPrincipal getPrincipal(){
