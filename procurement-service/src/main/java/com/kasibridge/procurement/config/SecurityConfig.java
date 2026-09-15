@@ -148,6 +148,21 @@ public class SecurityConfig {
                                 .hasAnyRole("PLATFORM_ADMIN","SPECIFICATION_OFFICER")
 
 
+                                .requestMatchers(
+                                        "/api/v1/ticket-ai-assessments/*/approve",
+                                        "/api/v1/ticket-ai-assessments/*/reject",
+                                        "/api/v1/ticket-ai-assessments/*/escalate"
+                                )
+                                .hasAnyRole("SPECIFICATION_OFFICER", "PLATFORM_ADMIN")
+
+                                .requestMatchers(
+                                        "/api/v1/tickets/*/ai-assessment",
+                                        "/api/v1/ticket-ai-assessments",
+                                        "/api/v1/ticket-ai-assessments/**"
+                                )
+                                .hasAnyRole("SPECIFICATION_OFFICER", "PLATFORM_ADMIN")
+
+
 
                                 //GENERAL tender read access
                                 .requestMatchers(
