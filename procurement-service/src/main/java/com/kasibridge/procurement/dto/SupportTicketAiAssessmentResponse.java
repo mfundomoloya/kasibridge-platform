@@ -31,6 +31,9 @@ public class SupportTicketAiAssessmentResponse {
     private Long approvedByUserId;
     private LocalDateTime approvedAt;
 
+    private Long publishedByUserId;
+    private LocalDateTime publishedAt;
+
     private Long rejectedByUserId;
     private LocalDateTime rejectedAt;
     private String rejectionReason;
@@ -59,6 +62,8 @@ public class SupportTicketAiAssessmentResponse {
                 .approvedResponse(assessment.getApprovedResponse())
                 .approvedByUserId(assessment.getApprovedByUserId())
                 .approvedAt(assessment.getApprovedAt())
+                .publishedByUserId(assessment.getPublishedByUserId())
+                .publishedAt(assessment.getPublishedAt())
                 .rejectedByUserId(assessment.getRejectedByUserId())
                 .rejectedAt(assessment.getRejectedAt())
                 .rejectionReason(assessment.getRejectionReason())

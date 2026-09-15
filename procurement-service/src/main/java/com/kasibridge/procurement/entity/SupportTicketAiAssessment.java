@@ -118,6 +118,12 @@ public class SupportTicketAiAssessment {
     @Column(name = "approved_at")
     private LocalDateTime approvedAt;
 
+    @Column(name = "published_by_user_id")
+    private Long publishedByUserId;
+
+    @Column(name = "published_at")
+    private LocalDateTime publishedAt;
+
     @Column(name = "rejected_by_user_id")
     private Long rejectedByUserId;
 
@@ -188,10 +194,12 @@ public class SupportTicketAiAssessment {
     }
 
     public enum AiAssessmentStatus {
-    GENERATED, APPROVED,
+        GENERATED,
+        APPROVED,
         EDITED_AND_APPROVED,
+        RESPONSE_PUBLISHED,
         REJECTED,
-        ESCALATED
+        ESCALATED,
     }
 
 }

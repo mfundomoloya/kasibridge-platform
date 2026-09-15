@@ -147,11 +147,11 @@ public class SecurityConfig {
                                 .requestMatchers("/api/v1/notifications/outbox/**")
                                 .hasAnyRole("PLATFORM_ADMIN","SPECIFICATION_OFFICER")
 
-
                                 .requestMatchers(
                                         "/api/v1/ticket-ai-assessments/*/approve",
                                         "/api/v1/ticket-ai-assessments/*/reject",
-                                        "/api/v1/ticket-ai-assessments/*/escalate"
+                                        "/api/v1/ticket-ai-assessments/*/escalate",
+                                        "/api/v1/ticket-ai-assessments/*/publish-response"
                                 )
                                 .hasAnyRole("SPECIFICATION_OFFICER", "PLATFORM_ADMIN")
 

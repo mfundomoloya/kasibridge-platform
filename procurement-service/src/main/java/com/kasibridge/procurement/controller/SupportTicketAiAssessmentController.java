@@ -69,12 +69,9 @@ public class SupportTicketAiAssessmentController {
     public ResponseEntity<Page<SupportTicketAiAssessmentResponse>> getAssessmentsByStatus(@PathVariable("status")
                                                                                               SupportTicketAiAssessment.AiAssessmentStatus status,
                                                                                           @PageableDefault(sort = "createdAt", direction = Sort.Direction.DESC)
-    Pageable pageable
+                                                                                          Pageable pageable
         ) {
-        log.info(
-                "GET /api/v1/ticket-ai-assessments/status/{}",
-                status
-        );
+        log.info("GET /api/v1/ticket-ai-assessments/status/{}", status);
 
         return ResponseEntity.ok(
                 service.getAssessmentsByStatus(
@@ -91,13 +88,9 @@ public class SupportTicketAiAssessmentController {
                                                                                                     direction = Sort.Direction.DESC)
                                                                                             Pageable pageable
                 ) {
-    log.info("GET /api/v1/ticket-ai-assessments/priority/{}", priority);
+        log.info("GET /api/v1/ticket-ai-assessments/priority/{}", priority);
 
-        return ResponseEntity.ok(
-                service.getAssessmentsByPriority(
-                        priority,
-                        pageable
-                )
+        return ResponseEntity.ok(service.getAssessmentsByPriority(priority, pageable)
         );
     }
 
@@ -107,16 +100,9 @@ public class SupportTicketAiAssessmentController {
                                                                                                   @PageableDefault(sort = "createdAt",
                                                                                                           direction = Sort.Direction.DESC)
                                                                                                   Pageable pageable) {
-        log.info(
-                "GET /api/v1/ticket-ai-assessments/resolution-mode/{}",
-                resolutionMode
-        );
+        log.info("GET /api/v1/ticket-ai-assessments/resolution-mode/{}",resolutionMode);
 
-        return ResponseEntity.ok(
-                service.getAssessmentsByResolutionMode(
-                        resolutionMode,
-                        pageable
-                        ));
+        return ResponseEntity.ok(service.getAssessmentsByResolutionMode(resolutionMode, pageable));
     }
 
     @PatchMapping("/ticket-ai-assessments/{assessmentId}/approve")
@@ -125,11 +111,7 @@ public class SupportTicketAiAssessmentController {
     ) {
         log.info("PATCH /api/v1/ticket-ai-assessments/{}/approve", assessmentId);
 
-        return ResponseEntity.ok(
-                service.approveAssessment(
-                        assessmentId,
-                        request
-                )
+        return ResponseEntity.ok(service.approveAssessment(assessmentId, request)
         );
     }
 
@@ -140,11 +122,7 @@ public class SupportTicketAiAssessmentController {
     log.info("PATCH /api/v1/ticket-ai-assessments/{}/reject", assessmentId
         );
 
-        return ResponseEntity.ok(
-                service.rejectAssessment(
-                        assessmentId,
-                        request
-                )
+        return ResponseEntity.ok(service.rejectAssessment(assessmentId, request)
         );
     }
 
@@ -154,11 +132,14 @@ public class SupportTicketAiAssessmentController {
                                                                                 @Valid @RequestBody EscalateTicketAiAssessmentRequest request
     ) {
         log.info("PATCH /api/v1/ticket-ai-assessments/{}/escalate", assessmentId);
-       return ResponseEntity.ok(
-                service.escalateAssessment(
-                        assessmentId,
-                        request
-                )
+       return ResponseEntity.ok(service.escalateAssessment(assessmentId, request)
         );
+    }
+
+    @PostMapping("/ticket-ai-assessments/{assessmentId}/publish-response")
+    public ResponseEntity<SupportTicketAiAssessmentResponse> publishApprovedResponse(@PathVariable("assessmentId") Long assessmentId) {
+        log.info("POST /api/v1/ticket-ai-assessments/{}/publish-response", assessmentId);
+
+        return ResponseEntity.ok(service.publishApprovedResponse(assessmentId));
     }
 }

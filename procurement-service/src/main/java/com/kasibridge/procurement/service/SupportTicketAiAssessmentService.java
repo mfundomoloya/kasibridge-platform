@@ -29,4 +29,6 @@ public interface SupportTicketAiAssessmentService {
     SupportTicketAiAssessmentResponse rejectAssessment(Long assessmentId, RejectTicketAiAssessmentRequest request);
 
     SupportTicketAiAssessmentResponse escalateAssessment(Long assessmentId, EscalateTicketAiAssessmentRequest request);
+
+    SupportTicketAiAssessmentResponse publishApprovedResponse(Long assessmentId);
 }
