@@ -29,6 +29,7 @@ public class SupportTicketAiAssessmentServiceImpl implements SupportTicketAiAsse
     private final TicketAiTriageService triageService;
     private final CurrentUserService currentUserService;
     private final ProcurementAuditService auditService;
+    private final SupportTicketService supportTicketService;
 
     @Override
     @Transactional
@@ -303,6 +304,68 @@ public class SupportTicketAiAssessmentServiceImpl implements SupportTicketAiAsse
 
     }
 
+    @Override
+    public SupportTicketAiAssessmentResponse publishApprovedResponse(Long assessmentId) {
+
+        Long actorUserId = currentUserService.getCurrentUserId();
+
+        SupportTicketAiAssessment assessment = findAssessment(assessmentId);
+
+        assertAssessmentCanBePublished(assessment);
+
+        SupportTicket ticket = findTicket(assessment.getTicketId());
+
+        assertTicketCanReceivePublishedResponse(ticket);
+
+        RespondToTicketRequest responseRequest = new RespondToTicketRequest();
+
+        responseRequest.setResponse(assessment.getApprovedResponse().trim());
+
+        responseRequest.setPublicClarification(ticket.getTicketType() == SupportTicket.TicketType.CLARIFICATION_REQUEST);
+
+        supportTicketService.respondToTicket(ticket.getId(), responseRequest);
+
+        LocalDateTime now = LocalDateTime.now();
+
+        assessment.setAssessmentStatus(
+                SupportTicketAiAssessment
+                        .AiAssessmentStatus
+                        .RESPONSE_PUBLISHED
+        );
+
+        assessment.setPublishedByUserId(actorUserId);
+        assessment.setPublishedAt(now);
+
+        SupportTicketAiAssessment saved = assessmentRepository.saveAndFlush(assessment);
+
+        auditService.recordSuccess(
+                ProcurementAuditEvent.AuditEventType.SUPPORT_TICKET_AI_RESPONSE_PUBLISHED,
+                ticket.getTenderId(),
+                ticket.getBidId(),
+                actorUserId,
+                "Approved AI ticket response published",
+                "Assessment reference="
+                        + saved.getAssessmentReference()
+                        + ", ticket reference="
+                        + ticket.getTicketReference()
+                        + ", ticket type="
+                        + ticket.getTicketType()
+                        + ", publicClarification="
+                        + (
+                ticket.getTicketType()
+                        == SupportTicket.TicketType
+                        .CLARIFICATION_REQUEST
+        )
+);
+
+        log.info("Approved AI response published: assessmentId={} ticketId={} publishedByUserId={}", saved.getId(),
+                ticket.getId(),
+                actorUserId
+        );
+
+        return SupportTicketAiAssessmentResponse.from(saved);
+    }
+
     private SupportTicket findTicket(Long ticketId) {
 
         return ticketRepository.findById(ticketId)
@@ -385,7 +448,6 @@ public class SupportTicketAiAssessmentServiceImpl implements SupportTicketAiAsse
         }
 
         private boolean isEditedResponse(SupportTicketAiAssessment assessment, ApproveTicketAiAssessmentRequest request)
-
         {
 
             if (request == null || !hasText(request.getApprovedResponse())) {
@@ -422,4 +484,40 @@ public class SupportTicketAiAssessmentServiceImpl implements SupportTicketAiAsse
         {
             return value != null && !value.isBlank();
         }
+
+    private void assertAssessmentCanBePublished(SupportTicketAiAssessment assessment) {
+
+        boolean approved = assessment.getAssessmentStatus() == SupportTicketAiAssessment.AiAssessmentStatus.APPROVED;
+
+        boolean editedAndApproved = assessment.getAssessmentStatus() == SupportTicketAiAssessment.AiAssessmentStatus.EDITED_AND_APPROVED;
+
+        if (!approved && !editedAndApproved) {
+
+            throw new TicketAiAssessmentStateException("Only APPROVED or EDITED_AND_APPROVED assessments can be published.");
+        }
+
+        if (!hasText(assessment.getApprovedResponse())) {
+            throw new TicketAiAssessmentException("Approved AI assessment does not contain a response to publish.");
+        }
+
+        if (assessment.getResolutionMode() == SupportTicketAiAssessment.AiResolutionMode.HUMAN_ONLY) {
+
+            throw new TicketAiAssessmentStateException("HUMAN_ONLY assessments cannot be published as AI responses.");
+        }
+    }
+
+    private void assertTicketCanReceivePublishedResponse(SupportTicket ticket) {
+
+        if (ticket.getStatus() == SupportTicket.TicketStatus.CLOSED) {
+            throw new TicketAiAssessmentStateException("Approved AI response cannot be published because the ticket is closed.");
+        }
+
+        if (ticket.getStatus() == SupportTicket.TicketStatus.REJECTED) {
+            throw new TicketAiAssessmentStateException("Approved AI response cannot be published because the ticket is rejected.");
+        }
+
+        if (ticket.getStatus() == SupportTicket.TicketStatus.RESPONDED) {
+            throw new TicketAiAssessmentStateException("Approved AI response cannot be published because the ticket already has a response.");
+        }
+    }
 }
