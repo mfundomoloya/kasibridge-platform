@@ -144,12 +144,12 @@ public class DevUserSeeder implements CommandLineRunner {
             );
         }
 
-        if (!appUserRepository.existsByUsername("system")) {
+        if (!appUserRepository.existsByUsername("procurement-system")) {
             appUserRepository.save(
                     AppUser.create(
-                            "system",
+                            "procurement-system",
                             passwordEncoder.encode("password"),
-                            "kasibridge-system",
+                            "kasibridge-internal",
                             Set.of(Role.ROLE_SYSTEM)
                     )
             );

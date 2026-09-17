@@ -4,6 +4,7 @@ import com.kasibridge.security.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -35,6 +36,11 @@ public class SecurityConfig {
                                     "/actuator/info",
                                     "/error"
                             ).permitAll()
+
+                            .requestMatchers(HttpMethod.GET, "/api/v1/traders/internal/**"
+                            )
+                            .hasRole("SYSTEM")
+
 
                             // Trader profile APIs
                             .requestMatchers("/api/v1/traders/**")

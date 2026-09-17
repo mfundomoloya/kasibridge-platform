@@ -6,4 +6,6 @@ public interface TraderProfileClient {
     TraderProfileClientResponse getTraderProfileByUserId(Long userId);
 
     TraderProfileClientResponse getTraderProfileById(Long traderId);
+
+    TraderProfileClientResponse getTraderProfileByIdAsSystem(Long traderProfileId);
 }

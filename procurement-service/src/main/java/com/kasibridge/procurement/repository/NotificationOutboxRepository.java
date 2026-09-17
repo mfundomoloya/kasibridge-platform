@@ -67,4 +67,10 @@ public interface NotificationOutboxRepository extends JpaRepository<Notification
             Long recipientUserId,
             Pageable pageable
     );
+
+    boolean existsByTemplateTypeAndRelatedTicketIdAndRecipientUserId(
+            NotificationOutbox.NotificationTemplateType templateType,
+            Long relatedTicketId,
+            Long recipientUserId
+    );
 }
