@@ -21,6 +21,7 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 public class TradeProfileClientImpl implements TraderProfileClient {
 
     private final RestTemplate restTemplate;
+    private final SystemAccessTokenProvider systemAccessTokenProvider;
 
     @Value("${kasibridge.services.trader-profile.base-url}")
     private String traderProfileBaseUrl;
@@ -125,6 +126,16 @@ public class TradeProfileClientImpl implements TraderProfileClient {
         }
     }
 
+    @Override
+    public TraderProfileClientResponse getTraderProfileByIdAsSystem(
+            Long traderProfileId
+    ) {
+        return getTraderProfileByIdAsSystem(
+                traderProfileId,
+                true
+        );
+    }
+
     private String extractBearerToken() {
         ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
 
@@ -139,5 +150,92 @@ public class TradeProfileClientImpl implements TraderProfileClient {
         }
 
         return authorizationHeader.substring("Bearer ".length());
+    }
+
+    private TraderProfileClientResponse getTraderProfileByIdAsSystem(
+            Long traderProfileId,
+            boolean retryOnUnauthorized
+    ) {
+        String url = traderProfileBaseUrl + "/api/v1/traders/internal/" + traderProfileId;
+
+        try {
+            String systemToken =
+                    systemAccessTokenProvider.getAccessToken();
+
+            HttpHeaders headers = new HttpHeaders();
+
+            headers.setBearerAuth(systemToken);
+
+            HttpEntity<Void> entity = new HttpEntity<>(headers);
+
+            ResponseEntity<TraderProfileClientResponse> response =
+                    restTemplate.exchange(
+                            url,
+                            HttpMethod.GET,
+                            entity,
+                            TraderProfileClientResponse.class
+                    );
+
+            TraderProfileClientResponse body =
+                    response.getBody();
+
+            if (body == null) {
+                throw new SupportTicketException("Trader profile not found with ID: " + traderProfileId);
+            }
+
+            return body;
+
+        } catch (HttpClientErrorException.Unauthorized ex) {
+            if (retryOnUnauthorized) {
+                log.warn(
+                        "Internal trader-profile token was rejected. "
+                                + "Refreshing token and retrying traderProfileId={}",
+                        traderProfileId
+                );
+
+                systemAccessTokenProvider.invalidateToken();
+
+                return getTraderProfileByIdAsSystem(
+                        traderProfileId,
+                        false
+                );
+            }
+
+            log.error(
+                    "Internal service authentication failed for traderProfileId={}",
+                    traderProfileId,
+                    ex
+            );
+
+            throw new SupportTicketException("Unable to authenticate internal trader profile lookup.");
+
+        } catch (HttpClientErrorException.Forbidden ex) {
+            log.error(
+                    "ROLE_SYSTEM was denied access to traderProfileId={}",
+                    traderProfileId,
+                    ex
+            );
+
+            throw new SupportTicketException("Internal procurement service is not authorised "
+                    + "to access trader profile ID: "
+                    + traderProfileId
+            );
+
+        } catch (HttpClientErrorException.NotFound ex) {
+            throw new SupportTicketException("Trader profile not found with ID: " + traderProfileId);
+
+        } catch (SupportTicketException ex) {
+            throw ex;
+
+        } catch (Exception ex) {
+            log.error(
+                    "Internal trader profile lookup failed for traderProfileId={} url={}",
+                    traderProfileId,
+                    url,
+                    ex
+            );
+
+            throw new SupportTicketException("Unable to load trader profile with ID: " + traderProfileId);
+        }
     }
 }

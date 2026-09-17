@@ -114,5 +114,15 @@ public class TraderProfileController {
     {
         log.info("PATCH /api/v1/traders/{}/link-user/{} - linking trader profile to auth user", id, userId);
 
-        return ResponseEntity.ok(service.linkUser(id, userId));}
+        return ResponseEntity.ok(service.linkUser(id, userId));
+    }
+
+    @GetMapping("/internal/{traderId}")
+    public ResponseEntity<TraderProfileResponse> getInternalProfileById(
+            @PathVariable("traderId") Long traderId
+    ) {
+        log.info("GET /api/v1/traders/internal/{} - internal profile lookup", traderId);
+
+        return ResponseEntity.ok(service.getProfileById(traderId));
+    }
 }

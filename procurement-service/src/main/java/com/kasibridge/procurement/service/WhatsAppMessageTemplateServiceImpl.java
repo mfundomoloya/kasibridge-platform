@@ -69,7 +69,7 @@ public class WhatsAppMessageTemplateServiceImpl implements WhatsAppMessageTempla
                 + context.getTicketReference()
                 + " has been created. We received your "
                 + ticketType
-                + " request and will notify you when there is an update.";
+                + " and will notify you when there is an update.";
     }
 
     private String buildSupportTicketResponded(WhatsAppTemplateContext context) {
