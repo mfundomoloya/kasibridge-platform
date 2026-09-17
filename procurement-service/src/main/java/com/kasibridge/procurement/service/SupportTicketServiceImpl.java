@@ -5,6 +5,7 @@ import com.kasibridge.procurement.entity.Bid;
 import com.kasibridge.procurement.entity.NotificationOutbox;
 import com.kasibridge.procurement.entity.ProcurementAuditEvent;
 import com.kasibridge.procurement.entity.SupportTicket;
+import com.kasibridge.procurement.event.SupportTicketCreatedEvent;
 import com.kasibridge.procurement.exception.SupportTicketException;
 import com.kasibridge.procurement.exception.TenderNotFoundException;
 import com.kasibridge.procurement.repository.BidRepository;
@@ -14,6 +15,7 @@ import com.kasibridge.procurement.repository.TenderRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -38,6 +40,7 @@ public class SupportTicketServiceImpl implements SupportTicketService{
     private final BidRepository bidRepository;
     private final WhatsAppMessageTemplateService whatsAppMessageTemplateService;
     private final NotificationOutboxRepository notificationOutboxRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     @Transactional
@@ -67,20 +70,21 @@ public class SupportTicketServiceImpl implements SupportTicketService{
                 .publicClarification(false)
                 .build();
 
-        SupportTicket saved = ticketRepository.save(ticket);
-
-        queueTicketCreatedNotification(saved);
+        SupportTicket saved = ticketRepository.saveAndFlush(ticket);
 
         auditService.recordSuccess(
-
                 ProcurementAuditEvent.AuditEventType.SUPPORT_TICKET_CREATED,
                 tenderId,
                 request.getBidId(),
                 actorUserId,
                 "Support ticket created",
                 "Ticket reference=" + saved.getTicketReference() + ", type=" + saved.getTicketType()
-                + ", traderId=" + saved.getTraderId()
+                        + ", traderId=" + saved.getTraderId()
         );
+
+        queueTicketCreatedNotification(saved);
+
+        eventPublisher.publishEvent(new SupportTicketCreatedEvent(saved.getId()));
 
         return SupportTicketResponse.from(saved);
     }

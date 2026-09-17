@@ -14,6 +14,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -32,7 +33,7 @@ public class SupportTicketAiAssessmentServiceImpl implements SupportTicketAiAsse
     private final SupportTicketService supportTicketService;
 
     @Override
-    @Transactional
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
     public SupportTicketAiAssessmentResponse generateAssessment(Long ticketId) {
         SupportTicket ticket = findTicket(ticketId);
 
@@ -260,7 +261,7 @@ public class SupportTicketAiAssessmentServiceImpl implements SupportTicketAiAsse
 
     @Override
     @Transactional
-        public SupportTicketAiAssessmentResponse escalateAssessment(Long assessmentId, EscalateTicketAiAssessmentRequest request) {
+    public SupportTicketAiAssessmentResponse escalateAssessment(Long assessmentId, EscalateTicketAiAssessmentRequest request) {
         Long actorUserId = currentUserService.getCurrentUserId();
 
         SupportTicketAiAssessment assessment = findAssessment(assessmentId);
