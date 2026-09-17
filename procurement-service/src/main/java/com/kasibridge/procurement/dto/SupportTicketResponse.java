@@ -27,6 +27,13 @@ public class SupportTicketResponse {
     private String description;
     private String response;
 
+    private Long reviewedByUserId;
+    private LocalDateTime reviewStartedAt;
+
+    private Long rejectedByUserId;
+    private LocalDateTime rejectedAt;
+    private String rejectionReason;
+
     private Long respondedByUserId;
     private LocalDateTime respondedAt;
 
@@ -55,8 +62,15 @@ public class SupportTicketResponse {
                 .subject(ticket.getSubject())
                 .description(ticket.getDescription())
                 .response(ticket.getResponse())
+                .reviewedByUserId(ticket.getReviewedByUserId())
+                .reviewStartedAt(ticket.getReviewStartedAt())
                 .respondedByUserId(ticket.getRespondedByUserId())
                 .respondedAt(ticket.getRespondedAt())
+                .respondedByUserId(ticket.getRespondedByUserId())
+                .respondedAt(ticket.getRespondedAt())
+                .rejectedByUserId(ticket.getRejectedByUserId())
+                .rejectedAt(ticket.getRejectedAt())
+                .rejectionReason(ticket.getRejectionReason())
                 .closedByUserId(ticket.getClosedByUserId())
                 .closedAt(ticket.getClosedAt())
                 .closureNotes(ticket.getClosureNotes())

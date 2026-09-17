@@ -1,9 +1,6 @@
 package com.kasibridge.procurement.service;
 
-import com.kasibridge.procurement.dto.CloseTicketRequest;
-import com.kasibridge.procurement.dto.CreateSupportTicketRequest;
-import com.kasibridge.procurement.dto.RespondToTicketRequest;
-import com.kasibridge.procurement.dto.SupportTicketResponse;
+import com.kasibridge.procurement.dto.*;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -22,4 +19,8 @@ public interface SupportTicketService {
     SupportTicketResponse closeTicket(Long ticketId, CloseTicketRequest request);
 
     Page<SupportTicketResponse> getPublicClarifications(Long tenderId, Pageable pageable);
+
+    SupportTicketResponse startReview(Long ticketId);
+
+    SupportTicketResponse rejectTicket(Long ticketId, RejectSupportTicketRequest request);
 }

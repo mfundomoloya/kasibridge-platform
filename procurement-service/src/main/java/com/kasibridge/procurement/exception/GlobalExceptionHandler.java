@@ -139,6 +139,14 @@ public class GlobalExceptionHandler {
                 .body(ErrorResponse.of(HttpStatus.CONFLICT.value(),ex.getMessage()));
     }
 
+    @ExceptionHandler(SupportTicketStateException.class)
+    public ResponseEntity<ErrorResponse> handleSupportTicketStateException(
+            SupportTicketStateException ex
+    ) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ErrorResponse.of(HttpStatus.CONFLICT.value(), ex.getMessage()));
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGeneral(Exception ex) {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)

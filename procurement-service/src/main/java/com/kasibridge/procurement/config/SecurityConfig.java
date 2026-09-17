@@ -120,9 +120,11 @@ public class SecurityConfig {
                                 .hasAnyRole(
                                         "PLATFORM_ADMIN", "ADJUDICATOR", "SPECIFICATION_OFFICER")
 
-
                                 //Ticket logging
-                                .requestMatchers("/api/v1/tickets/*/respond",
+                                .requestMatchers(
+                                        "/api/v1/tickets/*/start-review",
+                                        "/api/v1/tickets/*/respond",
+                                        "/api/v1/tickets/*/reject",
                                         "/api/v1/tickets/*/close")
                                 .hasAnyRole("PLATFORM_ADMIN", "SPECIFICATION_OFFICER")
 

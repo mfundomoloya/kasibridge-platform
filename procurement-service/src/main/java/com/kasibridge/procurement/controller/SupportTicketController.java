@@ -1,9 +1,6 @@
 package com.kasibridge.procurement.controller;
 
-import com.kasibridge.procurement.dto.CloseTicketRequest;
-import com.kasibridge.procurement.dto.CreateSupportTicketRequest;
-import com.kasibridge.procurement.dto.RespondToTicketRequest;
-import com.kasibridge.procurement.dto.SupportTicketResponse;
+import com.kasibridge.procurement.dto.*;
 import com.kasibridge.procurement.service.SupportTicketService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -66,5 +63,22 @@ public class SupportTicketController {
                                                                                @PageableDefault(sort = "respondedAt", direction = Sort.Direction.DESC)
                                                                                Pageable pageable) {
         return ResponseEntity.ok(service.getPublicClarifications(tenderId, pageable));
+    }
+
+    @PatchMapping("/api/v1/tickets/{ticketId}/start-review")
+    public ResponseEntity<SupportTicketResponse> startReview(@PathVariable("ticketId") Long ticketId) {
+
+        log.info("PATCH /api/v1/tickets/{}/start-review", ticketId);
+
+        return ResponseEntity.ok(service.startReview(ticketId));
+    }
+
+    @PatchMapping("/api/v1/tickets/{ticketId}/reject")
+    public ResponseEntity<SupportTicketResponse> rejectTicket(@PathVariable("ticketId") Long ticketId,
+                                                              @Valid @RequestBody RejectSupportTicketRequest request
+    ) {
+        log.info("PATCH /api/v1/tickets/{}/reject", ticketId);
+
+        return ResponseEntity.ok(service.rejectTicket(ticketId, request));
     }
 }
