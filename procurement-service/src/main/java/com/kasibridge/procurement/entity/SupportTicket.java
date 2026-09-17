@@ -74,10 +74,26 @@ public class SupportTicket {
     @Column(name = "response", length = 3000)
     private String response;
 
+    @Column(name = "reviewed_by_user_id")
+    private Long reviewedByUserId;
+
+    @Column(name = "review_started_at")
+    private LocalDateTime reviewStartedAt;
+
     @Column(name = "responded_by_user_id")
     private Long respondedByUserId;
+
     @Column(name = "responded_at")
     private LocalDateTime respondedAt;
+
+    @Column(name = "rejected_by_user_id")
+    private Long rejectedByUserId;
+
+    @Column(name = "rejected_at")
+    private LocalDateTime rejectedAt;
+
+    @Column(name = "rejection_reason", length = 1000)
+    private String rejectionReason;
 
     @Column(name = "closed_by_user_id")
     private Long closedByUserId;

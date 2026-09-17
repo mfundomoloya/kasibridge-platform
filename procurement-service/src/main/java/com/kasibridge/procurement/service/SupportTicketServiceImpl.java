@@ -7,6 +7,7 @@ import com.kasibridge.procurement.entity.ProcurementAuditEvent;
 import com.kasibridge.procurement.entity.SupportTicket;
 import com.kasibridge.procurement.event.SupportTicketCreatedEvent;
 import com.kasibridge.procurement.exception.SupportTicketException;
+import com.kasibridge.procurement.exception.SupportTicketStateException;
 import com.kasibridge.procurement.exception.TenderNotFoundException;
 import com.kasibridge.procurement.repository.BidRepository;
 import com.kasibridge.procurement.repository.NotificationOutboxRepository;
@@ -118,8 +119,13 @@ public class SupportTicketServiceImpl implements SupportTicketService{
 
         SupportTicket ticket = findTicket(ticketId);
 
-        if(ticket.getStatus() == SupportTicket.TicketStatus.CLOSED || ticket.getStatus() == SupportTicket.TicketStatus.REJECTED){
-            throw new SupportTicketException("Closed or rejected tickets cannot be responded to.");
+        boolean canRespond = ticket.getStatus()
+                == SupportTicket.TicketStatus.OPEN
+                || ticket.getStatus()
+                == SupportTicket.TicketStatus.IN_REVIEW;
+
+        if (!canRespond) {
+            throw new SupportTicketStateException("Only OPEN or IN_REVIEW tickets can be responded to.");
         }
 
         boolean publicClarification = ticket.getTicketType() == SupportTicket.TicketType.CLARIFICATION_REQUEST;
@@ -169,8 +175,8 @@ public class SupportTicketServiceImpl implements SupportTicketService{
 
         SupportTicket ticket = findTicket(ticketId);
 
-        if (ticket.getStatus() == SupportTicket.TicketStatus.CLOSED) {
-            throw new SupportTicketException("Ticket is already closed.");
+        if (ticket.getStatus() != SupportTicket.TicketStatus.RESPONDED) {
+            throw new SupportTicketStateException("Only RESPONDED tickets can be closed.");
         }
 
         LocalDateTime now = LocalDateTime.now();
@@ -205,6 +211,98 @@ public class SupportTicketServiceImpl implements SupportTicketService{
 
         return ticketRepository.findByTenderIdAndPublicClarificationTrue(tenderId, pageable)
                 .map(SupportTicketResponse::from);
+    }
+
+    @Override
+    @Transactional
+    public SupportTicketResponse startReview(Long ticketId) {
+        Long actorUserId = currentUserService.getCurrentUserId();
+
+        SupportTicket ticket = findTicket(ticketId);
+
+        if (ticket.getStatus()
+                != SupportTicket.TicketStatus.OPEN) {
+
+            throw new SupportTicketStateException("Only OPEN tickets can be moved into review.");
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+
+        ticket.setStatus(SupportTicket.TicketStatus.IN_REVIEW);
+
+        ticket.setReviewedByUserId(actorUserId);
+        ticket.setReviewStartedAt(now);
+        ticket.setUpdatedAt(now);
+
+        SupportTicket saved = ticketRepository.saveAndFlush(ticket);
+
+        auditService.recordSuccess(
+                ProcurementAuditEvent.AuditEventType.SUPPORT_TICKET_REVIEW_STARTED,
+                saved.getTenderId(),
+                saved.getBidId(),
+                actorUserId,
+                "Support ticket review started",
+                "Ticket reference="
+                        + saved.getTicketReference()
+        );
+
+        log.info("Support ticket moved into review: ticketId={} reviewedByUserId={}", saved.getId(), actorUserId);
+
+        return SupportTicketResponse.from(saved);
+    }
+
+    @Override
+    @Transactional
+    public SupportTicketResponse rejectTicket(
+            Long ticketId,
+            RejectSupportTicketRequest request
+    ) {
+        Long actorUserId = currentUserService.getCurrentUserId();
+
+        SupportTicket ticket = findTicket(ticketId);
+
+        boolean canReject = ticket.getStatus()
+                        == SupportTicket.TicketStatus.OPEN
+                        || ticket.getStatus()
+                        == SupportTicket.TicketStatus.IN_REVIEW;
+
+        if (!canReject) {
+            throw new SupportTicketStateException("Only OPEN or IN_REVIEW tickets can be rejected.");
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+
+        ticket.setStatus(SupportTicket.TicketStatus.REJECTED);
+
+        ticket.setRejectedByUserId(actorUserId);
+        ticket.setRejectedAt(now);
+        ticket.setRejectionReason(
+                request.getRejectionReason().trim()
+        );
+        ticket.setUpdatedAt(now);
+
+        SupportTicket saved = ticketRepository.saveAndFlush(ticket);
+
+        auditService.recordSuccess(
+                ProcurementAuditEvent.AuditEventType
+                        .SUPPORT_TICKET_REJECTED,
+                saved.getTenderId(),
+                saved.getBidId(),
+                actorUserId,
+                "Support ticket rejected",
+                "Ticket reference="
+                        + saved.getTicketReference()
+                        + ", reason="
+                        + saved.getRejectionReason()
+        );
+
+        log.info(
+                "Support ticket rejected: ticketId={} rejectedByUserId={}",
+                saved.getId(),
+                actorUserId
+        );
+
+        return SupportTicketResponse.from(saved);
     }
 
     private SupportTicket findTicket(Long ticketId) {
