@@ -54,6 +54,27 @@ public class ProcurementAuditServiceImpl implements ProcurementAuditService {
         );
     }
 
+    @Override
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void recordRejected(
+            ProcurementAuditEvent.AuditEventType eventType,
+            Long tenderId,
+            Long bidId,
+            Long actorUserId,
+            String summary,
+            String details
+    ) {
+        record(
+                eventType,
+                tenderId,
+                bidId,
+                actorUserId,
+                ProcurementAuditEvent.AuditResult.REJECTED,
+                summary,
+                details
+        );
+    }
+
     private void record(
             ProcurementAuditEvent.AuditEventType eventType,
             Long tenderId,
