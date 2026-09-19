@@ -1,6 +1,7 @@
 package com.kasibridge.procurement.controller;
 
 import com.kasibridge.procurement.dto.*;
+import com.kasibridge.procurement.entity.SupportTicket;
 import com.kasibridge.procurement.service.SupportTicketService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -80,5 +81,56 @@ public class SupportTicketController {
         log.info("PATCH /api/v1/tickets/{}/reject", ticketId);
 
         return ResponseEntity.ok(service.rejectTicket(ticketId, request));
+    }
+
+    @PatchMapping("/api/v1/tickets/{ticketId}/assign")
+    public ResponseEntity<SupportTicketResponse> assignTicket(@PathVariable("ticketId") Long ticketId,
+                                                              @Valid @RequestBody AssignSupportTicketRequest request
+    ) {
+        log.info("PATCH /api/v1/tickets/{}/assign assignedToUserId={}", ticketId, request.getAssignedToUserId());
+
+        return ResponseEntity.ok(service.assignTicket(ticketId, request)
+        );
+    }
+
+    @GetMapping("/api/v1/tickets/assigned-to-me")
+    public ResponseEntity<Page<SupportTicketResponse>> getMyAssignedTickets(@PageableDefault(
+            sort = "assignedAt",
+            direction = Sort.Direction.DESC)
+            Pageable pageable
+    ) {
+        return ResponseEntity.ok(service.getMyAssignedTickets(pageable));
+    }
+
+    @GetMapping("/api/v1/tickets/assigned-to-me/status/{status}")
+    public ResponseEntity<Page<SupportTicketResponse>> getMyAssignedTicketsByStatus(@PathVariable("status")
+                                                                                        SupportTicket.TicketStatus status,
+                                                                                    @PageableDefault(
+                                                                                            sort = "assignedAt",
+                                                                                            direction = Sort.Direction.DESC)
+                                                                                    Pageable pageable) {
+        return ResponseEntity.ok(
+                service.getMyAssignedTicketsByStatus(
+                        status,
+                        pageable
+                )
+        );
+    }
+
+    @GetMapping("/api/v1/tickets/unassigned")
+    public ResponseEntity<Page<SupportTicketResponse>> getUnassignedTickets(@PageableDefault(sort = "createdAt",
+            direction = Sort.Direction.ASC)
+            Pageable pageable
+    ) {
+        return ResponseEntity.ok(service.getUnassignedTickets(pageable));
+    }
+
+    @PatchMapping("/api/v1/tickets/{ticketId}/return-to-queue")
+    public ResponseEntity<SupportTicketResponse> returnTicketToQueue(@PathVariable Long ticketId,
+                                                                     @Valid
+                                                                     @RequestBody ReturnSupportTicketToQueueRequest request) {
+
+        return ResponseEntity.ok(service.returnTicketToQueue(ticketId, request)
+        );
     }
 }

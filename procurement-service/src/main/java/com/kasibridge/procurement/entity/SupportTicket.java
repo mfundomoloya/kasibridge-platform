@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 @Entity
 @Table(
@@ -17,8 +18,10 @@ import java.time.LocalDateTime;
                 @Index(name = "idx_ticket_contact_phone", columnList = "contact_phone_number"),
                 @Index(name = "idx_ticket_business_name", columnList = "business_name_snapshot"),
                 @Index(name = "idx_ticket_type", columnList = "ticket_type"),
-                @Index(name = "idx_ticket_status", columnList = "status")}
-        )
+                @Index(name = "idx_ticket_status", columnList = "status"),
+                @Index(name = "idx_support_ticket_assigned_to_user_id", columnList = "assigned_to_user_id"),
+                @Index(name = "idx_support_ticket_assignment_source", columnList = "assignment_source")
+        })
 @Getter
 @Setter
 @Builder
@@ -73,6 +76,22 @@ public class SupportTicket {
 
     @Column(name = "response", length = 3000)
     private String response;
+
+    @Column(name = "assigned_to_user_id")
+    private Long assignedToUserId;
+
+    @Column(name = "assigned_by_user_id")
+    private Long assignedByUserId;
+
+    @Column(name = "assigned_at")
+    private OffsetDateTime assignedAt;
+
+    @Column(name = "assignment_reason", length = 1000)
+    private String assignmentReason;
+
+    @Column(name = "assignment_source", length = 30)
+    @Enumerated(EnumType.STRING)
+    private AssignmentSource assignmentSource;
 
     @Column(name = "reviewed_by_user_id")
     private Long reviewedByUserId;
@@ -143,4 +162,9 @@ public class SupportTicket {
         REJECTED
     }
 
+    public enum AssignmentSource {
+        MANUAL,
+        AI_ROUTING,
+        SYSTEM_FALLBACK
+    }
 }

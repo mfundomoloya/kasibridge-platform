@@ -5,6 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 @Data
 @Builder
@@ -26,6 +27,12 @@ public class SupportTicketResponse {
     private String subject;
     private String description;
     private String response;
+
+    private Long assignedToUserId;
+    private Long assignedByUserId;
+    private OffsetDateTime assignedAt;
+    private String assignmentReason;
+    private SupportTicket.AssignmentSource assignmentSource;
 
     private Long reviewedByUserId;
     private LocalDateTime reviewStartedAt;
@@ -62,6 +69,11 @@ public class SupportTicketResponse {
                 .subject(ticket.getSubject())
                 .description(ticket.getDescription())
                 .response(ticket.getResponse())
+                .assignedToUserId(ticket.getAssignedToUserId())
+                .assignedByUserId(ticket.getAssignedByUserId())
+                .assignedAt(ticket.getAssignedAt())
+                .assignmentReason(ticket.getAssignmentReason())
+                .assignmentSource(ticket.getAssignmentSource())
                 .reviewedByUserId(ticket.getReviewedByUserId())
                 .reviewStartedAt(ticket.getReviewStartedAt())
                 .respondedByUserId(ticket.getRespondedByUserId())

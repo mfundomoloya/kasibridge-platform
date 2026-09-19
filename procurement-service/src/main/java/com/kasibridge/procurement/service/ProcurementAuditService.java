@@ -26,6 +26,15 @@ public interface ProcurementAuditService {
             String details
     );
 
+    void recordRejected(
+            ProcurementAuditEvent.AuditEventType eventType,
+            Long tenderId,
+            Long bidId,
+            Long actorUserId,
+            String summary,
+            String details
+    );
+
     Page<ProcurementAuditResponse> getAuditEvents(Pageable pageable);
     Page<ProcurementAuditResponse> getAuditEventsByTender(Long tenderId, Pageable pageable);
     Page<ProcurementAuditResponse> getAuditEventsByBid(Long bidId, Pageable pageable);

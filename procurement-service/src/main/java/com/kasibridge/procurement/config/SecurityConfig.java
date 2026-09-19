@@ -4,6 +4,7 @@ import com.kasibridge.security.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -119,6 +120,28 @@ public class SecurityConfig {
                                 )
                                 .hasAnyRole(
                                         "PLATFORM_ADMIN", "ADJUDICATOR", "SPECIFICATION_OFFICER")
+
+
+                                .requestMatchers(
+                                "/api/v1/tickets/*/assign",
+                                "/api/v1*tickets/unassigned"
+                                )
+                                .hasAnyRole("PLATFORM_ADMIN")
+
+                                .requestMatchers(
+                                        HttpMethod.GET,
+                                        "/api/v1/tickets/unassigned"
+                                )
+                                .hasRole("PLATFORM_ADMIN")
+
+
+                                .requestMatchers(
+                                        HttpMethod.GET,
+                                        "/api/v1/tickets/assigned-to-me",
+                                        "/api/v1/tickets/assigned-to-me/status/*"
+                                )
+                                .hasAnyRole("SPECIFICATION_OFFICER", "ADJUDICATOR", "PLATFORM_ADMIN")
+
 
                                 //Ticket logging
                                 .requestMatchers(

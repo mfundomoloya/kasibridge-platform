@@ -1,6 +1,7 @@
 package com.kasibridge.procurement.service;
 
 import com.kasibridge.procurement.dto.*;
+import com.kasibridge.procurement.entity.SupportTicket;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -23,4 +24,14 @@ public interface SupportTicketService {
     SupportTicketResponse startReview(Long ticketId);
 
     SupportTicketResponse rejectTicket(Long ticketId, RejectSupportTicketRequest request);
+
+    SupportTicketResponse assignTicket(Long ticketId, AssignSupportTicketRequest request);
+
+    Page<SupportTicketResponse> getMyAssignedTickets(Pageable pageable);
+
+    Page<SupportTicketResponse> getMyAssignedTicketsByStatus(SupportTicket.TicketStatus status, Pageable pageable);
+
+    Page<SupportTicketResponse> getUnassignedTickets(Pageable pageable);
+
+    SupportTicketResponse returnTicketToQueue(Long ticketId, ReturnSupportTicketToQueueRequest request);
 }

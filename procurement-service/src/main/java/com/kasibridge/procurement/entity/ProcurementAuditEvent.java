@@ -70,8 +70,10 @@ public class ProcurementAuditEvent {
 
     public enum AuditResult {
         SUCCESS,
-        FAILED
+        FAILED,
+        REJECTED
     }
+
 
     public enum AuditEventType {
         TENDER_CREATED,
@@ -103,7 +105,12 @@ public class ProcurementAuditEvent {
         PROCUREMENT_ANOMALY_TRANSITION_REJECTED,
 
         SUPPORT_TICKET_CREATED,
+        SUPPORT_TICKET_ASSIGNED,
+        SUPPORT_TICKET_REASSIGNED,
+        SUPPORT_TICKET_ASSIGNMENT_REJECTED,
+        SUPPORT_TICKET_REASSIGNMENT_BLOCKED,
         SUPPORT_TICKET_REVIEW_STARTED,
+        SUPPORT_TICKET_RETURNED_TO_QUEUE,
         SUPPORT_TICKET_REJECTED,
         SUPPORT_TICKET_RESPONDED,
         SUPPORT_TICKET_CLOSED,
