@@ -431,7 +431,7 @@ public class SupportTicketAiAssessmentServiceImpl implements SupportTicketAiAsse
         }
     }
 
-        private String resolveApprovedResponse(SupportTicketAiAssessment assessment, ApproveTicketAiAssessmentRequest request) {
+    private String resolveApprovedResponse(SupportTicketAiAssessment assessment, ApproveTicketAiAssessmentRequest request) {
 
             if (request != null
 
@@ -448,8 +448,7 @@ public class SupportTicketAiAssessmentServiceImpl implements SupportTicketAiAsse
                             + "Provide an approved response explicitly.");
         }
 
-        private boolean isEditedResponse(SupportTicketAiAssessment assessment, ApproveTicketAiAssessmentRequest request)
-        {
+        private boolean isEditedResponse(SupportTicketAiAssessment assessment, ApproveTicketAiAssessmentRequest request) {
 
             if (request == null || !hasText(request.getApprovedResponse())) {
                 return false;

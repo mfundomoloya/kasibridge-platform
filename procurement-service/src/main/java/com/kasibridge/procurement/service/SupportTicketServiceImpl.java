@@ -113,15 +113,12 @@ public class SupportTicketServiceImpl implements SupportTicketService{
 
         Long actorUserId = currentUserService.getCurrentUserId();
 
-        SupportTicket ticket = findTicket(ticketId);
+        SupportTicket ticket = findTicketForUpdate(ticketId);
 
-        boolean canRespond = ticket.getStatus()
-                == SupportTicket.TicketStatus.OPEN
-                || ticket.getStatus()
-                == SupportTicket.TicketStatus.IN_REVIEW;
+        assertCurrentUserCanHandleTicket(ticket, actorUserId);
 
-        if (!canRespond) {
-            throw new SupportTicketStateException("Only OPEN or IN_REVIEW tickets can be responded to.");
+        if(ticket.getStatus() != SupportTicket.TicketStatus.IN_REVIEW){
+            throw new SupportTicketStateException("Only IN_REVIEW tickets can be responded to.");
         }
 
         boolean publicClarification = ticket.getTicketType() == SupportTicket.TicketType.CLARIFICATION_REQUEST;
@@ -144,6 +141,12 @@ public class SupportTicketServiceImpl implements SupportTicketService{
                 actorUserId,
                 "Support ticket responded",
                 "Ticket reference=" + saved.getTicketReference()
+                        + ", assignedToUserId="
+                        + saved.getAssignedToUserId()
+                        + ", reviewedByUserId="
+                        + saved.getReviewedByUserId()
+                        + ", publicClarification="
+                        + saved.isPublicClarification()
         );
 
         queueTicketRespondedNotification(saved);
@@ -169,7 +172,7 @@ public class SupportTicketServiceImpl implements SupportTicketService{
     public SupportTicketResponse closeTicket(Long ticketId, CloseTicketRequest request) {
         Long actorUserId = currentUserService.getCurrentUserId();
 
-        SupportTicket ticket = findTicket(ticketId);
+        SupportTicket ticket = findTicketForUpdate(ticketId);
 
         assertCurrentUserCanHandleTicket(ticket, actorUserId);
 
@@ -181,9 +184,9 @@ public class SupportTicketServiceImpl implements SupportTicketService{
 
         ticket.setStatus(SupportTicket.TicketStatus.CLOSED);
         ticket.setClosedByUserId(actorUserId);
-        ticket.setClosedAt(LocalDateTime.now());
-        ticket.setUpdatedAt(now);
+        ticket.setClosedAt(now);
         ticket.setClosureNotes(request.getClosureNotes().trim());
+        ticket.setUpdatedAt(now);
 
         SupportTicket saved = ticketRepository.save(ticket);
 
@@ -196,8 +199,15 @@ public class SupportTicketServiceImpl implements SupportTicketService{
                 actorUserId,
                 "Support ticket closed",
                 "Ticket reference=" + saved.getTicketReference()
+                        + ", assignedToUserId="
+                        + saved.getAssignedToUserId()
+                        + ", respondedByUserId="
+                        + saved.getRespondedByUserId()
+                        + ", closureNotes="
+                        + saved.getClosureNotes()
         );
 
+        queueTicketClosedNotification(saved);
         return SupportTicketResponse.from(saved);
     }
 
@@ -256,17 +266,12 @@ public class SupportTicketServiceImpl implements SupportTicketService{
     public SupportTicketResponse rejectTicket(Long ticketId, RejectSupportTicketRequest request) {
         Long actorUserId = currentUserService.getCurrentUserId();
 
-        SupportTicket ticket = findTicket(ticketId);
+        SupportTicket ticket = findTicketForUpdate(ticketId);
 
         assertCurrentUserCanHandleTicket(ticket, actorUserId);
-
-        boolean canReject = ticket.getStatus()
-                        == SupportTicket.TicketStatus.OPEN
-                        || ticket.getStatus()
-                        == SupportTicket.TicketStatus.IN_REVIEW;
-
-        if (!canReject) {
-            throw new SupportTicketStateException("Only OPEN or IN_REVIEW tickets can be rejected.");
+        if (ticket.getStatus()
+                != SupportTicket.TicketStatus.IN_REVIEW) {
+            throw new SupportTicketStateException("Only IN_REVIEW tickets can be rejected.");
         }
 
         LocalDateTime now = LocalDateTime.now();
