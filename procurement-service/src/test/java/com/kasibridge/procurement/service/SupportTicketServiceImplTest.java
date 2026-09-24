@@ -1,10 +1,12 @@
 package com.kasibridge.procurement.service;
 
 import com.kasibridge.procurement.dto.AssignSupportTicketRequest;
+import com.kasibridge.procurement.dto.RespondToTicketRequest;
 import com.kasibridge.procurement.dto.ReturnSupportTicketToQueueRequest;
 import com.kasibridge.procurement.dto.SupportTicketResponse;
 import com.kasibridge.procurement.entity.ProcurementAuditEvent;
 import com.kasibridge.procurement.entity.SupportTicket;
+import com.kasibridge.procurement.exception.ProcurementAuthorizationException;
 import com.kasibridge.procurement.exception.SupportTicketStateException;
 import com.kasibridge.procurement.repository.BidRepository;
 import com.kasibridge.procurement.repository.NotificationOutboxRepository;
@@ -204,6 +206,9 @@ class SupportTicketServiceImplTest {
                 ticket.getAssignedToUserId()
         );
 
+        assertNotNull(ticket.getReviewStartedAt());
+        assertNotNull(ticket.getUpdatedAt());
+
         verify(ticketRepository)
                 .findByIdForUpdate(ticketId);
 
@@ -385,5 +390,233 @@ class SupportTicketServiceImplTest {
                 .saveAndFlush(any(SupportTicket.class));
 
         verifyNoInteractions(auditService);
+    }
+
+    @Test
+    void respondToTicket_shouldRejectOpenTicket() {
+        Long ticketId = 31L;
+        Long assignedUserId = 5L;
+
+        SupportTicket ticket =
+                SupportTicket.builder()
+                        .ticketReference("KB-TICKET-OPEN001")
+                        .tenderId(3L)
+                        .ticketType(
+                                SupportTicket.TicketType.GENERAL_SUPPORT
+                        )
+                        .status(
+                                SupportTicket.TicketStatus.OPEN
+                        )
+                        .assignedToUserId(assignedUserId)
+                        .build();
+
+        RespondToTicketRequest request =
+                new RespondToTicketRequest();
+
+        request.setResponse(
+                "The support request has been reviewed."
+        );
+
+        when(currentUserService.getCurrentUserId())
+                .thenReturn(assignedUserId);
+
+        when(currentUserService.hasRole(
+                "ROLE_PLATFORM_ADMIN"
+        )).thenReturn(false);
+
+        when(ticketRepository.findByIdForUpdate(ticketId))
+                .thenReturn(Optional.of(ticket));
+
+        SupportTicketStateException exception =
+                assertThrows(
+                        SupportTicketStateException.class,
+                        () -> supportTicketService
+                                .respondToTicket(
+                                        ticketId,
+                                        request
+                                )
+                );
+
+        assertEquals(
+                "Only IN_REVIEW tickets can be responded to.",
+                exception.getMessage()
+        );
+
+        assertEquals(
+                SupportTicket.TicketStatus.OPEN,
+                ticket.getStatus()
+        );
+
+        assertNull(ticket.getResponse());
+
+        verify(ticketRepository)
+                .findByIdForUpdate(ticketId);
+
+        verify(ticketRepository, never())
+                .save(any(SupportTicket.class));
+
+        verify(ticketRepository, never())
+                .saveAndFlush(any(SupportTicket.class));
+
+        verifyNoInteractions(auditService);
+    }
+
+    @Test
+    void respondToTicket_shouldRejectUserWhoIsNotAssigned() {
+        Long ticketId = 32L;
+
+        SupportTicket ticket =
+                SupportTicket.builder()
+                        .ticketReference("KB-TICKET-ASSIGN01")
+                        .tenderId(3L)
+                        .ticketType(
+                                SupportTicket.TicketType.GENERAL_SUPPORT
+                        )
+                        .status(
+                                SupportTicket.TicketStatus.IN_REVIEW
+                        )
+                        .assignedToUserId(5L)
+                        .reviewedByUserId(5L)
+                        .build();
+
+        RespondToTicketRequest request =
+                new RespondToTicketRequest();
+
+        request.setResponse(
+                "Attempted response by another officer."
+        );
+
+        when(currentUserService.getCurrentUserId())
+                .thenReturn(7L);
+
+        when(currentUserService.hasRole(
+                "ROLE_PLATFORM_ADMIN"
+        )).thenReturn(false);
+
+        when(ticketRepository.findByIdForUpdate(ticketId))
+                .thenReturn(Optional.of(ticket));
+
+        ProcurementAuthorizationException exception =
+                assertThrows(
+                        ProcurementAuthorizationException.class,
+                        () -> supportTicketService
+                                .respondToTicket(
+                                        ticketId,
+                                        request
+                                )
+                );
+
+        assertEquals(
+                "User is not assigned to handle this ticket.",
+                exception.getMessage()
+        );
+
+        assertNull(ticket.getResponse());
+
+        verify(ticketRepository, never())
+                .saveAndFlush(any(SupportTicket.class));
+
+        verifyNoInteractions(auditService);
+    }
+
+    @Test
+    void respondToTicket_shouldAllowAssignedOfficerForInReviewTicket() {
+        Long ticketId = 33L;
+        Long assignedUserId = 5L;
+
+        SupportTicket ticket =
+                SupportTicket.builder()
+                        .ticketReference("KB-TICKET-REVIEW01")
+                        .tenderId(3L)
+                        .ticketType(
+                                SupportTicket.TicketType.GENERAL_SUPPORT
+                        )
+                        .status(
+                                SupportTicket.TicketStatus.IN_REVIEW
+                        )
+                        .assignedToUserId(assignedUserId)
+                        .reviewedByUserId(assignedUserId)
+                        .build();
+
+        RespondToTicketRequest request =
+                new RespondToTicketRequest();
+
+        request.setResponse(
+                "The issue has been reviewed and resolved."
+        );
+
+        when(currentUserService.getCurrentUserId())
+                .thenReturn(assignedUserId);
+
+        when(currentUserService.hasRole(
+                "ROLE_PLATFORM_ADMIN"
+        )).thenReturn(false);
+
+        when(ticketRepository.findByIdForUpdate(ticketId))
+                .thenReturn(Optional.of(ticket));
+
+        when(ticketRepository.saveAndFlush(
+                any(SupportTicket.class)
+        )).thenAnswer(invocation ->
+                invocation.getArgument(0)
+        );
+
+        SupportTicketResponse response =
+                supportTicketService.respondToTicket(
+                        ticketId,
+                        request
+                );
+
+        assertEquals(
+                SupportTicket.TicketStatus.RESPONDED,
+                ticket.getStatus()
+        );
+
+        assertEquals(
+                "The issue has been reviewed and resolved.",
+                ticket.getResponse()
+        );
+
+        assertEquals(
+                Long.valueOf(assignedUserId),
+                ticket.getRespondedByUserId()
+        );
+
+        assertNotNull(ticket.getRespondedAt());
+        assertNotNull(ticket.getUpdatedAt());
+
+        assertEquals(
+                false,
+                ticket.isPublicClarification()
+        );
+
+        assertNotNull(response);
+
+        verify(ticketRepository)
+                .findByIdForUpdate(ticketId);
+
+        verify(ticketRepository)
+                .saveAndFlush(ticket);
+
+        verify(auditService)
+                .recordSuccess(
+                        eq(
+                                ProcurementAuditEvent.AuditEventType
+                                        .SUPPORT_TICKET_RESPONDED
+                        ),
+                        eq(3L),
+                        ArgumentMatchers.<Long>isNull(),
+                        eq(assignedUserId),
+                        eq("Support ticket responded"),
+                        argThat(details ->
+                                details != null
+                                        && details.contains(
+                                        "assignedToUserId=5"
+                                )
+                                        && details.contains(
+                                        "reviewedByUserId=5"
+                                )
+                        )
+                );
     }
 }
