@@ -18,6 +18,7 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Objects;
 import java.util.UUID;
 
 @Service
@@ -178,6 +179,18 @@ public class SupportTicketAiAssessmentServiceImpl implements SupportTicketAiAsse
         assessment.setApprovedByUserId(actorUserId);
         assessment.setApprovedAt(now);
 
+        if (!Boolean.TRUE.equals(
+                request.getResponseRelevanceConfirmed()
+        )) {
+            throw new TicketAiAssessmentStateException(
+                    "The reviewer must confirm that the approved response addresses the ticket subject and description."
+            );
+        }
+
+        assessment.setResponseRelevanceConfirmed(true);
+        assessment.setResponseRelevanceConfirmedByUserId(actorUserId);
+        assessment.setResponseRelevanceConfirmedAt(now);
+        assessment.setResponseRelevanceConfirmationNotes(request.getResponseRelevanceConfirmationNotes().trim());
         assessment.setRejectedByUserId(null);
         assessment.setRejectedAt(null);
         assessment.setRejectionReason(null);
@@ -312,27 +325,46 @@ public class SupportTicketAiAssessmentServiceImpl implements SupportTicketAiAsse
 
         SupportTicketAiAssessment assessment = findAssessment(assessmentId);
 
+        if (Objects.equals(assessment.getApprovedByUserId(), actorUserId)) {
+            throw new TicketAiAssessmentStateException(
+                    "The user who approved the clarification response cannot publish the same response."
+            );
+        }
+
         assertAssessmentCanBePublished(assessment);
 
-        SupportTicket ticket = findTicket(assessment.getTicketId());
-
-        assertTicketCanReceivePublishedResponse(ticket);
-
-        RespondToTicketRequest responseRequest = new RespondToTicketRequest();
-
-        responseRequest.setResponse(assessment.getApprovedResponse().trim());
-
-        responseRequest.setPublicClarification(ticket.getTicketType() == SupportTicket.TicketType.CLARIFICATION_REQUEST);
-
-        supportTicketService.respondToTicket(ticket.getId(), responseRequest);
+        String approvedResponse =
+                assessment.getApprovedResponse();
+        if (approvedResponse == null
+                || approvedResponse.isBlank()) {
+            throw new TicketAiAssessmentStateException(
+                    "An approved response is required before publication."
+            );
+        }
+        /*
+         * This service method performs the authoritative locked checks:
+         *
+         * - ticket exists
+         * - ticket type is CLARIFICATION_REQUEST
+         * - ticket status is IN_REVIEW
+         * - actor is the assigned handler or permitted platform administrator
+         * - approved response is not blank
+         *
+         * It also:
+         *
+         * - updates the ticket to RESPONDED
+         * - sets publicClarification=true
+         * - records ticket-response and clarification-publication audits
+         * - queues the creator response and bidder-wide broadcast
+         */
+        SupportTicketResponse publishedTicket = supportTicketService.publishOfficialClarification(
+                        assessment.getTicketId(),
+                        approvedResponse.trim()
+                );
 
         LocalDateTime now = LocalDateTime.now();
 
-        assessment.setAssessmentStatus(
-                SupportTicketAiAssessment
-                        .AiAssessmentStatus
-                        .RESPONSE_PUBLISHED
-        );
+        assessment.setAssessmentStatus(SupportTicketAiAssessment.AiAssessmentStatus.RESPONSE_PUBLISHED);
 
         assessment.setPublishedByUserId(actorUserId);
         assessment.setPublishedAt(now);
@@ -341,26 +373,26 @@ public class SupportTicketAiAssessmentServiceImpl implements SupportTicketAiAsse
 
         auditService.recordSuccess(
                 ProcurementAuditEvent.AuditEventType.SUPPORT_TICKET_AI_RESPONSE_PUBLISHED,
-                ticket.getTenderId(),
-                ticket.getBidId(),
+                publishedTicket.getTenderId(),
+                publishedTicket.getBidId(),
                 actorUserId,
                 "Approved AI ticket response published",
                 "Assessment reference="
                         + saved.getAssessmentReference()
                         + ", ticket reference="
-                        + ticket.getTicketReference()
+                        + publishedTicket.getTicketReference()
                         + ", ticket type="
-                        + ticket.getTicketType()
+                        + publishedTicket.getTicketType()
                         + ", publicClarification="
-                        + (
-                ticket.getTicketType()
-                        == SupportTicket.TicketType
-                        .CLARIFICATION_REQUEST
-        )
+                        + publishedTicket.isPublicClarification()
+                        + ", approvedByUserId="
+                        + saved.getApprovedByUserId()
+                        + ", publishedByUserId="
+                        + actorUserId
 );
 
         log.info("Approved AI response published: assessmentId={} ticketId={} publishedByUserId={}", saved.getId(),
-                ticket.getId(),
+                publishedTicket.getId(),
                 actorUserId
         );
 
@@ -503,6 +535,20 @@ public class SupportTicketAiAssessmentServiceImpl implements SupportTicketAiAsse
         if (assessment.getResolutionMode() == SupportTicketAiAssessment.AiResolutionMode.HUMAN_ONLY) {
 
             throw new TicketAiAssessmentStateException("HUMAN_ONLY assessments cannot be published as AI responses.");
+        }
+
+        if (!assessment.isResponseRelevanceConfirmed()) {
+            throw new TicketAiAssessmentStateException(
+                    "The approved response relevance must be confirmed before publication."
+            );
+        }
+
+        if (assessment.getResponseRelevanceConfirmedByUserId() == null
+                || assessment.getResponseRelevanceConfirmedAt() == null
+                || assessment.getResponseRelevanceConfirmationNotes() == null
+                || assessment.getResponseRelevanceConfirmationNotes().isBlank()) {
+
+            throw new TicketAiAssessmentStateException("The response relevance confirmation is incomplete.");
         }
     }
 

@@ -34,4 +34,6 @@ public interface SupportTicketService {
     Page<SupportTicketResponse> getUnassignedTickets(Pageable pageable);
 
     SupportTicketResponse returnTicketToQueue(Long ticketId, ReturnSupportTicketToQueueRequest request);
+
+    SupportTicketResponse publishOfficialClarification(Long ticketId, String approvedResponse);
 }

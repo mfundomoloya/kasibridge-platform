@@ -118,6 +118,18 @@ public class SupportTicketAiAssessment {
     @Column(name = "approved_at")
     private LocalDateTime approvedAt;
 
+    @Column(name = "response_relevance_confirmed")
+    private boolean responseRelevanceConfirmed;
+
+    @Column(name = "response_relevance_confirmed_by_user_id")
+    private Long responseRelevanceConfirmedByUserId;
+
+    @Column(name = "response_relevance_confirmed_at")
+    private LocalDateTime responseRelevanceConfirmedAt;
+
+    @Column(name = "response_relevance_confirmation_notes", length = 1000)
+    private String responseRelevanceConfirmationNotes;
+
     @Column(name = "published_by_user_id")
     private Long publishedByUserId;
 

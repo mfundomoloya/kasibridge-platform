@@ -117,11 +117,16 @@ public class SupportTicketServiceImpl implements SupportTicketService{
 
         assertCurrentUserCanHandleTicket(ticket, actorUserId);
 
+        if (ticket.getTicketType()
+                == SupportTicket.TicketType.CLARIFICATION_REQUEST) {
+            throw new SupportTicketStateException(
+                    "Clarification requests must be published through the official clarification approval workflow."
+            );
+        }
+
         if(ticket.getStatus() != SupportTicket.TicketStatus.IN_REVIEW){
             throw new SupportTicketStateException("Only IN_REVIEW tickets can be responded to.");
         }
-
-        boolean publicClarification = ticket.getTicketType() == SupportTicket.TicketType.CLARIFICATION_REQUEST;
 
         LocalDateTime now = LocalDateTime.now();
 
@@ -129,7 +134,8 @@ public class SupportTicketServiceImpl implements SupportTicketService{
         ticket.setRespondedByUserId(actorUserId);
         ticket.setRespondedAt(now);
         ticket.setUpdatedAt(now);
-        ticket.setPublicClarification(publicClarification);
+        //Ordinary support responses must never enter the public clarification feed.
+        ticket.setPublicClarification(false);
         ticket.setStatus(SupportTicket.TicketStatus.RESPONDED);
 
         SupportTicket saved = ticketRepository.saveAndFlush(ticket);
@@ -145,24 +151,10 @@ public class SupportTicketServiceImpl implements SupportTicketService{
                         + saved.getAssignedToUserId()
                         + ", reviewedByUserId="
                         + saved.getReviewedByUserId()
-                        + ", publicClarification="
-                        + saved.isPublicClarification()
+                        + ", publicClarification=false"
         );
 
         queueTicketRespondedNotification(saved);
-
-        if (publicClarification) {
-            auditService.recordSuccess(
-                    ProcurementAuditEvent.AuditEventType.OFFICIAL_CLARIFICATION_PUBLISHED,
-                    saved.getTenderId(),
-                    saved.getBidId(),
-                    actorUserId,
-                    "Official clarification published",
-                    "Ticket reference=" + saved.getTicketReference()
-            );
-
-            queueOfficialClarificationBroadcast(saved);
-        }
 
         return SupportTicketResponse.from(saved);
     }
@@ -189,8 +181,6 @@ public class SupportTicketServiceImpl implements SupportTicketService{
         ticket.setUpdatedAt(now);
 
         SupportTicket saved = ticketRepository.save(ticket);
-
-        queueTicketClosedNotification(saved);
 
         auditService.recordSuccess(
                 ProcurementAuditEvent.AuditEventType.SUPPORT_TICKET_CLOSED,
@@ -317,12 +307,17 @@ public class SupportTicketServiceImpl implements SupportTicketService{
 
         SupportTicket ticket = findTicketForUpdate(ticketId);
 
-        assertTicketCanBeAssigned(ticket);
-
         Long requestedAssignedUserId = request.getAssignedToUserId();
         Long existingAssignedUserId = ticket.getAssignedToUserId();
 
         boolean reassignment = existingAssignedUserId != null;
+
+        assertTicketCanBeAssigned(
+                ticket,
+                actorUserId,
+                requestedAssignedUserId,
+                reassignment
+        );
 
         if (reassignment && ticket.getStatus() == SupportTicket.TicketStatus.IN_REVIEW) {
 
@@ -341,7 +336,17 @@ public class SupportTicketServiceImpl implements SupportTicketService{
                 existingAssignedUserId,
                 requestedAssignedUserId
         )) {
-            throw new SupportTicketStateException("Ticket is already assigned to user ID: " + requestedAssignedUserId);
+            auditRejectedTicketAssignment(
+                    ticket,
+                    actorUserId,
+                    requestedAssignedUserId,
+                    true,
+                    "Ticket is already assigned to the requested user"
+            );
+            throw new SupportTicketStateException(
+                    "Ticket is already assigned to user ID: "
+                            + requestedAssignedUserId
+            );
         }
 
         OffsetDateTime assignmentTime = OffsetDateTime.now();
@@ -519,6 +524,79 @@ public class SupportTicketServiceImpl implements SupportTicketService{
                 previousReviewedByUserId,
                 actorUserId
         );
+
+        return SupportTicketResponse.from(saved);
+    }
+
+    @Override
+    @Transactional
+    public SupportTicketResponse publishOfficialClarification(Long ticketId, String approvedResponse) {
+
+        Long actorUserId = currentUserService.getCurrentUserId();
+
+        SupportTicket ticket = findTicketForUpdate(ticketId);
+
+        assertCurrentUserCanHandleTicket(ticket, actorUserId);
+
+        if (ticket.getTicketType() != SupportTicket.TicketType.CLARIFICATION_REQUEST) {
+
+            throw new SupportTicketStateException("Only CLARIFICATION_REQUEST tickets can be published as official clarifications.");
+        }
+
+        if (ticket.getStatus() != SupportTicket.TicketStatus.IN_REVIEW) {
+
+            throw new SupportTicketStateException("Only IN_REVIEW clarification requests can be published.");
+        }
+
+        if (approvedResponse == null || approvedResponse.isBlank()) {
+
+            throw new SupportTicketStateException("An approved clarification response is required.");
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+
+        ticket.setResponse(approvedResponse.trim());
+
+        ticket.setRespondedByUserId(actorUserId);
+        ticket.setRespondedAt(now);
+        ticket.setUpdatedAt(now);
+        ticket.setPublicClarification(true);
+
+        ticket.setStatus(SupportTicket.TicketStatus.RESPONDED);
+
+        SupportTicket saved = ticketRepository.saveAndFlush(ticket);
+
+        auditService.recordSuccess(
+                ProcurementAuditEvent.AuditEventType
+                        .SUPPORT_TICKET_RESPONDED,
+                saved.getTenderId(),
+                saved.getBidId(),
+                actorUserId,
+                "Support ticket responded",
+                "Ticket reference="
+                        + saved.getTicketReference()
+                        + ", ticketType="
+                        + saved.getTicketType()
+                        + ", assignedToUserId="
+                        + saved.getAssignedToUserId()
+                        + ", reviewedByUserId="
+                        + saved.getReviewedByUserId()
+        );
+
+        auditService.recordSuccess(
+                ProcurementAuditEvent.AuditEventType
+                        .OFFICIAL_CLARIFICATION_PUBLISHED,
+                saved.getTenderId(),
+                saved.getBidId(),
+                actorUserId,
+                "Official clarification published",
+                "Ticket reference="
+                        + saved.getTicketReference()
+                        + ", publicClarification=true"
+        );
+
+        queueTicketRespondedNotification(saved);
+        queueOfficialClarificationBroadcast(saved);
 
         return SupportTicketResponse.from(saved);
     }
@@ -733,18 +811,34 @@ public class SupportTicketServiceImpl implements SupportTicketService{
         );
     }
 
-    private void assertTicketCanBeAssigned(SupportTicket ticket) {
-        if (ticket.getStatus() == SupportTicket.TicketStatus.CLOSED) {
-            throw new SupportTicketStateException("Closed tickets cannot be assigned or reassigned.");
+    private void assertTicketCanBeAssigned(SupportTicket ticket,
+                                           Long actorUserId,
+                                           Long requestedAssignedUserId,
+                                           boolean reassignment) {
+
+        String rejectionReason = switch (ticket.getStatus()) {
+            case CLOSED ->
+                    "Closed tickets cannot be assigned or reassigned.";
+            case REJECTED ->
+                    "Rejected tickets cannot be assigned or reassigned.";
+            case RESPONDED ->
+                    "Responded tickets cannot be assigned or reassigned.";
+            default -> null;
+        };
+
+        if (rejectionReason == null) {
+            return;
         }
 
-        if (ticket.getStatus() == SupportTicket.TicketStatus.REJECTED) {
-            throw new SupportTicketStateException("Rejected tickets cannot be assigned or reassigned.");
-        }
+        auditRejectedTicketAssignment(
+                ticket,
+                actorUserId,
+                requestedAssignedUserId,
+                reassignment,
+                rejectionReason
+        );
 
-        if (ticket.getStatus() == SupportTicket.TicketStatus.RESPONDED) {
-            throw new SupportTicketStateException("Responded tickets cannot be assigned or reassigned.");
-        }
+        throw new SupportTicketStateException(rejectionReason);
     }
 
     private void assertCurrentUserCanHandleTicket(SupportTicket ticket, Long actorUserId) {
@@ -784,6 +878,40 @@ public class SupportTicketServiceImpl implements SupportTicketService{
                         + ", requestedAssignedToUserId="
                         + requestedAssignedUserId
                         + ", reason=Ticket is under active review"
+        );
+    }
+
+    private void auditRejectedTicketAssignment(SupportTicket ticket,Long actorUserId,Long requestedAssignedUserId,
+                                               boolean reassignment,
+                                               String rejectionReason
+    ) {
+        ProcurementAuditEvent.AuditEventType eventType =
+                reassignment
+                        ? ProcurementAuditEvent.AuditEventType
+                        .SUPPORT_TICKET_REASSIGNMENT_BLOCKED
+                        : ProcurementAuditEvent.AuditEventType
+                        .SUPPORT_TICKET_ASSIGNMENT_REJECTED;
+
+        auditService.recordRejected(
+                eventType,
+                ticket.getTenderId(),
+                ticket.getBidId(),
+                actorUserId,
+                reassignment
+                        ? "Support ticket reassignment blocked"
+                        : "Support ticket assignment rejected",
+                "Ticket reference="
+                        + ticket.getTicketReference()
+                        + ", ticketId="
+                        + ticket.getId()
+                        + ", status="
+                        + ticket.getStatus()
+                        + ", currentAssignedToUserId="
+                        + ticket.getAssignedToUserId()
+                        + ", requestedAssignedToUserId="
+                        + requestedAssignedUserId
+                        + ", reason="
+                        + rejectionReason
         );
     }
 }
