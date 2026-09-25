@@ -31,6 +31,11 @@ public class SupportTicketAiAssessmentResponse {
     private Long approvedByUserId;
     private LocalDateTime approvedAt;
 
+    private boolean responseRelevanceConfirmed;
+    private Long responseRelevanceConfirmedByUserId;
+    private LocalDateTime responseRelevanceConfirmedAt;
+    private String responseRelevanceConfirmationNotes;
+
     private Long publishedByUserId;
     private LocalDateTime publishedAt;
 

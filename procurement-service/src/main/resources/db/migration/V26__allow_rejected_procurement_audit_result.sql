@@ -1,12 +1,15 @@
-ALTER TABLE procurement_audit_events
-DROP CONSTRAINT IF EXISTS procurement_audit_events_result_check;
+ALTER TABLE support_ticket_ai_assessments
+    ADD COLUMN IF NOT EXISTS
+    response_relevance_confirmed BOOLEAN NOT NULL DEFAULT FALSE;
 
-ALTER TABLE procurement_audit_events
-    ADD CONSTRAINT procurement_audit_events_result_check
-        CHECK (
-            result IN (
-                       'SUCCESS',
-                       'FAILURE',
-                       'REJECTED'
-                )
-            );
+ALTER TABLE support_ticket_ai_assessments
+    ADD COLUMN IF NOT EXISTS
+    response_relevance_confirmed_by_user_id BIGINT;
+
+ALTER TABLE support_ticket_ai_assessments
+    ADD COLUMN IF NOT EXISTS
+    response_relevance_confirmed_at TIMESTAMP;
+
+ALTER TABLE support_ticket_ai_assessments
+    ADD COLUMN IF NOT EXISTS
+    response_relevance_confirmation_notes VARCHAR(1000);

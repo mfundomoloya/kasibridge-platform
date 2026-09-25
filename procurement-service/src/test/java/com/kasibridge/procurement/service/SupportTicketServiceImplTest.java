@@ -22,6 +22,7 @@ import org.springframework.context.ApplicationEventPublisher;
 
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
+import java.util.Collections;
 import java.util.Optional;
 
 import static javax.management.Query.eq;
@@ -30,10 +31,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.argThat;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class SupportTicketServiceImplTest {
@@ -618,5 +616,307 @@ class SupportTicketServiceImplTest {
                                 )
                         )
                 );
+    }
+
+    @Test
+    void respondToTicket_shouldRejectClarificationRequest() {
+        Long ticketId = 40L;
+        Long assignedUserId = 5L;
+
+        SupportTicket ticket =
+                SupportTicket.builder()
+                        .ticketReference("KB-TICKET-CLAR001")
+                        .tenderId(3L)
+                        .ticketType(
+                                SupportTicket.TicketType
+                                        .CLARIFICATION_REQUEST
+                        )
+                        .status(
+                                SupportTicket.TicketStatus.IN_REVIEW
+                        )
+                        .assignedToUserId(assignedUserId)
+                        .reviewedByUserId(assignedUserId)
+                        .build();
+
+        RespondToTicketRequest request =
+                new RespondToTicketRequest();
+
+        request.setResponse(
+                "Phased delivery is permitted."
+        );
+
+        when(currentUserService.getCurrentUserId())
+                .thenReturn(assignedUserId);
+
+        when(currentUserService.hasRole(
+                "ROLE_PLATFORM_ADMIN"
+        )).thenReturn(false);
+
+        when(ticketRepository.findByIdForUpdate(ticketId))
+                .thenReturn(Optional.of(ticket));
+
+        SupportTicketStateException exception =
+                assertThrows(
+                        SupportTicketStateException.class,
+                        () -> supportTicketService.respondToTicket(
+                                ticketId,
+                                request
+                        )
+                );
+
+        assertEquals(
+                "Clarification requests must be published through "
+                        + "the official clarification approval workflow.",
+                exception.getMessage()
+        );
+
+        assertNull(ticket.getResponse());
+        assertEquals(
+                SupportTicket.TicketStatus.IN_REVIEW,
+                ticket.getStatus()
+        );
+
+        verify(ticketRepository, never())
+                .saveAndFlush(any(SupportTicket.class));
+
+        verifyNoInteractions(auditService);
+    }
+
+    @Test
+    void publishOfficialClarification_shouldRejectGeneralSupportTicket() {
+        Long ticketId = 41L;
+        Long assignedUserId = 5L;
+
+        SupportTicket ticket =
+                SupportTicket.builder()
+                        .ticketReference("KB-TICKET-SUPPORT01")
+                        .tenderId(3L)
+                        .ticketType(
+                                SupportTicket.TicketType.GENERAL_SUPPORT
+                        )
+                        .status(
+                                SupportTicket.TicketStatus.IN_REVIEW
+                        )
+                        .assignedToUserId(assignedUserId)
+                        .reviewedByUserId(assignedUserId)
+                        .build();
+
+        when(currentUserService.getCurrentUserId())
+                .thenReturn(assignedUserId);
+
+        when(currentUserService.hasRole(
+                "ROLE_PLATFORM_ADMIN"
+        )).thenReturn(false);
+
+        when(ticketRepository.findByIdForUpdate(ticketId))
+                .thenReturn(Optional.of(ticket));
+
+        SupportTicketStateException exception =
+                assertThrows(
+                        SupportTicketStateException.class,
+                        () -> supportTicketService
+                                .publishOfficialClarification(
+                                        ticketId,
+                                        "Approved response"
+                                )
+                );
+
+        assertEquals(
+                "Only CLARIFICATION_REQUEST tickets can be "
+                        + "published as official clarifications.",
+                exception.getMessage()
+        );
+
+        assertEquals(false, ticket.isPublicClarification());
+
+        verify(ticketRepository, never())
+                .saveAndFlush(any(SupportTicket.class));
+
+        verifyNoInteractions(auditService);
+    }
+
+    @Test
+    void publishOfficialClarification_shouldPublishInReviewClarification() {
+        Long ticketId = 42L;
+        Long assignedUserId = 5L;
+
+        SupportTicket ticket =
+                SupportTicket.builder()
+                        .ticketReference("KB-TICKET-CLAR002")
+                        .tenderId(3L)
+                        .ticketType(
+                                SupportTicket.TicketType
+                                        .CLARIFICATION_REQUEST
+                        )
+                        .status(
+                                SupportTicket.TicketStatus.IN_REVIEW
+                        )
+                        .assignedToUserId(assignedUserId)
+                        .reviewedByUserId(assignedUserId)
+                        .createdByUserId(8L)
+                        .contactName("Test Trader")
+                        .contactPhoneNumber("+27610000001")
+                        .contactEmail("trader@example.test")
+                        .build();
+
+        when(currentUserService.getCurrentUserId())
+                .thenReturn(assignedUserId);
+
+        when(currentUserService.hasRole(
+                "ROLE_PLATFORM_ADMIN"
+        )).thenReturn(false);
+
+        when(ticketRepository.findByIdForUpdate(ticketId))
+                .thenReturn(Optional.of(ticket));
+
+        when(ticketRepository.saveAndFlush(
+                any(SupportTicket.class)
+        )).thenAnswer(invocation ->
+                invocation.getArgument(0)
+        );
+
+        when(bidRepository.findByTenderId(3L))
+                .thenReturn(Collections.emptyList());
+
+        SupportTicketResponse response =
+                supportTicketService
+                        .publishOfficialClarification(
+                                ticketId,
+                                "Phased delivery is permitted, subject "
+                                        + "to the approved final deadline."
+                        );
+
+        assertEquals(
+                SupportTicket.TicketStatus.RESPONDED,
+                ticket.getStatus()
+        );
+
+        assertEquals(true, ticket.isPublicClarification());
+
+        assertEquals(
+                Long.valueOf(assignedUserId),
+                ticket.getRespondedByUserId()
+        );
+
+        assertNotNull(ticket.getRespondedAt());
+        assertNotNull(response);
+
+        verify(ticketRepository)
+                .findByIdForUpdate(ticketId);
+
+        verify(ticketRepository)
+                .saveAndFlush(ticket);
+
+        verify(auditService)
+                .recordSuccess(
+                        eq(
+                                ProcurementAuditEvent.AuditEventType
+                                        .OFFICIAL_CLARIFICATION_PUBLISHED
+                        ),
+                        eq(3L),
+                        ArgumentMatchers.<Long>isNull(),
+                        eq(assignedUserId),
+                        eq("Official clarification published"),
+                        argThat(details ->
+                                details != null
+                                        && details.contains(
+                                        "publicClarification=true"
+                                )
+                        )
+                );
+    }
+
+    @Test
+    void assignTicket_shouldAuditAssignmentRejected_whenUnassignedTicketIsClosed() {
+        Long ticketId = 100L;
+        Long tenderId = 200L;
+        Long bidId = 300L;
+        Long actorUserId = 400L;
+        Long requestedAssignedUserId = 500L;
+
+        AssignSupportTicketRequest request =
+                mock(AssignSupportTicketRequest.class);
+
+        SupportTicket ticket =
+                mock(SupportTicket.class);
+
+        when(currentUserService.getCurrentUserId())
+                .thenReturn(actorUserId);
+
+        when(request.getAssignedToUserId())
+                .thenReturn(requestedAssignedUserId);
+
+        when(ticketRepository.findByIdForUpdate(ticketId))
+                .thenReturn(Optional.of(ticket));
+
+        when(ticket.getId())
+                .thenReturn(ticketId);
+
+        when(ticket.getTenderId())
+                .thenReturn(tenderId);
+
+        when(ticket.getBidId())
+                .thenReturn(bidId);
+
+        when(ticket.getTicketReference())
+                .thenReturn("KB-TICKET-TEST0001");
+
+        when(ticket.getAssignedToUserId())
+                .thenReturn(null);
+
+        when(ticket.getStatus())
+                .thenReturn(SupportTicket.TicketStatus.CLOSED);
+
+        SupportTicketStateException exception =
+                assertThrows(
+                        SupportTicketStateException.class,
+                        () -> supportTicketService.assignTicket(
+                                ticketId,
+                                request
+                        )
+                );
+
+        assertEquals(
+                "Closed tickets cannot be assigned or reassigned.",
+                exception.getMessage()
+        );
+
+        verify(auditService).recordRejected(
+                eq(
+                        ProcurementAuditEvent.AuditEventType
+                                .SUPPORT_TICKET_ASSIGNMENT_REJECTED
+                ),
+                eq(tenderId),
+                eq(bidId),
+                eq(actorUserId),
+                eq("Support ticket assignment rejected"),
+                argThat(details ->
+                        details != null
+                                && details.contains(
+                                "Ticket reference=KB-TICKET-TEST0001"
+                        )
+                                && details.contains(
+                                "ticketId=" + ticketId
+                        )
+                                && details.contains(
+                                "status=CLOSED"
+                        )
+                                && details.contains(
+                                "currentAssignedToUserId=null"
+                        )
+                                && details.contains(
+                                "requestedAssignedToUserId="
+                                        + requestedAssignedUserId
+                        )
+                                && details.contains(
+                                "reason=Closed tickets cannot be assigned or reassigned."
+                        )
+                )
+        );
+
+        verify(ticketRepository, never())
+                .saveAndFlush(any(SupportTicket.class));
+
+        verifyNoInteractions(notificationOutboxService);
     }
 }
