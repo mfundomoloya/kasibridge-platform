@@ -1,16 +1,26 @@
 package com.kasibridge.procurement.service;
 
 import com.kasibridge.procurement.dto.WhatsAppDeliveryResult;
+import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
 import java.util.UUID;
 
 @Service
+@ConditionalOnProperty(name = "kasibridge.notifications.mock-whatsapp.enabled",
+        havingValue = "true",
+        matchIfMissing = false
+)
 @Slf4j
 public class MockWhatsAppProvider implements WhatsAppProvider{
 
+    @PostConstruct
+    void logProviderActivation() {
+        log.warn("Mock WhatsApp provider is active.");
+    }
     @Value("${kasibridge.notifications.mock-whatsapp.enabled:true}")
     private boolean enabled;
 
