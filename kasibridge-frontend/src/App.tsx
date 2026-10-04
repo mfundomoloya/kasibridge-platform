@@ -34,6 +34,10 @@ import {
     UnauthorizedPage,
 } from './pages/UnauthorizedPage'
 
+import {
+    TraderProfilePage,
+} from './pages/TraderProfilePage'
+
 function App() {
     return (
         <Routes>
@@ -70,6 +74,19 @@ function App() {
                         ]}
                     >
                         <TraderDashboardPage />
+                    </RoleRoute>
+                }
+            />
+
+            <Route
+                path="/profile"
+                element={
+                    <RoleRoute
+                        allowedRoles={[
+                            'ROLE_TRADER',
+                        ]}
+                    >
+                        <TraderProfilePage />
                     </RoleRoute>
                 }
             />

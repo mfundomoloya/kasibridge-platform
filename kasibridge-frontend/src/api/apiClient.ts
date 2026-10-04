@@ -7,11 +7,11 @@ import {
 } from '../utils/tokenStorage'
 
 const apiBaseUrl =
-    import.meta.env.VITE_API_BASE_URL
+    import.meta.env.VITE_AUTH_API_BASE_URL
 
 if (!apiBaseUrl) {
     throw new Error(
-        'VITE_API_BASE_URL is not configured.'
+        'VITE_AUTH_API_BASE_URL is not configured.'
     )
 }
 
