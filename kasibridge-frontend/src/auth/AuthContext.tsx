@@ -11,6 +11,7 @@ import { loginUser } from '../api/authApi'
 import type {
     AuthenticatedUser,
     LoginRequest,
+    UserRole,
 } from '../types/auth'
 
 import {
@@ -71,8 +72,21 @@ export function AuthProvider({
     )
 
     const hasRole = useCallback(
-        (role: string): boolean => {
+        (role: UserRole): boolean => {
             return user?.roles.includes(role) ?? false
+        },
+        [user]
+    )
+
+    const hasAnyRole = useCallback(
+        (roles: UserRole[]): boolean => {
+            if (!user) {
+                return false
+            }
+
+            return roles.some((role) =>
+                user.roles.includes(role)
+            )
         },
         [user]
     )
@@ -84,6 +98,7 @@ export function AuthProvider({
             login,
             logout,
             hasRole,
+            hasAnyRole,
         }),
         [
             user,
@@ -91,6 +106,7 @@ export function AuthProvider({
             login,
             logout,
             hasRole,
+            hasAnyRole,
         ]
     )
 

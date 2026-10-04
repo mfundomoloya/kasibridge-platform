@@ -2,7 +2,7 @@ import { createContext } from 'react'
 
 import type {
     AuthenticatedUser,
-    LoginRequest,
+    LoginRequest, UserRole,
 } from '../types/auth'
 
 export interface AuthContextValue {
@@ -12,7 +12,8 @@ export interface AuthContextValue {
         request: LoginRequest
     ) => Promise<void>
     logout: () => void
-    hasRole: (role: string) => boolean
+    hasRole: (role: UserRole) => boolean
+    hasAnyRole: (roles: UserRole[]) => boolean
 }
 
 export const AuthContext =

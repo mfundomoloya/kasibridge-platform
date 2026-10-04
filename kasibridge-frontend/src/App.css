@@ -181,4 +181,53 @@
     right: 0;
     border-right-color: var(--border);
   }
+
+  .status-page {
+    display: grid;
+    min-height: 100vh;
+    place-items: center;
+    padding: 24px;
+    background: #f3f6f4;
+  }
+
+  .status-card {
+    width: min(100%, 520px);
+    padding: 42px;
+    border: 1px solid #dfe6e1;
+    border-radius: 16px;
+    background: #ffffff;
+    text-align: center;
+    box-shadow: 0 18px 44px rgba(31, 57, 43, 0.08);
+  }
+
+  .status-code {
+    display: inline-block;
+    margin-bottom: 12px;
+    color: #126b47;
+    font-size: 0.82rem;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+  }
+
+  .status-card h1 {
+    margin: 0 0 14px;
+  }
+
+  .status-card p {
+    color: #68736c;
+    line-height: 1.6;
+  }
+
+  .status-actions {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 28px;
+  }
+
+  @media (max-width: 520px) {
+    .status-actions {
+      flex-direction: column;
+    }
+  }
 }

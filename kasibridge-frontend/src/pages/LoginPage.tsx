@@ -42,7 +42,7 @@ export function LoginPage() {
 
     useEffect(() => {
         if (isAuthenticated) {
-            navigate('/dashboard', {
+            navigate('/portal', {
                 replace: true,
             })
         }
@@ -63,7 +63,7 @@ export function LoginPage() {
             })
 
             navigate(
-                locationState?.from || '/dashboard',
+                locationState?.from || '/portal',
                 {
                     replace: true,
                 }

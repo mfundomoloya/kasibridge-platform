@@ -3,7 +3,14 @@ export interface LoginRequest {
     password: string
 }
 
-export type UserRole = string
+export type UserRole =
+    | 'ROLE_ANALYST'
+    | 'ROLE_PLATFORM_ADMIN'
+    | 'ROLE_SYSTEM'
+    | 'ROLE_TRADER'
+    | 'ROLE_SPECIFICATION_OFFICER'
+    | 'ROLE_EVALUATOR'
+    | 'ROLE_ADJUDICATOR'
 
 export interface LoginResponse {
     token: string
