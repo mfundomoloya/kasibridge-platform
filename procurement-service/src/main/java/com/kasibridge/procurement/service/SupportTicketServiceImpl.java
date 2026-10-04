@@ -1,5 +1,6 @@
 package com.kasibridge.procurement.service;
 
+
 import com.kasibridge.procurement.dto.*;
 import com.kasibridge.procurement.entity.Bid;
 import com.kasibridge.procurement.entity.NotificationOutbox;
@@ -115,8 +116,6 @@ public class SupportTicketServiceImpl implements SupportTicketService{
 
         SupportTicket ticket = findTicketForUpdate(ticketId);
 
-        assertCurrentUserCanHandleTicket(ticket, actorUserId);
-
         if (ticket.getTicketType()
                 == SupportTicket.TicketType.CLARIFICATION_REQUEST) {
             throw new SupportTicketStateException(
@@ -124,8 +123,16 @@ public class SupportTicketServiceImpl implements SupportTicketService{
             );
         }
 
-        if(ticket.getStatus() != SupportTicket.TicketStatus.IN_REVIEW){
+        if (ticket.getStatus() != SupportTicket.TicketStatus.IN_REVIEW) {
             throw new SupportTicketStateException("Only IN_REVIEW tickets can be responded to.");
+        }
+
+        assertCurrentUserCanHandleTicket(ticket, actorUserId);
+
+        if (request == null
+                || request.getResponse() == null
+                || request.getResponse().isBlank()) {
+            throw new SupportTicketStateException("A support ticket response is required.");
         }
 
         LocalDateTime now = LocalDateTime.now();
@@ -180,7 +187,7 @@ public class SupportTicketServiceImpl implements SupportTicketService{
         ticket.setClosureNotes(request.getClosureNotes().trim());
         ticket.setUpdatedAt(now);
 
-        SupportTicket saved = ticketRepository.save(ticket);
+        SupportTicket saved = ticketRepository.saveAndFlush(ticket);
 
         auditService.recordSuccess(
                 ProcurementAuditEvent.AuditEventType.SUPPORT_TICKET_CLOSED,
@@ -568,23 +575,6 @@ public class SupportTicketServiceImpl implements SupportTicketService{
 
         auditService.recordSuccess(
                 ProcurementAuditEvent.AuditEventType
-                        .SUPPORT_TICKET_RESPONDED,
-                saved.getTenderId(),
-                saved.getBidId(),
-                actorUserId,
-                "Support ticket responded",
-                "Ticket reference="
-                        + saved.getTicketReference()
-                        + ", ticketType="
-                        + saved.getTicketType()
-                        + ", assignedToUserId="
-                        + saved.getAssignedToUserId()
-                        + ", reviewedByUserId="
-                        + saved.getReviewedByUserId()
-        );
-
-        auditService.recordSuccess(
-                ProcurementAuditEvent.AuditEventType
                         .OFFICIAL_CLARIFICATION_PUBLISHED,
                 saved.getTenderId(),
                 saved.getBidId(),
@@ -668,15 +658,48 @@ public class SupportTicketServiceImpl implements SupportTicketService{
     }
 
     private void queueOfficialClarificationNotification(SupportTicket ticket) {
-        String message = "Official clarification published for tender ID "
-                + ticket.getTenderId()
-                + ". Ticket reference: "
-                + ticket.getTicketReference()
-                + ". All bidders can now view the same response.";
+
+        boolean alreadyQueued =
+                notificationOutboxRepository
+                        .existsByTemplateTypeAndRelatedTicketIdAndRecipientUserId(
+                                NotificationOutbox.NotificationTemplateType
+                                        .OFFICIAL_CLARIFICATION_PUBLISHED,
+                                ticket.getId(),
+                                ticket.getCreatedByUserId()
+                        );
+
+        if (alreadyQueued) {
+            log.warn(
+                    "Skipping duplicate official clarification "
+                            + "notification for ticketId={} "
+                            + "recipientUserId={}",
+                    ticket.getId(),
+                    ticket.getCreatedByUserId()
+            );
+            return;
+        }
+
+        WhatsAppTemplateContext context = WhatsAppTemplateContext.builder()
+                        .recipientName(ticket.getContactName())
+                        .tenderId(ticket.getTenderId())
+                        .ticketId(ticket.getId())
+                        .ticketReference(
+                                ticket.getTicketReference()
+                        )
+                        .ticketSubject(ticket.getSubject())
+                        .ticketResponse(ticket.getResponse())
+                        .build();
+
+        String message = whatsAppMessageTemplateService.generateMessage(
+                        NotificationOutbox.NotificationTemplateType
+                                .OFFICIAL_CLARIFICATION_PUBLISHED,
+                        context
+                );
 
         notificationOutboxService.queueNotification(
                 NotificationOutbox.NotificationChannel.WHATSAPP,
-                NotificationOutbox.NotificationTemplateType.OFFICIAL_CLARIFICATION_PUBLISHED,
+                NotificationOutbox.NotificationTemplateType
+                        .OFFICIAL_CLARIFICATION_PUBLISHED,
                 ticket.getCreatedByUserId(),
                 ticket.getContactPhoneNumber(),
                 ticket.getContactEmail(),
@@ -720,6 +743,10 @@ public class SupportTicketServiceImpl implements SupportTicketService{
         List<Bid> bids = bidRepository.findByTenderId(ticket.getTenderId());
 
         Set<Long> notifiedUserIds = new HashSet<>();
+
+        if (ticket.getCreatedByUserId() != null) {
+            notifiedUserIds.add(ticket.getCreatedByUserId());
+        }
 
         for (Bid bid : bids) {
             try {

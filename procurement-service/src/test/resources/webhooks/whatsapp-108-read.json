@@ -1,0 +1,28 @@
+{
+  "object": "whatsapp_business_account",
+  "entry": [
+    {
+      "id": "TEST_WABA_ID",
+      "changes": [
+        {
+          "field": "messages",
+          "value": {
+            "messaging_product": "whatsapp",
+            "metadata": {
+              "display_phone_number": "27788855323",
+              "phone_number_id": "TEST_PHONE_NUMBER_ID"
+            },
+            "statuses": [
+              {
+                "id": "MOCK-WA-8DDF3A9AA836",
+                "status": "read",
+                "timestamp": "1790628043",
+                "recipient_id": "27788855323"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

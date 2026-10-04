@@ -124,7 +124,7 @@ public class SecurityConfig {
 
                                 .requestMatchers(
                                 "/api/v1/tickets/*/assign",
-                                "/api/v1*tickets/unassigned"
+                                "/api/v1/tickets/unassigned"
                                 )
                                 .hasAnyRole("PLATFORM_ADMIN")
 
@@ -157,6 +157,18 @@ public class SecurityConfig {
                                         "/api/v1/tenders/*/clarifications")
                                 .hasAnyRole("TRADER","PLATFORM_ADMIN", "SPECIFICATION_OFFICER")
 
+                                // Meta WhatsApp webhook verification and status callbacks
+
+                                .requestMatchers(
+                                HttpMethod.GET,
+                                "/api/v1/webhooks/whatsapp"
+                                )
+                                .permitAll()
+                                .requestMatchers(
+                                HttpMethod.POST,
+                                "/api/v1/webhooks/whatsapp"
+                                )
+                                .permitAll()
 
                                 //in-app notifications
 

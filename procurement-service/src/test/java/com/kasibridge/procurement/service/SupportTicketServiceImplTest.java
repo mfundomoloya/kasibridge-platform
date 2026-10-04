@@ -12,12 +12,14 @@ import com.kasibridge.procurement.repository.BidRepository;
 import com.kasibridge.procurement.repository.NotificationOutboxRepository;
 import com.kasibridge.procurement.repository.SupportTicketRepository;
 import com.kasibridge.procurement.repository.TenderRepository;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentMatchers;
+
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+
 import org.springframework.context.ApplicationEventPublisher;
 
 import java.time.LocalDateTime;
@@ -25,13 +27,23 @@ import java.time.OffsetDateTime;
 import java.util.Collections;
 import java.util.Optional;
 
-import static javax.management.Query.eq;
-import static org.mockito.ArgumentMatchers.isNull;
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.argThat;
-import static org.mockito.Mockito.*;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
+
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class SupportTicketServiceImplTest {
@@ -189,6 +201,8 @@ class SupportTicketServiceImplTest {
 
         SupportTicketResponse response = supportTicketService.startReview(ticketId);
 
+        assertNotNull(response);
+
         assertEquals(
                 SupportTicket.TicketStatus.IN_REVIEW,
                 ticket.getStatus()
@@ -310,7 +324,7 @@ class SupportTicketServiceImplTest {
                                 .SUPPORT_TICKET_RETURNED_TO_QUEUE
                 ),
                 eq(3L),
-                ArgumentMatchers.<Long>isNull(),
+                isNull(),
                 eq(assignedUserId),
                 eq(
                         "Support ticket returned to assignment queue"
@@ -583,10 +597,7 @@ class SupportTicketServiceImplTest {
         assertNotNull(ticket.getRespondedAt());
         assertNotNull(ticket.getUpdatedAt());
 
-        assertEquals(
-                false,
-                ticket.isPublicClarification()
-        );
+     assertFalse(ticket.isPublicClarification());
 
         assertNotNull(response);
 
@@ -603,7 +614,7 @@ class SupportTicketServiceImplTest {
                                         .SUPPORT_TICKET_RESPONDED
                         ),
                         eq(3L),
-                        ArgumentMatchers.<Long>isNull(),
+                        isNull(),
                         eq(assignedUserId),
                         eq("Support ticket responded"),
                         argThat(details ->
@@ -727,7 +738,7 @@ class SupportTicketServiceImplTest {
                 exception.getMessage()
         );
 
-        assertEquals(false, ticket.isPublicClarification());
+        assertFalse(ticket.isPublicClarification());
 
         verify(ticketRepository, never())
                 .saveAndFlush(any(SupportTicket.class));
@@ -791,7 +802,7 @@ class SupportTicketServiceImplTest {
                 ticket.getStatus()
         );
 
-        assertEquals(true, ticket.isPublicClarification());
+        assertTrue(ticket.isPublicClarification());
 
         assertEquals(
                 Long.valueOf(assignedUserId),
@@ -814,7 +825,7 @@ class SupportTicketServiceImplTest {
                                         .OFFICIAL_CLARIFICATION_PUBLISHED
                         ),
                         eq(3L),
-                        ArgumentMatchers.<Long>isNull(),
+                        isNull(),
                         eq(assignedUserId),
                         eq("Official clarification published"),
                         argThat(details ->

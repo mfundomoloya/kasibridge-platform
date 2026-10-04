@@ -27,7 +27,7 @@ public class NotificationOutboxServiceImpl implements  NotificationOutboxService
     private final CurrentUserService currentUserService;
 
     @Override
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Transactional
     public NotificationOutboxResponse queueNotification(NotificationOutbox.NotificationChannel channel,
                                                         NotificationOutbox.NotificationTemplateType templateType,
                                                         Long recipientUserId,
@@ -37,6 +37,15 @@ public class NotificationOutboxServiceImpl implements  NotificationOutboxService
                                                         Long relatedTenderId,
                                                         Long relatedBidId,
                                                         Long relatedTicketId) {
+        validateQueueRequest(
+                channel,
+                templateType,
+                recipientUserId,
+                recipientPhone,
+                recipientEmail,
+                message
+        );
+
         NotificationOutbox notification = NotificationOutbox.builder()
                 .notificationReference(generateNotificationReference())
                 .channel(channel)
@@ -66,33 +75,37 @@ public class NotificationOutboxServiceImpl implements  NotificationOutboxService
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Page<NotificationOutboxResponse> getNotifications(Pageable pageable) {
         return repository.findAll(pageable)
                 .map(NotificationOutboxResponse::from);
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Page<NotificationOutboxResponse> getNotificationsByStatus(NotificationOutbox.NotificationStatus status, Pageable pageable) {
         return repository.findByStatus(status, pageable)
                 .map(NotificationOutboxResponse::from);
     }
 
     @Override
+    @Transactional(readOnly = true)
     public NotificationOutboxResponse getNotificationById(Long id) {
         return NotificationOutboxResponse.from(findNotification(id));
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Page<NotificationOutboxResponse> getInAppNotifications(Pageable pageable) {
 
         if(currentUserService.hasRole("ROLE_PLATFORM_ADMIN")){
-            return repository.findByChannel(NotificationOutbox.NotificationChannel.IN_APP, pageable)
+            return repository.findByChannelAndReadAtIsNotNull(NotificationOutbox.NotificationChannel.IN_APP, pageable)
                     .map(NotificationOutboxResponse::from);
         }
 
         Long currentUserId = currentUserService.getCurrentUserId();
 
-        return repository.findByChannelAndRecipientUserId(
+        return repository.findByChannelAndRecipientUserIdAndReadAtIsNotNull(
                 NotificationOutbox.NotificationChannel.IN_APP,
                         currentUserId,
                         pageable
@@ -101,6 +114,7 @@ public class NotificationOutboxServiceImpl implements  NotificationOutboxService
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Page<NotificationOutboxResponse> getUnreadInAppNotifications(Pageable pageable) {
 
         boolean isPlatformAdmin = currentUserService.hasRole("ROLE_PLATFORM_ADMIN");
@@ -126,6 +140,7 @@ public class NotificationOutboxServiceImpl implements  NotificationOutboxService
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Page<NotificationOutboxResponse> getReadInAppNotifications(Pageable pageable) {
 
         if (currentUserService.hasRole("ROLE_PLATFORM_ADMIN")) {
@@ -145,6 +160,7 @@ public class NotificationOutboxServiceImpl implements  NotificationOutboxService
     }
 
     @Override
+    @Transactional
     public NotificationOutboxResponse markInAppNotificationRead(Long notificationId) {
         Long actorUserId = currentUserService.getCurrentUserId();
 
@@ -190,15 +206,61 @@ public class NotificationOutboxServiceImpl implements  NotificationOutboxService
     @Override
     @Transactional
     public NotificationOutboxResponse markFailed(Long id, MarkNotificationFailedRequest request) {
-        return markDeliveryFailed(
-                id,
+
+        if (request == null
+                || request.getFailureReason() == null
+                || request.getFailureReason().isBlank()) {
+            throw new NotificationOutboxException(
+                    "A notification failure reason is required."
+            );
+        }
+
+        NotificationOutbox notification =
+                findNotification(id);
+
+        if (notification.getStatus()
+                == NotificationOutbox.NotificationStatus.SENT) {
+            throw new NotificationStateException(
+                    "A sent notification cannot be marked "
+                            + "as a sending failure."
+            );
+        }
+
+        if (notification.getStatus()
+                == NotificationOutbox.NotificationStatus.CANCELLED) {
+            throw new NotificationStateException(
+                    "A cancelled notification cannot be marked as failed."
+            );
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+
+        notification.setStatus(
+                NotificationOutbox.NotificationStatus.FAILED
+        );
+        notification.setFailureReason(
                 request.getFailureReason().trim()
         );
+        notification.setRetryCount(
+                notification.getRetryCount() + 1
+        );
+        notification.setProviderMessageId(null);
+        notification.setUpdatedAt(now);
+
+        NotificationOutbox saved =
+                repository.saveAndFlush(notification);
+
+        return NotificationOutboxResponse.from(saved);
     }
 
     @Override
     @Transactional
     public NotificationOutboxResponse markSent(Long id, String providerMessageId) {
+
+        if (providerMessageId == null || providerMessageId.isBlank()) {
+            throw new NotificationOutboxException("A provider message ID is required.");
+        }
+
         NotificationOutbox notification = findNotification(id);
 
         if (notification.getStatus() == NotificationOutbox.NotificationStatus.SENT) {
@@ -213,12 +275,16 @@ public class NotificationOutboxServiceImpl implements  NotificationOutboxService
         LocalDateTime now = LocalDateTime.now();
 
         notification.setStatus(NotificationOutbox.NotificationStatus.SENT);
-        notification.setProviderMessageId(providerMessageId);
+        notification.setProviderMessageId(providerMessageId.trim());
+        notification.setDeliveryStatus(NotificationOutbox.DeliveryStatus.ACCEPTED);
+        notification.setProviderStatusTimestamp(now);
+        notification.setProviderFailureCode(null);
+        notification.setProviderFailureReason(null);
         notification.setSentAt(now);
         notification.setUpdatedAt(now);
         notification.setFailureReason(null);
 
-        NotificationOutbox saved = repository.save(notification);
+        NotificationOutbox saved = repository.saveAndFlush(notification);
 
         log.info(
                 "Notification marked as sent: id={} providerMessageId={}",
@@ -232,6 +298,11 @@ public class NotificationOutboxServiceImpl implements  NotificationOutboxService
     @Override
     @Transactional
     public NotificationOutboxResponse markDeliveryFailed(Long id, String failureReason) {
+
+        if (failureReason == null || failureReason.isBlank()) {
+            throw new NotificationOutboxException("A delivery failure reason is required.");
+        }
+
         NotificationOutbox notification = findNotification(id);
 
         if (notification.getStatus() == NotificationOutbox.NotificationStatus.SENT) {
@@ -243,15 +314,18 @@ public class NotificationOutboxServiceImpl implements  NotificationOutboxService
             throw new NotificationOutboxException("Cancelled notification cannot be marked as failed.");
         }
 
+        if (notification.getStatus() == NotificationOutbox.NotificationStatus.FAILED) {
+            throw new NotificationOutboxException("Notification has already been marked as failed.");
+        }
+
         LocalDateTime now = LocalDateTime.now();
 
-        notification.setStatus(NotificationOutbox.NotificationStatus.FAILED);
-        notification.setFailureReason(failureReason);
-        notification.setRetryCount(notification.getRetryCount() + 1);
-        notification.setProviderMessageId(null);
+        notification.setDeliveryStatus(NotificationOutbox.DeliveryStatus.FAILED);
+        notification.setProviderFailureReason(failureReason.trim());
+        notification.setProviderStatusTimestamp(now);
         notification.setUpdatedAt(now);
 
-        NotificationOutbox saved = repository.save(notification);
+        NotificationOutbox saved = repository.saveAndFlush(notification);
 
         log.warn(
                 "Notification marked as failed: id={} retryCount={} reason={}",
@@ -277,5 +351,61 @@ public class NotificationOutboxServiceImpl implements  NotificationOutboxService
                 .replace("-", "")
                 .substring(0, 8)
                 .toUpperCase();
+    }
+
+    private void validateQueueRequest(
+            NotificationOutbox.NotificationChannel channel,
+            NotificationOutbox.NotificationTemplateType templateType,
+            Long recipientUserId,
+            String recipientPhone,
+            String recipientEmail,
+            String message
+    ) {
+        if (channel == null) {
+            throw new NotificationOutboxException(
+                    "Notification channel is required."
+            );
+        }
+
+        if (templateType == null) {
+            throw new NotificationOutboxException(
+                    "Notification template type is required."
+            );
+        }
+
+        if (message == null || message.isBlank()) {
+            throw new NotificationOutboxException(
+                    "Notification message is required."
+            );
+        }
+
+        if (channel
+                == NotificationOutbox.NotificationChannel.WHATSAPP
+                && (recipientPhone == null
+                || recipientPhone.isBlank())) {
+            throw new NotificationOutboxException(
+                    "A recipient phone number is required "
+                            + "for WhatsApp notifications."
+            );
+        }
+
+        if (channel
+                == NotificationOutbox.NotificationChannel.EMAIL
+                && (recipientEmail == null
+                || recipientEmail.isBlank())) {
+            throw new NotificationOutboxException(
+                    "A recipient email address is required "
+                            + "for email notifications."
+            );
+        }
+
+        if (channel
+                == NotificationOutbox.NotificationChannel.IN_APP
+                && recipientUserId == null) {
+            throw new NotificationOutboxException(
+                    "A recipient user ID is required "
+                            + "for in-app notifications."
+            );
+        }
     }
 }

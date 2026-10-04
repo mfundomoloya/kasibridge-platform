@@ -29,10 +29,6 @@ import java.util.Map;
 @Slf4j
 public class MetaWhatsAppProvider implements WhatsAppProvider {
 
-    @PostConstruct
-    void logProviderActivation() {
-        log.info("Real Meta WhatsApp provider is active.");
-    }
     private final RestTemplate restTemplate;
 
     @Value("${kasibridge.notifications.whatsapp.graph-api-base-url:https://graph.facebook.com}")
@@ -47,31 +43,42 @@ public class MetaWhatsAppProvider implements WhatsAppProvider {
     @Value("${kasibridge.notifications.whatsapp.access-token}")
     private String accessToken;
 
+    @PostConstruct
+    void logProviderActivation() {
+        log.info("Real Meta WhatsApp provider is active.");
+    }
+
     @Override
-    public WhatsAppDeliveryResult sendMessage(
-            String recipientPhone,
-            String message
-    ) {
+    public WhatsAppDeliveryResult sendMessage(String recipientPhone, String message) {
+
+        String cleanedPhone = recipientPhone == null
+                        ? null
+                        : recipientPhone.trim();
+
+        String cleanedMessage = message == null
+                        ? null
+                        : message.trim();
+
         String validationFailure = validateConfiguration(
-                recipientPhone,
-                message
-        );
+                        cleanedPhone,
+                        cleanedMessage
+                );
 
         if (validationFailure != null) {
             return WhatsAppDeliveryResult.failure(validationFailure);
         }
 
-        String normalizedPhone = normalizePhoneNumber(recipientPhone);
+        String normalizedPhone = normalizePhoneNumber(cleanedPhone);
 
         String endpoint = String.format(
                 "%s/%s/%s/messages",
                 removeTrailingSlash(graphApiBaseUrl),
-                apiVersion,
-                phoneNumberId
+                apiVersion.trim(),
+                phoneNumberId.trim()
         );
 
         HttpHeaders headers = new HttpHeaders();
-        headers.setBearerAuth(accessToken);
+        headers.setBearerAuth(accessToken.trim());
         headers.setContentType(MediaType.APPLICATION_JSON);
 
         Map<String, Object> requestBody = Map.of(
@@ -81,7 +88,7 @@ public class MetaWhatsAppProvider implements WhatsAppProvider {
                 "type", "text",
                 "text", Map.of(
                         "preview_url", false,
-                        "body", message
+                        "body", cleanedMessage
                 )
         );
 
@@ -109,7 +116,7 @@ public class MetaWhatsAppProvider implements WhatsAppProvider {
                     responseBody
             );
 
-            if (providerMessageId == null) {
+            if (providerMessageId == null || providerMessageId.isBlank()) {
                 return WhatsAppDeliveryResult.failure(
                         "WhatsApp provider accepted the request but returned no message ID."
                 );
@@ -121,7 +128,7 @@ public class MetaWhatsAppProvider implements WhatsAppProvider {
                     maskPhoneNumber(normalizedPhone)
             );
 
-            return WhatsAppDeliveryResult.success(providerMessageId);
+            return WhatsAppDeliveryResult.success(providerMessageId.trim());
 
         } catch (HttpStatusCodeException ex) {
             log.warn(
@@ -158,10 +165,7 @@ public class MetaWhatsAppProvider implements WhatsAppProvider {
         }
     }
 
-    private String validateConfiguration(
-            String recipientPhone,
-            String message
-    ) {
+    private String validateConfiguration(String recipientPhone, String message) {
         if (graphApiBaseUrl == null || graphApiBaseUrl.isBlank()) {
             return "WhatsApp Graph API base URL is not configured.";
         }
@@ -197,9 +201,7 @@ public class MetaWhatsAppProvider implements WhatsAppProvider {
         return phoneNumber.replaceFirst("^\\+", "");
     }
 
-    private String extractProviderMessageId(
-            MetaSendMessageResponse response
-    ) {
+    private String extractProviderMessageId(MetaSendMessageResponse response) {
         if (response == null
                 || response.messages() == null
                 || response.messages().isEmpty()) {
@@ -209,9 +211,7 @@ public class MetaWhatsAppProvider implements WhatsAppProvider {
         return response.messages().get(0).id();
     }
 
-    private String buildProviderFailure(
-            HttpStatusCodeException ex
-    ) {
+    private String buildProviderFailure(HttpStatusCodeException ex) {
         String responseBody = ex.getResponseBodyAsString();
 
         if (responseBody == null || responseBody.isBlank()) {
@@ -246,9 +246,17 @@ public class MetaWhatsAppProvider implements WhatsAppProvider {
     }
 
     private String removeTrailingSlash(String value) {
-        return value.endsWith("/")
-                ? value.substring(0, value.length() - 1)
-                : value;
+        String normalizedValue = value.trim();
+
+        while (normalizedValue.endsWith("/")) {
+            normalizedValue =
+                    normalizedValue.substring(
+                            0,
+                            normalizedValue.length() - 1
+                    );
+        }
+
+        return normalizedValue;
     }
 
     private String maskPhoneNumber(String phoneNumber) {

@@ -16,7 +16,10 @@ import java.time.LocalDateTime;
                 @Index(name = "idx_notification_bid_id", columnList = "related_bid_id"),
                 @Index(name = "idx_notification_ticket_id", columnList = "related_ticket_id"),
                 @Index(name = "idx_notification_created_at", columnList = "created_at"),
-                @Index(name = "idx_notification_read_at", columnList = "read_at")}
+                @Index(name = "idx_notification_read_at", columnList = "read_at"),
+                @Index(name = "idx_notification_provider_message_id", columnList = "provider_message_id"),
+                @Index(name = "idx_notification_status_channel_created", columnList = "status, channel, created_at")}
+
         )
 
 @Getter
@@ -66,14 +69,34 @@ public class NotificationOutbox {
     @Column(name = "related_ticket_id")
     private Long relatedTicketId;
 
+    @Builder.Default
     @Column(name = "retry_count", nullable = false)
-    private int retryCount;
+    private int retryCount = 0;
 
     @Column(name = "failure_reason", length = 1000)
     private String failureReason;
 
     @Column(name = "provider_message_id", length = 100)
     private String providerMessageId;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "delivery_status", length = 30)
+    private DeliveryStatus deliveryStatus;
+
+    @Column(name = "provider_status_timestamp")
+    private LocalDateTime providerStatusTimestamp;
+
+    @Column(name = "delivered_at")
+    private LocalDateTime deliveredAt;
+
+    @Column(name = "provider_read_at")
+    private LocalDateTime providerReadAt;
+
+    @Column(name = "provider_failure_code", length = 100)
+    private String providerFailureCode;
+
+    @Column(name = "provider_failure_reason", length = 1000)
+    private String providerFailureReason;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -92,8 +115,15 @@ public class NotificationOutbox {
 
     @PrePersist
     protected void onCreate() {
-        createdAt = LocalDateTime.now();
-        updatedAt = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now();
+
+        if (createdAt == null) {
+            createdAt = now;
+        }
+
+        if (updatedAt == null) {
+            updatedAt = now;
+        }
         if (status == null) {
             status = NotificationStatus.PENDING;
         }
@@ -118,6 +148,14 @@ public class NotificationOutbox {
         SENT,
         FAILED,
         CANCELLED
+    }
+
+    public enum DeliveryStatus {
+        ACCEPTED,
+        SENT,
+        DELIVERED,
+        READ,
+        FAILED
     }
 
     public enum NotificationTemplateType {

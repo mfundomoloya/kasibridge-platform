@@ -2,12 +2,12 @@ package com.kasibridge.procurement.repository;
 
 import com.kasibridge.procurement.entity.NotificationOutbox;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 
 public interface NotificationOutboxRepository extends JpaRepository<NotificationOutbox, Long> {
     Page<NotificationOutbox> findByStatus(NotificationOutbox.NotificationStatus status, Pageable pageable);
@@ -73,4 +73,6 @@ public interface NotificationOutboxRepository extends JpaRepository<Notification
             Long relatedTicketId,
             Long recipientUserId
     );
+
+    Optional<NotificationOutbox> findByProviderMessageId(String providerMessageId);
 }

@@ -1,5 +1,6 @@
 package com.kasibridge.procurement.service;
 
+import com.kasibridge.procurement.dto.MarkNotificationFailedRequest;
 import com.kasibridge.procurement.dto.NotificationDispatchResponse;
 import com.kasibridge.procurement.dto.NotificationOutboxResponse;
 import com.kasibridge.procurement.dto.WhatsAppDeliveryResult;
@@ -33,8 +34,8 @@ public class NotificationDispatcherServiceImpl implements NotificationDispatcher
 
     @Override
     public NotificationDispatchResponse dispatchPending() {
-        List<NotificationOutbox> pendingNotifications =
-        repository.findByStatusAndChannelOrderByCreatedAtAsc(
+
+        List<NotificationOutbox> pendingNotifications = repository.findByStatusAndChannelOrderByCreatedAtAsc(
                 NotificationOutbox.NotificationStatus.PENDING,
                 NotificationOutbox.NotificationChannel.WHATSAPP,
                 PageRequest.of(0, batchSize)
@@ -58,9 +59,9 @@ public class NotificationDispatcherServiceImpl implements NotificationDispatcher
 
     @Override
     public NotificationOutboxResponse dispatchOne(Long notificationId) {
+
         NotificationOutbox notification = repository.findById(notificationId)
                 .orElseThrow(() -> new NotificationOutboxException(
-
                         "Notification not found with ID: " + notificationId
                 ));
 
@@ -81,9 +82,7 @@ public class NotificationDispatcherServiceImpl implements NotificationDispatcher
         return outboxService.getNotificationById(notificationId);
     }
 
-    private NotificationDispatchResponse dispatchBatch(
-
-List<NotificationOutbox> notifications
+    private NotificationDispatchResponse dispatchBatch(List<NotificationOutbox> notifications
     ) {
 
         List<Long> sentIds = new ArrayList<>();
@@ -108,20 +107,30 @@ List<NotificationOutbox> notifications
                     failedIds.add(notification.getId());
                 }
 
-            } catch (Exception ex) {
+            }  catch (Exception exception) {
+            log.error(
+                    "Unexpected dispatch failure for notificationId={}",
+                    notification.getId(),
+                    exception
+            );
+
+            try {
+                markDispatchFailed(
+                        notification.getId(),
+                        "Unexpected dispatcher error: "
+                                + safeMessage(exception)
+                );
+            } catch (Exception markingException) {
                 log.error(
-                        "Unexpected dispatch failure for notificationId={}",
+                        "Failed to record dispatch failure "
+                                + "for notificationId={}",
                         notification.getId(),
-                        ex
+                        markingException
                 );
-
-                outboxService.markDeliveryFailed(
-                        notification.getId(),
-                        "Unexpected dispatcher error: " + safeMessage(ex)
-                );
-
-                failedIds.add(notification.getId());
             }
+
+            failedIds.add(notification.getId());
+        }
         }
 
         return NotificationDispatchResponse.builder()
@@ -136,11 +145,12 @@ List<NotificationOutbox> notifications
                 .build();
     }
 
-    private boolean dispatchNotification(NotificationOutbox notification) {
+    private boolean dispatchNotification(
+            NotificationOutbox notification
+    ) {
         if (notification.getChannel()
                 != NotificationOutbox.NotificationChannel.WHATSAPP) {
-
-            outboxService.markDeliveryFailed(
+            markDispatchFailed(
                     notification.getId(),
                     "No provider is configured for channel: "
                             + notification.getChannel()
@@ -149,12 +159,53 @@ List<NotificationOutbox> notifications
             return false;
         }
 
-        WhatsAppDeliveryResult result = whatsAppProvider.sendMessage(
-                notification.getRecipientPhone(),
-                notification.getMessage()
-        );
+        if (notification.getRecipientPhone() == null
+                || notification.getRecipientPhone().isBlank()) {
+            markDispatchFailed(
+                    notification.getId(),
+                    "WhatsApp recipient phone number is missing."
+            );
+
+            return false;
+        }
+
+        if (notification.getMessage() == null
+                || notification.getMessage().isBlank()) {
+            markDispatchFailed(
+                    notification.getId(),
+                    "Notification message is missing."
+            );
+
+            return false;
+        }
+
+        WhatsAppDeliveryResult result =
+                whatsAppProvider.sendMessage(
+                        notification.getRecipientPhone(),
+                        notification.getMessage()
+                );
+
+        if (result == null) {
+            markDispatchFailed(
+                    notification.getId(),
+                    "WhatsApp provider returned no delivery result."
+            );
+
+            return false;
+        }
 
         if (result.successful()) {
+            if (result.providerMessageId() == null
+                    || result.providerMessageId().isBlank()) {
+                markDispatchFailed(
+                        notification.getId(),
+                        "WhatsApp provider returned a successful result "
+                                + "without a provider message ID."
+                );
+
+                return false;
+            }
+
             outboxService.markSent(
                     notification.getId(),
                     result.providerMessageId()
@@ -163,12 +214,28 @@ List<NotificationOutbox> notifications
             return true;
         }
 
-        outboxService.markDeliveryFailed(
+        String failureReason =
+                result.failureReason() == null
+                        || result.failureReason().isBlank()
+                        ? "WhatsApp provider rejected the message."
+                        : result.failureReason();
+
+        markDispatchFailed(
                 notification.getId(),
-                result.failureReason()
+                failureReason
         );
 
         return false;
+    }
+    private void markDispatchFailed(
+            Long notificationId,
+            String failureReason
+    ) {
+        MarkNotificationFailedRequest request = new MarkNotificationFailedRequest();
+
+        request.setFailureReason(failureReason);
+
+        outboxService.markFailed(notificationId, request);
     }
 
     private String safeMessage(Exception ex) {
