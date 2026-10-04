@@ -1,5 +1,6 @@
 package com.kasibridge.trader_profile.controller;
 
+import com.kasibridge.security.KasiBridgeUserPrincipal;
 import com.kasibridge.trader_profile.dto.CreateTraderRequest;
 import com.kasibridge.trader_profile.dto.TraderProfileResponse;
 import com.kasibridge.trader_profile.dto.UpdateTraderRequest;
@@ -9,6 +10,7 @@ import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -27,11 +29,81 @@ public class TraderProfileController {
 
     // api/v1/traders
     @PostMapping
-    public ResponseEntity<TraderProfileResponse> createProfile(@Valid
-                                                               @RequestBody CreateTraderRequest request){
-        log.info("POST /api/v1/traders - registering trader: {}", request.getPhoneNumber());
-        TraderProfileResponse response = service.createProfile(request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    public ResponseEntity<TraderProfileResponse>
+    createProfile(
+            @AuthenticationPrincipal
+            KasiBridgeUserPrincipal principal,
+
+            @Valid
+            @RequestBody
+            CreateTraderRequest request
+    ) {
+        request.setUserId(
+                principal.userId()
+        );
+
+        log.info(
+                "POST /api/v1/traders - creating "
+                        + "profile for authenticated userId={}",
+                principal.userId()
+        );
+
+        TraderProfileResponse response =
+                service.createProfile(request);
+
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(response);
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<TraderProfileResponse>
+    getMyProfile(
+            @AuthenticationPrincipal
+            KasiBridgeUserPrincipal principal
+    ) {
+        log.info(
+                "GET /api/v1/traders/me - "
+                        + "fetching authenticated trader profile"
+        );
+
+        return ResponseEntity.ok(
+                service.getProfileByUserId(
+                        principal.userId()
+                )
+        );
+    }
+
+    @PutMapping("/me")
+    public ResponseEntity<TraderProfileResponse>
+    updateMyProfile(
+            @AuthenticationPrincipal
+            KasiBridgeUserPrincipal principal,
+
+            @Valid
+            @RequestBody
+            UpdateTraderRequest request
+    ) {
+        TraderProfileResponse currentProfile =
+                service.getProfileByUserId(
+                        principal.userId()
+                );
+
+        request.setUserId(
+                principal.userId()
+        );
+
+        log.info(
+                "PUT /api/v1/traders/me - "
+                        + "updating authenticated trader profile"
+        );
+
+        return ResponseEntity.ok(
+                service.updateProfile(
+                        currentProfile.getId(),
+                        request
+                )
+        );
     }
 
     // api/v1/traders
@@ -79,7 +151,7 @@ public class TraderProfileController {
     // api/v1/traders/{id}
     @PutMapping("/{id}")
     public ResponseEntity<TraderProfileResponse> updateProfile(@PathVariable("id") Long id,
-                                                               @RequestBody UpdateTraderRequest request){
+                                                              @Valid @RequestBody UpdateTraderRequest request){
         log.info("PUT - /api/v1/traders/{} - updating profile", id);
         return ResponseEntity.ok(service.updateProfile(id, request));
     }

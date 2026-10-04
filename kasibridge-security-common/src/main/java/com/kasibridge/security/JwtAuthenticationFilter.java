@@ -33,7 +33,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
-        String token = authHeader.substring(7);
+        String token = authHeader.substring(7).trim();
+
+        if (token.isBlank()) {
+            SecurityContextHolder.clearContext();
+
+            response.sendError(
+                    HttpServletResponse.SC_UNAUTHORIZED,
+                    "Bearer token is required"
+            );
+
+            return;
+        }
 
         try {
             KasiBridgeUserPrincipal principal =

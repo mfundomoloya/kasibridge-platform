@@ -1,8 +1,10 @@
 package com.kasibridge.trader_profile.dto;
 
+import jakarta.validation.Valid;
 import lombok.Data;
 
 @Data
+@Valid
 public class UpdateTraderRequest {
     private Long userId;
     private String businessName;
