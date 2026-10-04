@@ -48,3 +48,20 @@ build/
 .settings/
 .factorypath
 .vscode/
+
+# Frontend dependencies
+kasibridge-frontend/node_modules/
+
+# Frontend production output
+kasibridge-frontend/dist/
+
+# Frontend local environment files
+kasibridge-frontend/.env
+kasibridge-frontend/.env.local
+kasibridge-frontend/.env.development.local
+kasibridge-frontend/.env.production.local
+
+# Frontend logs
+kasibridge-frontend/npm-debug.log*
+kasibridge-frontend/yarn-debug.log*
+kasibridge-frontend/yarn-error.log*
