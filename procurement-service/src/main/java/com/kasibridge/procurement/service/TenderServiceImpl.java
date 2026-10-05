@@ -3,6 +3,7 @@ package com.kasibridge.procurement.service;
 import com.kasibridge.procurement.dto.CreateTenderRequest;
 import com.kasibridge.procurement.dto.SpecificationIntegrityResponse;
 import com.kasibridge.procurement.dto.TenderResponse;
+import com.kasibridge.procurement.dto.TraderTenderResponse;
 import com.kasibridge.procurement.entity.ProcurementAuditEvent;
 import com.kasibridge.procurement.entity.Tender;
 import com.kasibridge.procurement.exception.TenderNotFoundException;
@@ -180,6 +181,7 @@ public class TenderServiceImpl implements TenderService {
     }
 
     @Override
+    @Transactional
     public TenderResponse startAdjudication(Long id) {
         Tender tender = findTender(id);
 
@@ -251,6 +253,37 @@ public class TenderServiceImpl implements TenderService {
                 .integrityValid(integrityValid)
                 .message(message)
                 .build();
+    }
+
+    @Override
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
+    public Page<TraderTenderResponse> getOpenTenders(Pageable pageable) {
+        return repository.findByStatus(
+                        Tender.TenderStatus.PUBLISHED,
+                        pageable
+                )
+                .map(TraderTenderResponse::from);
+    }
+
+    @Override
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
+    public TraderTenderResponse getOpenTenderById(Long id) {
+        Tender tender =
+                repository.findByIdAndStatus(
+                                id,
+                                Tender.TenderStatus.PUBLISHED
+                        )
+                        .orElseThrow(
+                                () -> new TenderNotFoundException(
+                                        "Open tender not found "
+                                                + "with ID: "
+                                                + id
+                                )
+                        );
+
+        return TraderTenderResponse.from(
+                tender
+        );
     }
 
     private Tender findTender(Long id) {

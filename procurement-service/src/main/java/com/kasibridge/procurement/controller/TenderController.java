@@ -4,6 +4,7 @@ package com.kasibridge.procurement.controller;
 import com.kasibridge.procurement.dto.CreateTenderRequest;
 import com.kasibridge.procurement.dto.SpecificationIntegrityResponse;
 import com.kasibridge.procurement.dto.TenderResponse;
+import com.kasibridge.procurement.dto.TraderTenderResponse;
 import com.kasibridge.procurement.service.TenderService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -40,6 +41,32 @@ public class TenderController {
     ) {
         log.info("GET /api/v1/tenders - fetching tenders");
         return ResponseEntity.ok(service.getTenders(pageable));
+    }
+
+    @GetMapping("/open")
+    public ResponseEntity<Page<TraderTenderResponse>> getOpenTenders(
+            @PageableDefault(sort = "publishedAt",
+                    direction = Sort.Direction.DESC)
+            Pageable pageable
+    ) {
+        log.info(
+                "GET /api/v1/tenders/open "
+                        + "- fetching trader-visible tenders"
+        );
+
+        return ResponseEntity.ok(service.getOpenTenders(pageable));
+    }
+
+    @GetMapping("/open/{id}")
+    public ResponseEntity<TraderTenderResponse> getOpenTenderById(
+            @PathVariable("id") Long id) {
+        log.info(
+                "GET /api/v1/tenders/open/{} "
+                        + "- fetching trader-visible tender",
+                id
+        );
+
+        return ResponseEntity.ok(service.getOpenTenderById(id));
     }
 
     @GetMapping("/{id}")
