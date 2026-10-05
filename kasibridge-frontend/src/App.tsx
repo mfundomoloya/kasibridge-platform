@@ -38,6 +38,14 @@ import {
     TraderProfilePage,
 } from './pages/TraderProfilePage'
 
+import {
+    OpenTendersPage,
+} from './pages/OpenTendersPage'
+
+import {
+    TenderDetailsPage,
+} from './pages/TenderDetailsPage'
+
 function App() {
     return (
         <Routes>
@@ -74,6 +82,32 @@ function App() {
                         ]}
                     >
                         <TraderDashboardPage />
+                    </RoleRoute>
+                }
+            />
+
+            <Route
+                path="/tenders"
+                element={
+                    <RoleRoute
+                        allowedRoles={[
+                            'ROLE_TRADER',
+                        ]}
+                    >
+                        <OpenTendersPage />
+                    </RoleRoute>
+                }
+            />
+
+            <Route
+                path="/tenders/:tenderId"
+                element={
+                    <RoleRoute
+                        allowedRoles={[
+                            'ROLE_TRADER',
+                        ]}
+                    >
+                        <TenderDetailsPage />
                     </RoleRoute>
                 }
             />
