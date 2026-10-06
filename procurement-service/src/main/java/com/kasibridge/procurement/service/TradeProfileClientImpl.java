@@ -1,6 +1,7 @@
 package com.kasibridge.procurement.service;
 
 import com.kasibridge.procurement.dto.TraderProfileClientResponse;
+import com.kasibridge.procurement.exception.BidSubmissionException;
 import com.kasibridge.procurement.exception.SupportTicketException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -27,46 +28,85 @@ public class TradeProfileClientImpl implements TraderProfileClient {
     private String traderProfileBaseUrl;
 
     @Override
-    public TraderProfileClientResponse getTraderProfileByUserId(Long userId) {
+    public TraderProfileClientResponse getCurrentTraderProfile() {
 
-        String url = traderProfileBaseUrl + "/api/v1/traders/user/" + userId;
+        String url =
+                traderProfileBaseUrl + "/api/v1/traders/me";
 
         try {
-
             HttpHeaders headers = new HttpHeaders();
-            headers.setBearerAuth(extractBearerToken());
 
-            HttpEntity<Void> entity = new HttpEntity<>(headers);
+            headers.setBearerAuth(
+                    extractBearerToken()
+            );
+
+            HttpEntity<Void> entity =
+                    new HttpEntity<>(headers);
 
             ResponseEntity<TraderProfileClientResponse> response =
-            restTemplate.exchange(
-                    url,
-                    HttpMethod.GET,
-                    entity,
-                    TraderProfileClientResponse.class
-            );
+                    restTemplate.exchange(
+                            url,
+                            HttpMethod.GET,
+                            entity,
+                            TraderProfileClientResponse.class
+                    );
 
-            if (response.getBody() == null) {
-                throw new SupportTicketException("Trader profile not found for user ID: " + userId);
+            TraderProfileClientResponse profile =
+                    response.getBody();
+
+            if (profile == null || profile.getId() == null) {
+                throw new BidSubmissionException(
+                        "Authenticated user does not have a linked trader profile."
+                );
             }
 
-            return response.getBody();
+            return profile;
 
-        } catch (HttpClientErrorException.Forbidden ex) {
-            log.error("Forbidden calling trader-profile-service for userId={}", userId, ex);
-
-            throw new SupportTicketException("Not allowed to access trader profile for user ID: " + userId);
-
-        } catch (Exception ex) {
-
-            log.error(
-                    "Failed to load trader profile for userId={} from url={}",
-                    userId,
-                    url,
-                    ex
+        } catch (HttpClientErrorException.NotFound exception) {
+            log.warn(
+                    "No trader profile found for the authenticated user"
             );
 
-            throw new SupportTicketException("Unable to load trader profile for user ID: " + userId);
+            throw new BidSubmissionException(
+                    "Authenticated user does not have a linked trader profile."
+            );
+
+        } catch (HttpClientErrorException.Unauthorized exception) {
+            log.warn(
+                    "Trader-profile service rejected the authenticated user's token"
+            );
+
+            throw new BidSubmissionException(
+                    "Unable to authenticate with the trader profile service."
+            );
+
+        } catch (HttpClientErrorException.Forbidden exception) {
+            log.warn(
+                    "Authenticated trader was denied access to their own profile"
+            );
+
+            throw new BidSubmissionException(
+                    "Authenticated trader is not allowed to access their trader profile."
+            );
+
+        } catch (BidSubmissionException exception) {
+            throw exception;
+
+        } catch (SupportTicketException exception) {
+            throw new BidSubmissionException(
+                    "Authorization token could not be forwarded to the trader profile service."
+            );
+
+        } catch (Exception exception) {
+            log.error(
+                    "Failed to retrieve the authenticated trader profile from url={}",
+                    url,
+                    exception
+            );
+
+            throw new BidSubmissionException(
+                    "Unable to load the authenticated trader profile."
+            );
         }
     }
 

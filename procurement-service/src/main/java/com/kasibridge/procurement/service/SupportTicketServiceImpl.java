@@ -49,7 +49,7 @@ public class SupportTicketServiceImpl implements SupportTicketService{
 
         Long actorUserId = currentUserService.getCurrentUserId();
 
-        TraderProfileClientResponse trader = traderProfileClient.getTraderProfileByUserId(actorUserId);
+        TraderProfileClientResponse trader = traderProfileClient.getCurrentTraderProfile();
 
         SupportTicket ticket = SupportTicket.builder()
                 .ticketReference(generateTicketReference())

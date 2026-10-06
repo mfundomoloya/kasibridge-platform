@@ -1,6 +1,7 @@
 package com.kasibridge.procurement.controller;
 
 
+import com.kasibridge.procurement.dto.AnonymizedBidResponse;
 import com.kasibridge.procurement.dto.BidResponse;
 import com.kasibridge.procurement.dto.SubmitBidRequest;
 import com.kasibridge.procurement.service.BidService;
@@ -34,12 +35,12 @@ public class BidController {
     }
 
     @GetMapping
-    public ResponseEntity<List<BidResponse>> getBidsForTender(
+    public ResponseEntity<List<AnonymizedBidResponse>> getBidsForTender(
             @PathVariable("tenderId") Long tenderId
     ) {
         log.info("GET /api/v1/tenders/{}/bids - fetching bids", tenderId);
 
-        return ResponseEntity.ok(service.getBidsForTender(tenderId));
+        return ResponseEntity.ok(service.getAnonymizedBidsForTender(tenderId));
     }
 
 }

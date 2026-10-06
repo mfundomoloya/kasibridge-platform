@@ -1,5 +1,6 @@
 package com.kasibridge.procurement.service;
 
+import com.kasibridge.procurement.dto.AnonymizedBidResponse;
 import com.kasibridge.procurement.dto.BidResponse;
 import com.kasibridge.procurement.dto.SubmitBidRequest;
 
@@ -9,5 +10,5 @@ public interface BidService {
 
     BidResponse submitBid(Long tenderId, SubmitBidRequest request);
 
-    List<BidResponse> getBidsForTender(Long tenderId);
+    List<AnonymizedBidResponse> getAnonymizedBidsForTender(Long tenderId);
 }

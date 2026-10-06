@@ -1,9 +1,7 @@
 package com.kasibridge.procurement.config;
 
 import com.kasibridge.security.JwtAuthenticationFilter;
-
 import lombok.RequiredArgsConstructor;
-
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -27,12 +25,10 @@ import java.util.List;
 @RequiredArgsConstructor
 public class SecurityConfig {
 
-    private final JwtAuthenticationFilter
-            jwtAuthenticationFilter;
+    private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
     @Value(
-            "${kasibridge.security.cors.allowed-origins:"
-                    + "http://localhost:5173}"
+            "${kasibridge.security.cors.allowed-origins:http://localhost:5173}"
     )
     private String allowedOrigins;
 
@@ -42,13 +38,9 @@ public class SecurityConfig {
     ) throws Exception {
 
         http
-                .csrf(csrf ->
-                        csrf.disable()
-                )
+                .csrf(csrf -> csrf.disable())
 
-                .cors(
-                        Customizer.withDefaults()
-                )
+                .cors(Customizer.withDefaults())
 
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(
@@ -58,20 +50,23 @@ public class SecurityConfig {
 
                 .authorizeHttpRequests(auth ->
                         auth
+                                /*
+                                 * CORS preflight requests.
+                                 */
                                 .requestMatchers(
                                         HttpMethod.OPTIONS,
-                                        "/api/v1/tenders",
-                                        "/api/v1/tenders/{id}",
-                                        "/api/v1/tenders/open",
-                                        "/api/v1/tenders/open/{id}",
-                                        "/api/v1/tickets/my",
-                                        "/api/v1/notifications/outbox/in-app"
+                                        "/**"
                                 )
                                 .permitAll()
 
+                                /*
+                                 * Public operational endpoints.
+                                 */
                                 .requestMatchers(
                                         "/swagger-ui.html",
+                                        "/swagger-ui/**",
                                         "/v3/api-docs",
+                                        "/v3/api-docs/**",
                                         "/v3/api-docs.yaml",
                                         "/actuator/health",
                                         "/actuator/info",
@@ -79,6 +74,10 @@ public class SecurityConfig {
                                 )
                                 .permitAll()
 
+                                /*
+                                 * WhatsApp webhook verification
+                                 * and message reception.
+                                 */
                                 .requestMatchers(
                                         HttpMethod.GET,
                                         "/api/v1/webhooks/whatsapp"
@@ -101,6 +100,57 @@ public class SecurityConfig {
                                 )
                                 .hasAnyRole(
                                         "TRADER",
+                                        "PLATFORM_ADMIN"
+                                )
+
+                                /*
+                                 * Bid submission.
+                                 *
+                                 * Traders may submit bids but may not
+                                 * retrieve the complete tender bid list.
+                                 */
+                                .requestMatchers(
+                                        HttpMethod.POST,
+                                        "/api/v1/tenders/{tenderId}/bids"
+                                )
+                                .hasAnyRole(
+                                        "TRADER",
+                                        "SYSTEM",
+                                        "PLATFORM_ADMIN"
+                                )
+
+                                /*
+                                 * Anonymized bid retrieval.
+                                 *
+                                 * The controller returns
+                                 * AnonymizedBidResponse objects.
+                                 */
+                                .requestMatchers(
+                                        HttpMethod.GET,
+                                        "/api/v1/tenders/{tenderId}/bids"
+                                )
+                                .hasAnyRole(
+                                        "EVALUATOR",
+                                        "ADJUDICATOR",
+                                        "SPECIFICATION_OFFICER",
+                                        "SYSTEM",
+                                        "PLATFORM_ADMIN"
+                                )
+
+                                /*
+                                 * Individual bid endpoints.
+                                 *
+                                 * Traders must not receive unrestricted
+                                 * access to bids belonging to other
+                                 * traders.
+                                 */
+                                .requestMatchers(
+                                        "/api/v1/tenders/{tenderId}/bids/{bidId}"
+                                )
+                                .hasAnyRole(
+                                        "EVALUATOR",
+                                        "ADJUDICATOR",
+                                        "SYSTEM",
                                         "PLATFORM_ADMIN"
                                 )
 
@@ -151,10 +201,7 @@ public class SecurityConfig {
                                 )
 
                                 /*
-                                 * Internal tender-detail endpoints.
-                                 *
-                                 * Traders must use the open-tender
-                                 * endpoints instead.
+                                 * Internal tender details.
                                  */
                                 .requestMatchers(
                                         HttpMethod.GET,
@@ -179,19 +226,6 @@ public class SecurityConfig {
                                 .hasAnyRole(
                                         "PLATFORM_ADMIN",
                                         "SPECIFICATION_OFFICER"
-                                )
-
-                                /*
-                                 * Bid submission and trader bid access.
-                                 */
-                                .requestMatchers(
-                                        "/api/v1/tenders/{id}/bids",
-                                        "/api/v1/tenders/{id}/bids/{bidId}"
-                                )
-                                .hasAnyRole(
-                                        "TRADER",
-                                        "SYSTEM",
-                                        "PLATFORM_ADMIN"
                                 )
 
                                 /*
@@ -329,7 +363,7 @@ public class SecurityConfig {
                                 )
 
                                 /*
-                                 * Notification Outbox administration.
+                                 * Notification outbox administration.
                                  */
                                 .requestMatchers(
                                         "/api/v1/notifications/outbox",
@@ -368,8 +402,8 @@ public class SecurityConfig {
                                 )
 
                                 /*
-                                 * Any endpoint not explicitly listed
-                                 * still requires authentication.
+                                 * All other endpoints require a valid
+                                 * authenticated user.
                                  */
                                 .anyRequest()
                                 .authenticated()
@@ -384,25 +418,19 @@ public class SecurityConfig {
     }
 
     @Bean
-    public CorsConfigurationSource
-    corsConfigurationSource() {
+    public CorsConfigurationSource corsConfigurationSource() {
 
         CorsConfiguration configuration =
                 new CorsConfiguration();
 
-        List<String> origins =
-                Arrays.stream(
-                                allowedOrigins.split(",")
-                        )
-                        .map(String::trim)
-                        .filter(origin ->
-                                !origin.isBlank()
-                        )
-                        .toList();
+        List<String> origins = Arrays.stream(
+                        allowedOrigins.split(",")
+                )
+                .map(String::trim)
+                .filter(origin -> !origin.isBlank())
+                .toList();
 
-        configuration.setAllowedOrigins(
-                origins
-        );
+        configuration.setAllowedOrigins(origins);
 
         configuration.setAllowedMethods(
                 List.of(
@@ -437,37 +465,7 @@ public class SecurityConfig {
                 new UrlBasedCorsConfigurationSource();
 
         source.registerCorsConfiguration(
-                "/api/v1/tenders",
-                configuration
-        );
-
-        source.registerCorsConfiguration(
-                "/api/v1/tenders/{id}",
-                configuration
-        );
-
-        source.registerCorsConfiguration(
-                "/api/v1/tenders/open",
-                configuration
-        );
-
-        source.registerCorsConfiguration(
-                "/api/v1/tenders/open/{id}",
-                configuration
-        );
-
-        source.registerCorsConfiguration(
-                "/api/v1/tickets/my",
-                configuration
-        );
-
-        source.registerCorsConfiguration(
-                "/api/v1/notifications/outbox/in-app",
-                configuration
-        );
-
-        source.registerCorsConfiguration(
-                "/api/v1/webhooks/whatsapp",
+                "/api/**",
                 configuration
         );
 

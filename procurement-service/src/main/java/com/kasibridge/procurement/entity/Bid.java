@@ -14,7 +14,7 @@ import java.time.LocalDateTime;
                 @Index(name = "idx_bid_tender_id", columnList = "tender_id"),
                 @Index(name = "idx_bid_status", columnList = "status"),
                 @Index(name = "idx_bid_trader_profile_id", columnList = "trader_profile_id"),
-                @Index(name = "idx_bid_submitted_by_user_id", columnList = "submmitted_by_user_id")
+                @Index(name = "idx_bid_submitted_by_user_id", columnList = "submitted_by_user_id")
         }
 )
 @Getter
@@ -42,7 +42,7 @@ public class Bid {
     @Column(name = "bidder_alias", nullable = false, length = 50)
     private String bidderAlias;
 
-    @Column(name = "technical_proposal", nullable = false, length = 5000)
+    @Column(name = "technical_proposal", nullable = false, length = 10000)
     private String technicalProposal;
 
     @Column(name = "price_amount", nullable = false, precision = 15, scale = 2)

@@ -1,9 +1,6 @@
 package com.kasibridge.procurement.dto;
 
-import jakarta.validation.constraints.DecimalMin;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.*;
 import lombok.Data;
 
 import java.math.BigDecimal;
@@ -18,6 +15,10 @@ public class SubmitBidRequest {
 
     @NotNull(message = "Price amount is required")
     @DecimalMin(value = "0.01", message = "Price amount must be greater than 0")
+    @Digits(
+            integer = 13,
+            fraction = 2,
+            message = "Price amount can contain up to 13 whole-number digits and 2 decimal places")
     private BigDecimal priceAmount;
 
     /*

@@ -1,9 +1,6 @@
 package com.kasibridge.procurement.service;
 
-import com.kasibridge.procurement.dto.BidComplianceResponse;
-import com.kasibridge.procurement.dto.BidResponse;
-import com.kasibridge.procurement.dto.SubmitBidRequest;
-import com.kasibridge.procurement.dto.TraderProfileClientResponse;
+import com.kasibridge.procurement.dto.*;
 import com.kasibridge.procurement.entity.Bid;
 import com.kasibridge.procurement.entity.BidComplianceResult;
 import com.kasibridge.procurement.entity.ProcurementAuditEvent;
@@ -39,7 +36,7 @@ public class BidServiceImpl implements BidService {
     public BidResponse submitBid(Long tenderId, SubmitBidRequest request) {
 
         Long submittedByUserId = currentUserService.getCurrentUserId();
-        TraderProfileClientResponse trader = traderProfileClient.getTraderProfileByUserId(submittedByUserId);
+        TraderProfileClientResponse trader = traderProfileClient.getCurrentTraderProfile();
 
         if (trader.getId() == null) {
             throw new BidSubmissionException(
@@ -163,22 +160,36 @@ public class BidServiceImpl implements BidService {
     }
 
     @Override
-    public List<BidResponse> getBidsForTender(Long tenderId) {
+    @Transactional(readOnly = true)
+    public List<AnonymizedBidResponse> getAnonymizedBidsForTender(Long tenderId) {
+
         if (!tenderRepository.existsById(tenderId)) {
-            throw new TenderNotFoundException("Tender not found with ID: " + tenderId);
+            throw new TenderNotFoundException(
+                    "Tender not found with ID: " + tenderId
+            );
         }
+
+        log.info(
+                "Fetching anonymized bids for tenderId={}",
+                tenderId
+        );
 
         return bidRepository.findByTenderId(tenderId)
                 .stream()
                 .map(bid -> {
-                    BidComplianceResponse compliance = complianceRepository.findByBidId(bid.getId())
-                            .map(BidComplianceResponse::from)
-                            .orElse(null);
+                    BidComplianceResponse compliance =
+                            complianceRepository.findByBidId(bid.getId())
+                                    .map(BidComplianceResponse::from)
+                                    .orElse(null);
 
-                    return BidResponse.from(bid, compliance);
+                    return AnonymizedBidResponse.from(
+                            bid,
+                            compliance
+                    );
                 })
                 .toList();
     }
+
 
     private String generateBidReference() {
         return "KB-BID-" + UUID.randomUUID()
