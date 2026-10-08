@@ -80,7 +80,8 @@ public class Bid {
         UNDER_EVALUATION,
         RECOMMENDED,
         REJECTED,
-        AWARDED
+        AWARDED,
+        WITHDRAWN
     }
 
 }

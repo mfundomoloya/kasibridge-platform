@@ -34,14 +34,33 @@ public class EvaluationServiceImpl implements EvaluationService {
     private final CurrentUserService currentUserService;
 
     @Override
+    @Transactional(readOnly = true)
     public List<BlindBidResponse> getBlindBidsForEvaluation(Long tenderId) {
-
-        Long evaluatorUserId = currentUserService.getCurrentUserId();
+        Long evaluatorUserId =
+                currentUserService.getCurrentUserId();
 
         Tender tender = tenderRepository.findById(tenderId)
                 .orElseThrow(() -> new TenderNotFoundException("Tender not found with ID: " + tenderId));
 
         assertAssignedEvaluator(tenderId, evaluatorUserId);
+
+        if (tender.getStatus() != Tender.TenderStatus.EVALUATION) {
+            throw new BidEvaluationException(
+                    "Blind bids can only be viewed when tender is in EVALUATION status"
+            );
+        }
+
+        List<BlindBidResponse> blindBids =
+                bidRepository.findByTenderIdAndStatusIn(
+                                tenderId,
+                                List.of(
+                                        Bid.BidStatus.COMPLIANT,
+                                        Bid.BidStatus.UNDER_EVALUATION
+                                )
+                        )
+                        .stream()
+                        .map(BlindBidResponse::from)
+                        .toList();
 
         auditService.recordSuccess(
                 ProcurementAuditEvent.AuditEventType.BID_SCORE_VIEWED,
@@ -49,20 +68,12 @@ public class EvaluationServiceImpl implements EvaluationService {
                 null,
                 evaluatorUserId,
                 "Evaluator viewed blind bids",
-                "Blind bid list accessed for tenderId=" + tenderId
+                "Blind bid list accessed for tenderId="
+                        + tenderId
         );
 
-        if(tender.getStatus() != Tender.TenderStatus.EVALUATION){
-                throw new BidEvaluationException("Blind bids can only be viewed when tender is in EVALUATION status");
-        }
-
-        return bidRepository.findByTenderId(tenderId)
-                .stream()
-                .filter(bid -> bid.getStatus() == Bid.BidStatus.COMPLIANT || bid.getStatus() == Bid.BidStatus.UNDER_EVALUATION)
-                .map(BlindBidResponse::from)
-                .toList();
+        return blindBids;
     }
-
     @Override
     @Transactional
     public BidEvaluationResponse scoreBid(Long tenderId, Long bidId, EvaluateBidRequest request) {

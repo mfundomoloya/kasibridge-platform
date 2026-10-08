@@ -116,8 +116,8 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(BidSubmissionException.class)
     public ResponseEntity<ErrorResponse> handleBidSubmissionException(BidSubmissionException ex)
     {
-        return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(ErrorResponse.of(HttpStatus.NOT_FOUND.value(), ex.getMessage())
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ErrorResponse.of(HttpStatus.BAD_REQUEST.value(), ex.getMessage())
                 );
     }
 
@@ -153,6 +153,16 @@ public class GlobalExceptionHandler {
     ) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(ErrorResponse.of(HttpStatus.BAD_REQUEST.value(),ex.getMessage()));
+    }
+
+    @ExceptionHandler(BidStateException.class)
+    public ResponseEntity<ErrorResponse> handleBidStateException(
+            BidStateException exception
+    ) {
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(ErrorResponse.of(HttpStatus.CONFLICT.value(), exception.getMessage())
+                );
     }
 
 

@@ -162,23 +162,21 @@ public class BidServiceImpl implements BidService {
     @Override
     @Transactional(readOnly = true)
     public List<AnonymizedBidResponse> getAnonymizedBidsForTender(Long tenderId) {
-
         if (!tenderRepository.existsById(tenderId)) {
-            throw new TenderNotFoundException(
-                    "Tender not found with ID: " + tenderId
-            );
+            throw new TenderNotFoundException("Tender not found with ID: " + tenderId);
         }
 
-        log.info(
-                "Fetching anonymized bids for tenderId={}",
-                tenderId
-        );
+        log.info("Fetching active anonymized bids for tenderId={}", tenderId);
 
         return bidRepository.findByTenderId(tenderId)
                 .stream()
+                .filter(bid ->
+                        bid.getStatus() != Bid.BidStatus.WITHDRAWN
+                )
                 .map(bid -> {
                     BidComplianceResponse compliance =
-                            complianceRepository.findByBidId(bid.getId())
+                            complianceRepository
+                                    .findByBidId(bid.getId())
                                     .map(BidComplianceResponse::from)
                                     .orElse(null);
 
@@ -188,6 +186,143 @@ public class BidServiceImpl implements BidService {
                     );
                 })
                 .toList();
+    }
+    @Override
+    @Transactional(readOnly = true)
+    public List<BidResponse> getCurrentTraderBids() {
+
+        TraderProfileClientResponse trader = traderProfileClient.getCurrentTraderProfile();
+
+        if (trader == null || trader.getId() == null) {
+            throw new BidSubmissionException("Authenticated user does not have a linked trader profile.");
+        }
+
+        log.info(
+                "Fetching bids for authenticated traderProfileId={}",
+                trader.getId()
+        );
+
+        return bidRepository
+                .findByTraderProfileIdOrderBySubmittedAtDesc(
+                        trader.getId()
+                )
+                .stream()
+                .map(bid -> {
+                    BidComplianceResponse compliance =
+                            complianceRepository
+                                    .findByBidId(bid.getId())
+                                    .map(BidComplianceResponse::from)
+                                    .orElse(null);
+
+                    return BidResponse.from(
+                            bid,
+                            compliance
+                    );
+                })
+                .toList();
+    }
+
+    @Override
+    @Transactional
+    public BidResponse withdrawCurrentTraderBid(Long bidId) {
+        Long currentUserId = currentUserService.getCurrentUserId();
+
+        TraderProfileClientResponse trader = traderProfileClient.getCurrentTraderProfile();
+
+        if (trader == null || trader.getId() == null) {
+            throw new BidSubmissionException(
+                    "Authenticated user does not have a linked trader profile."
+            );
+        }
+
+        Bid bid = bidRepository.findById(bidId)
+                .orElseThrow(() -> new BidNotFoundException(
+                        "Bid not found with ID: " + bidId
+                ));
+
+        if (!bid.getTraderProfileId().equals(trader.getId())) {
+            log.warn(
+                    "Bid withdrawal denied for bidId={} authenticatedTraderProfileId={}",
+                    bidId,
+                    trader.getId()
+            );
+
+            throw new BidNotFoundException(
+                    "Bid not found or does not belong to the authenticated trader."
+            );
+        }
+
+        Tender tender = tenderRepository.findById(
+                        bid.getTenderId()
+                )
+                .orElseThrow(() -> new TenderNotFoundException(
+                        "Tender not found with ID: "
+                                + bid.getTenderId()
+                ));
+
+        if (tender.getStatus() != Tender.TenderStatus.PUBLISHED) {
+            throw new TenderStateException(
+                    "A bid can only be withdrawn while the tender is open for bidding."
+            );
+        }
+
+        if (bid.getStatus() == Bid.BidStatus.WITHDRAWN) {
+            throw new BidStateException(
+                    "Bid has already been withdrawn."
+            );
+        }
+
+        if (!isWithdrawableStatus(bid.getStatus())) {
+            throw new BidStateException(
+                    "A bid in status "
+                            + bid.getStatus()
+                            + " cannot be withdrawn."
+            );
+        }
+
+        bid.setStatus(Bid.BidStatus.WITHDRAWN);
+
+        Bid withdrawnBid =
+                bidRepository.save(bid);
+
+        auditService.recordSuccess(
+                ProcurementAuditEvent.AuditEventType.BID_WITHDRAWN,
+                withdrawnBid.getTenderId(),
+                withdrawnBid.getId(),
+                currentUserId,
+                "Bid withdrawn",
+                "Bid reference: "
+                        + withdrawnBid.getBidReference()
+                        + ", bidder alias: "
+                        + withdrawnBid.getBidderAlias()
+        );
+
+        BidComplianceResponse compliance =
+                complianceRepository.findByBidId(
+                                withdrawnBid.getId()
+                        )
+                        .map(BidComplianceResponse::from)
+                        .orElse(null);
+
+        log.info(
+                "Bid withdrawn successfully: bidId={} tenderId={} traderProfileId={}",
+                withdrawnBid.getId(),
+                withdrawnBid.getTenderId(),
+                trader.getId()
+        );
+
+        return BidResponse.from(
+                withdrawnBid,
+                compliance
+        );
+    }
+
+    private boolean isWithdrawableStatus(
+            Bid.BidStatus status
+    ) {
+        return status == Bid.BidStatus.SUBMITTED
+                || status == Bid.BidStatus.COMPLIANT
+                || status == Bid.BidStatus.COMPLIANCE_FAILED;
     }
 
 

@@ -252,7 +252,7 @@ public class SecurityConfig {
                                         "PLATFORM_ADMIN"
                                 )
 
-                                /*
+                                /*.
                                  * Procurement audit events.
                                  */
                                 .requestMatchers(
@@ -405,6 +405,25 @@ public class SecurityConfig {
                                  * All other endpoints require a valid
                                  * authenticated user.
                                  */
+                                /*
+                                 * Authenticated trader's own bid history.
+                                 */
+                                .requestMatchers(
+                                        HttpMethod.GET,
+                                        "/api/v1/bids/*y"
+                                )
+                                .hasAnyRole("TRADER"
+                                )
+
+                                /*
+                                 * Authenticated trader bid withdrawal.
+                                 */
+                                .requestMatchers(
+                                        HttpMethod.PATCH,
+                                        "/api/v1/bids/{bidId}/withdraw"
+                                )
+                                .hasRole("TRADER")
+
                                 .anyRequest()
                                 .authenticated()
                 )

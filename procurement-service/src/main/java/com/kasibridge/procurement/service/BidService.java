@@ -11,4 +11,8 @@ public interface BidService {
     BidResponse submitBid(Long tenderId, SubmitBidRequest request);
 
     List<AnonymizedBidResponse> getAnonymizedBidsForTender(Long tenderId);
+
+    List<BidResponse> getCurrentTraderBids();
+
+    BidResponse withdrawCurrentTraderBid(Long bidId);
 }

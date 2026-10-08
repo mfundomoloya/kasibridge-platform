@@ -24,7 +24,16 @@ public class SubmitBidRequest {
     /*
     * Mocked compliance values.
     * In production, these would come from trusted compliance sources.
- */
+ *//*
+     * DEVELOPMENT-ONLY COMPLIANCE DECLARATIONS.
+     *
+     * These values are supplied by the bidder and are not independently
+     * verified. They must not be treated as authoritative compliance
+     * results in production.
+     *
+     * Replace these fields with trusted compliance records or verified
+     * service integrations before production deployment.
+     */
 
     private boolean csdValid;
     private boolean taxClearanceValid;

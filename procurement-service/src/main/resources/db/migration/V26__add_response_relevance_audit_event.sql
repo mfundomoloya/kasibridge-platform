@@ -27,6 +27,7 @@ ALTER TABLE public.procurement_audit_events
                            'BID_SCORE_REJECTED_DUPLICATE',
                            'BID_SCORE_REJECTED_UNASSIGNED_EVALUATOR',
                            'BID_SCORE_REJECTED_INVALID_TENDER_STATUS',
+                           'BID_WITHDRAWN',
 
                            'TENDER_ADJUDICATION_SUMMARY_VIEWED',
                            'TENDER_AWARDED',

@@ -129,6 +129,8 @@ public class ProcurementAuditServiceImpl implements ProcurementAuditService {
                     result,
                     ex
             );
+
+            throw ex;
         }
     }
 
