@@ -243,4 +243,6 @@ public class EvaluationServiceImpl implements EvaluationService {
                 .add(priceScore)
                 .setScale(2, RoundingMode.HALF_UP);
     }
+
+
 }

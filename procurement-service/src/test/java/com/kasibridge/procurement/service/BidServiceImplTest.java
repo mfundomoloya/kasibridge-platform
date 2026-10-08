@@ -1146,6 +1146,227 @@ class BidServiceImplTest {
         );
     }
 
+    @Test
+    void shouldReturnActiveAnonymizedBidsAndExcludeWithdrawnBids() {
+        Bid activeBid = Bid.builder()
+                .id(16L)
+                .bidReference("KB-BID-68742A06")
+                .tenderId(TENDER_ID)
+                .traderProfileId(TRADER_PROFILE_ID)
+                .submittedByUserId(CURRENT_USER_ID)
+                .bidderAlias("Bidder B")
+                .technicalProposal(
+                        "Active technical proposal."
+                )
+                .priceAmount(
+                        new BigDecimal("690000.00")
+                )
+                .status(Bid.BidStatus.COMPLIANT)
+                .submittedAt(
+                        LocalDateTime.now().minusHours(2)
+                )
+                .updatedAt(
+                        LocalDateTime.now().minusHours(2)
+                )
+                .build();
+
+        Bid withdrawnBid = Bid.builder()
+                .id(15L)
+                .bidReference("KB-BID-623BEF93")
+                .tenderId(TENDER_ID)
+                .traderProfileId(TRADER_PROFILE_ID)
+                .submittedByUserId(CURRENT_USER_ID)
+                .bidderAlias("Bidder A")
+                .technicalProposal(
+                        "Withdrawn technical proposal."
+                )
+                .priceAmount(
+                        new BigDecimal("700000.00")
+                )
+                .status(Bid.BidStatus.WITHDRAWN)
+                .submittedAt(
+                        LocalDateTime.now().minusDays(1)
+                )
+                .updatedAt(
+                        LocalDateTime.now().minusHours(1)
+                )
+                .build();
+
+        BidComplianceResult activeCompliance =
+                BidComplianceResult.builder()
+                        .id(15L)
+                        .bidId(16L)
+                        .csdValid(true)
+                        .taxClearanceValid(true)
+                        .bbbeeValid(true)
+                        .requiredDocumentsUploaded(true)
+                        .passed(true)
+                        .failureReason(null)
+                        .build();
+
+        when(tenderRepository.existsById(TENDER_ID))
+                .thenReturn(true);
+
+        when(bidRepository.findByTenderId(TENDER_ID))
+                .thenReturn(
+                        java.util.List.of(
+                                activeBid,
+                                withdrawnBid
+                        )
+                );
+
+        when(complianceRepository.findByBidId(16L))
+                .thenReturn(
+                        Optional.of(activeCompliance)
+                );
+
+        java.util.List<com.kasibridge.procurement.dto.AnonymizedBidResponse>
+                responses =
+                bidService.getAnonymizedBidsForTender(
+                        TENDER_ID
+                );
+
+        assertEquals(
+                1,
+                responses.size()
+        );
+
+        com.kasibridge.procurement.dto.AnonymizedBidResponse response =
+                responses.get(0);
+
+        assertEquals(
+                16L,
+                response.getId()
+        );
+
+        assertEquals(
+                "KB-BID-68742A06",
+                response.getBidReference()
+        );
+
+        assertEquals(
+                TENDER_ID,
+                response.getTenderId()
+        );
+
+        assertEquals(
+                "Bidder B",
+                response.getBidderAlias()
+        );
+
+        assertEquals(
+                "Active technical proposal.",
+                response.getTechnicalProposal()
+        );
+
+        assertEquals(
+                Bid.BidStatus.COMPLIANT,
+                response.getStatus()
+        );
+
+        assertNotNull(
+                response.getCompliance()
+        );
+
+        assertTrue(
+                response.getCompliance().isPassed()
+        );
+
+        verify(complianceRepository)
+                .findByBidId(16L);
+
+        verify(
+                complianceRepository,
+                never()
+        ).findByBidId(15L);
+    }
+
+    @Test
+    void shouldRejectAnonymizedBidRetrievalWhenTenderDoesNotExist() {
+        when(tenderRepository.existsById(TENDER_ID))
+                .thenReturn(false);
+
+        com.kasibridge.procurement.exception.TenderNotFoundException
+                exception =
+                assertThrows(
+                        com.kasibridge.procurement.exception
+                                .TenderNotFoundException.class,
+                        () -> bidService
+                                .getAnonymizedBidsForTender(
+                                        TENDER_ID
+                                )
+                );
+
+        assertEquals(
+                "Tender not found with ID: " + TENDER_ID,
+                exception.getMessage()
+        );
+
+        verify(
+                bidRepository,
+                never()
+        ).findByTenderId(
+                any()
+        );
+
+        verify(
+                complianceRepository,
+                never()
+        ).findByBidId(
+                any()
+        );
+    }
+
+    @Test
+    void shouldReturnEmptyAnonymizedListWhenAllBidsAreWithdrawn() {
+        Bid withdrawnBid = Bid.builder()
+                .id(BID_ID)
+                .bidReference("KB-BID-623BEF93")
+                .tenderId(TENDER_ID)
+                .traderProfileId(TRADER_PROFILE_ID)
+                .submittedByUserId(CURRENT_USER_ID)
+                .bidderAlias("Bidder A")
+                .technicalProposal(
+                        "Withdrawn technical proposal."
+                )
+                .priceAmount(
+                        new BigDecimal("690000.00")
+                )
+                .status(Bid.BidStatus.WITHDRAWN)
+                .submittedAt(
+                        LocalDateTime.now().minusDays(1)
+                )
+                .updatedAt(
+                        LocalDateTime.now()
+                )
+                .build();
+
+        when(tenderRepository.existsById(TENDER_ID))
+                .thenReturn(true);
+
+        when(bidRepository.findByTenderId(TENDER_ID))
+                .thenReturn(
+                        java.util.List.of(withdrawnBid)
+                );
+
+        java.util.List<com.kasibridge.procurement.dto.AnonymizedBidResponse>
+                responses =
+                bidService.getAnonymizedBidsForTender(
+                        TENDER_ID
+                );
+
+        assertTrue(
+                responses.isEmpty()
+        );
+
+        verify(
+                complianceRepository,
+                never()
+        ).findByBidId(
+                any()
+        );
+    }
+
     private SubmitBidRequest validSubmitBidRequest() {
         SubmitBidRequest request =
                 new SubmitBidRequest();
