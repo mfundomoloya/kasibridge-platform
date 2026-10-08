@@ -26,11 +26,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -866,6 +862,287 @@ class BidServiceImplTest {
                 any(Bid.class),
                 any(Tender.class),
                 anyString()
+        );
+    }
+
+    @Test
+    void shouldMarkReplacementBidAsComplianceFailed() {
+        Long replacementBidId = 17L;
+        Long complianceResultId = 16L;
+
+        SubmitBidRequest request =
+                validSubmitBidRequest();
+
+        request.setTaxClearanceValid(false);
+        request.setRequiredDocumentsUploaded(false);
+
+        String failureReason =
+                "Tax clearance is invalid or missing; "
+                        + "Required documents were not uploaded";
+
+        ComplianceGatekeeperService.ComplianceDecision decision =
+                new ComplianceGatekeeperService.ComplianceDecision(
+                        false,
+                        failureReason
+                );
+
+        when(currentUserService.getCurrentUserId())
+                .thenReturn(CURRENT_USER_ID);
+
+        when(traderProfileClient.getCurrentTraderProfile())
+                .thenReturn(trader);
+
+        when(tenderRepository.findById(TENDER_ID))
+                .thenReturn(
+                        Optional.of(publishedTender)
+                );
+
+        when(
+                bidRepository.existsActiveBidForTrader(
+                        TENDER_ID,
+                        TRADER_PROFILE_ID,
+                        Bid.BidStatus.WITHDRAWN
+                )
+        ).thenReturn(false);
+
+        when(bidRepository.countByTenderId(TENDER_ID))
+                .thenReturn(2L);
+
+        when(bidRepository.save(any(Bid.class)))
+                .thenAnswer(invocation -> {
+                    Bid bid = invocation.getArgument(0);
+
+                    if (bid.getId() == null) {
+                        bid.setId(replacementBidId);
+                    }
+
+                    if (bid.getSubmittedAt() == null) {
+                        bid.setSubmittedAt(
+                                LocalDateTime.now()
+                        );
+                    }
+
+                    if (bid.getUpdatedAt() == null) {
+                        bid.setUpdatedAt(
+                                LocalDateTime.now()
+                        );
+                    }
+
+                    return bid;
+                });
+
+        when(gatekeeperService.evaluate(request))
+                .thenReturn(decision);
+
+        when(
+                complianceRepository.save(
+                        any(BidComplianceResult.class)
+                )
+        ).thenAnswer(invocation -> {
+            BidComplianceResult complianceResult =
+                    invocation.getArgument(0);
+
+            complianceResult.setId(
+                    complianceResultId
+            );
+
+            return complianceResult;
+        });
+
+        BidResponse response =
+                bidService.submitBid(
+                        TENDER_ID,
+                        request
+                );
+
+        assertEquals(
+                replacementBidId,
+                response.getId()
+        );
+
+        assertEquals(
+                TENDER_ID,
+                response.getTenderId()
+        );
+
+        assertEquals(
+                TRADER_PROFILE_ID,
+                response.getTraderId()
+        );
+
+        assertEquals(
+                "Bidder C",
+                response.getBidderAlias()
+        );
+
+        assertEquals(
+                Bid.BidStatus.COMPLIANCE_FAILED,
+                response.getStatus()
+        );
+
+        assertNotNull(
+                response.getCompliance()
+        );
+
+        assertEquals(
+                complianceResultId,
+                response.getCompliance().getId()
+        );
+
+        assertEquals(
+                replacementBidId,
+                response.getCompliance().getBidId()
+        );
+
+        assertFalse(
+                response.getCompliance().isPassed()
+        );
+
+        assertFalse(
+                response.getCompliance().isTaxClearanceValid()
+        );
+
+        assertFalse(
+                response.getCompliance()
+                        .isRequiredDocumentsUploaded()
+        );
+
+        assertEquals(
+                failureReason,
+                response.getCompliance().getFailureReason()
+        );
+
+        ArgumentCaptor<Bid> bidCaptor =
+                ArgumentCaptor.forClass(Bid.class);
+
+        verify(
+                bidRepository,
+                times(2)
+        ).save(
+                bidCaptor.capture()
+        );
+
+        Bid savedBid =
+                bidCaptor.getAllValues().get(1);
+
+        assertEquals(
+                replacementBidId,
+                savedBid.getId()
+        );
+
+        assertEquals(
+                TRADER_PROFILE_ID,
+                savedBid.getTraderProfileId()
+        );
+
+        assertEquals(
+                CURRENT_USER_ID,
+                savedBid.getSubmittedByUserId()
+        );
+
+        assertEquals(
+                "Bidder C",
+                savedBid.getBidderAlias()
+        );
+
+        assertEquals(
+                Bid.BidStatus.COMPLIANCE_FAILED,
+                savedBid.getStatus()
+        );
+
+        ArgumentCaptor<BidComplianceResult> complianceCaptor =
+                ArgumentCaptor.forClass(
+                        BidComplianceResult.class
+                );
+
+        verify(complianceRepository)
+                .save(
+                        complianceCaptor.capture()
+                );
+
+        BidComplianceResult savedCompliance =
+                complianceCaptor.getValue();
+
+        assertEquals(
+                replacementBidId,
+                savedCompliance.getBidId()
+        );
+
+        assertTrue(
+                savedCompliance.isCsdValid()
+        );
+
+        assertFalse(
+                savedCompliance.isTaxClearanceValid()
+        );
+
+        assertTrue(
+                savedCompliance.isBbbeeValid()
+        );
+
+        assertFalse(
+                savedCompliance.isRequiredDocumentsUploaded()
+        );
+
+        assertFalse(
+                savedCompliance.isPassed()
+        );
+
+        assertEquals(
+                failureReason,
+                savedCompliance.getFailureReason()
+        );
+
+        verify(gatekeeperService)
+                .evaluate(request);
+
+        verify(auditService)
+                .recordSuccess(
+                        eq(
+                                ProcurementAuditEvent
+                                        .AuditEventType
+                                        .BID_SUBMITTED
+                        ),
+                        eq(TENDER_ID),
+                        eq(replacementBidId),
+                        eq(CURRENT_USER_ID),
+                        eq("Bid submitted"),
+                        anyString()
+                );
+
+        verify(auditService)
+                .recordFailure(
+                        eq(
+                                ProcurementAuditEvent
+                                        .AuditEventType
+                                        .BID_COMPLIANCE_FAILED
+                        ),
+                        eq(TENDER_ID),
+                        eq(replacementBidId),
+                        eq(CURRENT_USER_ID),
+                        eq("Bid compliance failed"),
+                        eq(failureReason)
+                );
+
+        verify(procurementNotificationService)
+                .queueBidReceived(
+                        savedBid,
+                        publishedTender
+                );
+
+        verify(procurementNotificationService)
+                .queueComplianceFailed(
+                        savedBid,
+                        publishedTender,
+                        failureReason
+                );
+
+        verify(
+                procurementNotificationService,
+                never()
+        ).queueCompliancePassed(
+                any(Bid.class),
+                any(Tender.class)
         );
     }
 
