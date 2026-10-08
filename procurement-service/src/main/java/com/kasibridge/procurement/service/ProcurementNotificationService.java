@@ -30,4 +30,9 @@ public interface ProcurementNotificationService {
     void queueAnomalyDetected(
             ProcurementAnomaly anomaly
     );
+
+    void queueBidWithdrawn(
+            Bid bid,
+            Tender tender
+    );
 }

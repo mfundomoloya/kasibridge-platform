@@ -167,6 +167,7 @@ public class NotificationOutbox {
         BID_COMPLIANCE_PASSED,
         BID_COMPLIANCE_FAILED,
         TENDER_AWARDED,
-        PROCUREMENT_ANOMALY_DETECTED
+        PROCUREMENT_ANOMALY_DETECTED,
+        BID_WITHDRAWN
     }
 }

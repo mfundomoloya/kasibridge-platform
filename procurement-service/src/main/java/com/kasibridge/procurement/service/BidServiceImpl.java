@@ -304,6 +304,10 @@ public class BidServiceImpl implements BidService {
                         + withdrawnBid.getBidderAlias()
         );
 
+        procurementNotificationService.queueBidWithdrawn(
+                withdrawnBid,
+                tender
+        );
         BidComplianceResponse compliance =
                 complianceRepository.findByBidId(
                                 withdrawnBid.getId()

@@ -249,6 +249,39 @@ public class ProcurementNotificationServiceImpl implements ProcurementNotificati
         }
     }
 
+    @Override
+    public void queueBidWithdrawn(
+            Bid bid,
+            Tender tender
+    ) {
+        try {
+            TraderProfileClientResponse trader =
+                    loadTrader(bid);
+
+            WhatsAppTemplateContext context =
+                    baseBidContext(
+                            bid,
+                            tender,
+                            trader
+                    );
+
+            queueBidderNotification(
+                    NotificationOutbox.NotificationTemplateType.BID_WITHDRAWN,
+                    context,
+                    trader,
+                    bid,
+                    tender
+            );
+
+        } catch (Exception exception) {
+            log.error(
+                    "Unable to queue BID_WITHDRAWN notification for tenderId={} bidId={}",
+                    safeTenderId(tender),
+                    safeBidId(bid),
+                    exception
+            );
+        }
+    }
     private void queueAdminFallbackAnomalyNotification(
             ProcurementAnomaly anomaly,
             String message
@@ -272,15 +305,34 @@ public class ProcurementNotificationServiceImpl implements ProcurementNotificati
     }
 
 
-    private TraderProfileClientResponse loadTrader(Bid bid) {
-
-        if (bid.getTraderProfileId() == null) {
-            throw new IllegalStateException("Bid does not contain a trader profile ID.");
+    private TraderProfileClientResponse loadTrader(
+            Bid bid
+    ) {
+        if (bid == null) {
+            throw new IllegalArgumentException(
+                    "Bid is required to load the trader profile."
+            );
         }
 
-        return traderProfileClient.getTraderProfileById(
-                bid.getTraderProfileId()
-        );
+        if (bid.getTraderProfileId() == null) {
+            throw new IllegalStateException(
+                    "Bid does not contain a trader profile ID."
+            );
+        }
+
+        TraderProfileClientResponse trader =
+                traderProfileClient.getTraderProfileByIdAsSystem(
+                        bid.getTraderProfileId()
+                );
+
+        if (trader == null || trader.getId() == null) {
+            throw new IllegalStateException(
+                    "Trader profile could not be loaded for bid ID: "
+                            + bid.getId()
+            );
+        }
+
+        return trader;
     }
 
     private WhatsAppTemplateContext baseBidContext(Bid bid, Tender tender, TraderProfileClientResponse trader) {

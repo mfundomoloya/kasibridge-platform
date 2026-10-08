@@ -42,6 +42,9 @@ public class WhatsAppMessageTemplateServiceImpl implements WhatsAppMessageTempla
             case BID_COMPLIANCE_FAILED ->
                     buildBidComplianceFailed(context);
 
+            case BID_WITHDRAWN ->
+                    buildBidWithdrawn(context);
+
             case TENDER_AWARDED ->
                     buildTenderAwarded(context);
 
@@ -178,6 +181,28 @@ public class WhatsAppMessageTemplateServiceImpl implements WhatsAppMessageTempla
                 + ". Reason: "
                 + failureReason
                 + " Log in to KasiBridge to review the result and available support options.";
+    }
+
+    private String buildBidWithdrawn(WhatsAppTemplateContext context) {
+        requireValue(
+                context.getBidReference(),
+                "Bid reference is required for BID_WITHDRAWN."
+        );
+
+        String recipientName =
+                greetingName(context.getRecipientName());
+
+        String tenderIdentifier =
+                tenderIdentifier(context);
+
+        return "Hi "
+                + recipientName
+                + ", your bid "
+                + context.getBidReference()
+                + " for "
+                + tenderIdentifier
+                + " has been withdrawn successfully. "
+                + "The withdrawn bid will remain available in your KasiBridge bid history.";
     }
 
     private String buildTenderAwarded(WhatsAppTemplateContext context) {
