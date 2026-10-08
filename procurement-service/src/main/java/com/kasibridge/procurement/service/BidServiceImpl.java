@@ -61,9 +61,16 @@ public class BidServiceImpl implements BidService {
             );
         }
 
-        if (bidRepository.existsByTenderIdAndTraderProfileId(tenderId, trader.getId())) {
+        boolean activeBidExists =
+                bidRepository.existsActiveBidForTrader(
+                        tenderId,
+                        trader.getId(),
+                        Bid.BidStatus.WITHDRAWN
+                );
+
+        if (activeBidExists) {
             throw new DuplicateBidException(
-                    "Trader has already submitted a bid for this tender."
+                    "Trader already has an active bid for this tender."
             );
         }
 

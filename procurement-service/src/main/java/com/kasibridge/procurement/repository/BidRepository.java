@@ -19,8 +19,21 @@ public interface BidRepository extends JpaRepository<Bid, Long> {
 
     long countByTenderId(Long tenderId);
 
-    boolean existsByTenderIdAndTraderProfileId(Long tenderId, Long traderProfileId);
-
+    @Query("""
+        SELECT CASE
+            WHEN COUNT(b) > 0 THEN true
+            ELSE false
+        END
+        FROM Bid b
+        WHERE b.tenderId = :tenderId
+          AND b.traderProfileId = :traderProfileId
+          AND b.status <> :excludedStatus
+        """)
+    boolean existsActiveBidForTrader(
+            @Param("tenderId") Long tenderId,
+            @Param("traderProfileId") Long traderProfileId,
+            @Param("excludedStatus") Bid.BidStatus excludedStatus
+    );
 
     @Query("""
     SELECT MIN(b.priceAmount)
