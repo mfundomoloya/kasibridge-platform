@@ -1,95 +1,120 @@
 import {
-    PortalLayout,
-} from '../components/layout/PortalLayout'
+    Link,
+} from 'react-router-dom'
 
-const procurementNavigation = [
-    {
-        label: 'Procurement overview',
-        path: '/procurement',
-    },
-    {
-        label: 'Tender specifications',
-        path: '/procurement/specifications',
-        roles: [
-            'ROLE_SPECIFICATION_OFFICER',
-        ] as const,
-    },
-    {
-        label: 'Bid evaluations',
-        path: '/procurement/evaluations',
-        roles: [
-            'ROLE_EVALUATOR',
-        ] as const,
-    },
-    {
-        label: 'Adjudication',
-        path: '/procurement/adjudication',
-        roles: [
-            'ROLE_ADJUDICATOR',
-        ] as const,
-    },
-    {
-        label: 'Fraud alerts',
-        path: '/procurement/alerts',
-        roles: [
-            'ROLE_ANALYST',
-        ] as const,
-    },
-]
+import {
+    ProcurementLayout,
+} from '../components/layout/ProcurementLayout'
 
 export function ProcurementDashboardPage() {
     return (
-        <PortalLayout
-            portalName="Procurement Portal"
-            navigationItems={
-                procurementNavigation.map((item) => ({
-                    ...item,
-                    roles: item.roles
-                        ? [...item.roles]
-                        : undefined,
-                }))
-            }
-        >
+        <ProcurementLayout>
             <section className="page-heading">
                 <div>
-          <span className="eyebrow">
-            Controlled procurement workflow
-          </span>
+                    <span className="eyebrow">
+                        Controlled procurement workflow
+                    </span>
 
-                    <h1>Procurement Overview</h1>
+                    <h1>Procurement overview</h1>
 
                     <p>
-                        Access only the workflow functions
-                        authorised for your assigned role.
+                        Access only the workflow
+                        functions authorised for your
+                        assigned role.
                     </p>
                 </div>
             </section>
 
             <section className="statistics-grid">
-                <article className="statistic-card">
-                    <span>Assigned activities</span>
-                    <strong>0</strong>
-                    <p>Tasks allocated to your role</p>
-                </article>
+                <Link
+                    className={
+                        'statistic-card '
+                        + 'dashboard-statistic-link'
+                    }
+                    to="/procurement/support-tickets"
+                >
+                    <span>Assigned support tickets</span>
+
+                    <strong>View</strong>
+
+                    <p>
+                        Review support activities
+                        assigned to your account.
+                    </p>
+                </Link>
 
                 <article className="statistic-card">
                     <span>Open tenders</span>
+
                     <strong>0</strong>
-                    <p>Active procurement processes</p>
+
+                    <p>
+                        Active procurement processes
+                    </p>
                 </article>
 
                 <article className="statistic-card">
                     <span>Pending reviews</span>
+
                     <strong>0</strong>
-                    <p>Items awaiting authorised action</p>
+
+                    <p>
+                        Items awaiting authorised
+                        action
+                    </p>
                 </article>
 
                 <article className="statistic-card">
                     <span>Alerts</span>
+
                     <strong>0</strong>
-                    <p>Explainable integrity alerts</p>
+
+                    <p>
+                        Explainable integrity alerts
+                    </p>
                 </article>
             </section>
-        </PortalLayout>
+
+            <section className="dashboard-grid">
+                <article className="content-card">
+                    <span className="eyebrow">
+                        Support workflow
+                    </span>
+
+                    <h2>Assigned ticket queue</h2>
+
+                    <p className="tender-detail-text">
+                        Review support requests assigned
+                        to your account and perform only
+                        the actions permitted by the
+                        ticket’s current workflow state.
+                    </p>
+
+                    <div className="form-actions">
+                        <Link
+                            className="primary-link-button"
+                            to="/procurement/support-tickets"
+                        >
+                            Open support queue
+                        </Link>
+                    </div>
+                </article>
+
+                <article className="content-card">
+                    <span className="eyebrow">
+                        Segregation of duties
+                    </span>
+
+                    <h2>Role-controlled access</h2>
+
+                    <p className="tender-detail-text">
+                        Procurement functions are
+                        displayed according to the roles
+                        included in the authenticated
+                        user’s access token.
+                    </p>
+                </article>
+            </section>
+        </ProcurementLayout>
     )
 }
