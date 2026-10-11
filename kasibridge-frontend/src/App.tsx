@@ -61,6 +61,10 @@ import {
 } from './pages/TraderProfilePage'
 
 import {
+    OfficialClarificationsPage,
+} from './pages/OfficialClarificationsPage'
+
+import {
     UnauthorizedPage,
 } from './pages/UnauthorizedPage'
 
@@ -178,6 +182,19 @@ function App() {
                         ]}
                     >
                         <SupportTicketDetailsPage />
+                    </RoleRoute>
+                }
+            />
+
+            <Route
+                path="/clarifications"
+                element={
+                    <RoleRoute
+                        allowedRoles={[
+                            'ROLE_TRADER',
+                        ]}
+                    >
+                        <OfficialClarificationsPage />
                     </RoleRoute>
                 }
             />

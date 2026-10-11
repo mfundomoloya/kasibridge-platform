@@ -802,6 +802,78 @@ form .primary-button {
   margin-top: 0;
 }
 
+/* Official clarification surfaces */
+.clarification-list {
+  display: grid;
+  gap: 20px;
+}
+
+.clarification-card {
+  display: grid;
+  gap: 22px;
+}
+
+.clarification-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.clarification-card-header h2 {
+  margin: 6px 0 0;
+  overflow-wrap: anywhere;
+}
+
+.official-clarification-badge {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 12px;
+  border: 1px solid #a7d7bd;
+  border-radius: 999px;
+  color: #185c3d;
+  background: #edf9f1;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.clarification-question,
+.clarification-response {
+  padding-top: 18px;
+  border-top: 1px solid #e3e8e4;
+}
+
+.clarification-question h3,
+.clarification-response h3 {
+  margin: 0 0 10px;
+}
+
+.clarification-question p,
+.clarification-response p {
+  color: #4f5e56;
+  line-height: 1.6;
+}
+
+.clarification-response {
+  padding: 20px;
+  border: 1px solid #a7d7bd;
+  border-radius: 14px;
+  background: #f3faf5;
+}
+
+.clarification-response h3 {
+  color: #185c3d;
+}
+
+.clarification-response p:last-child,
+.clarification-question p:last-child {
+  margin-bottom: 0;
+}
+
 @media (max-width: 760px) {
   .bid-card,
   .confirmation-dialog-content {
@@ -834,6 +906,12 @@ form .primary-button {
 
   .pagination-controls {
     flex-wrap: wrap;
+  }
+}
+
+@media (max-width: 640px) {
+  .clarification-card-header {
+    flex-direction: column;
   }
 }
 

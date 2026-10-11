@@ -24,14 +24,25 @@ export function TenderSupportActions({
             <h2>Need help with this tender?</h2>
 
             <p className="tender-detail-text">
-                Create a support request for a
-                clarification, compliance appeal,
-                upload issue, or general assistance.
+                Review official clarification
+                responses or create a support request
+                for clarification, compliance,
+                upload, or general assistance.
             </p>
 
             <div className="form-actions">
                 <Link
                     className="primary-link-button"
+                    to={
+                        '/clarifications'
+                        + `?tenderId=${tenderId}`
+                    }
+                >
+                    View official clarifications
+                </Link>
+
+                <Link
+                    className="secondary-link-button"
                     to={
                         '/support-tickets/new'
                         + `?tenderId=${tenderId}`

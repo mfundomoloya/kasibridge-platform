@@ -54,6 +54,28 @@ export async function getMySupportTickets(
     return response.data
 }
 
+export async function getPublicClarifications(
+    tenderId: number,
+    parameters: GetMyTicketsParameters = {},
+): Promise<SupportTicketPage> {
+    const response =
+        await procurementApiClient.get<SupportTicketPage>(
+            `/api/v1/tenders/${tenderId}/clarifications`,
+            {
+                params: {
+                    page: parameters.page ?? 0,
+                    size: parameters.size ?? 20,
+                    sort:
+                        parameters.sort
+                        ?? 'respondedAt,desc',
+                },
+            },
+        )
+
+    return response.data
+}
+
+
 export async function getSupportTicketById(
     ticketId: number,
 ): Promise<SupportTicket> {
