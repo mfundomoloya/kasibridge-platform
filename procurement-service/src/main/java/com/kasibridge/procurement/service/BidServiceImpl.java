@@ -242,9 +242,13 @@ public class BidServiceImpl implements BidService {
             );
         }
 
-        Bid bid = bidRepository.findById(bidId)
+        Bid bid = bidRepository
+                .findByIdAndTraderProfileId(
+                        bidId,
+                        trader.getId()
+                )
                 .orElseThrow(() -> new BidNotFoundException(
-                        "Bid not found with ID: " + bidId
+                        "Bid not found or does not belong to the authenticated trader."
                 ));
 
         if (!bid.getTraderProfileId().equals(trader.getId())) {

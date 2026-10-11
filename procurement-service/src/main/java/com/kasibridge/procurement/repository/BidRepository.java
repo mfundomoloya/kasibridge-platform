@@ -9,6 +9,7 @@ import org.springframework.stereotype.Repository;
 import java.math.BigDecimal;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface BidRepository extends JpaRepository<Bid, Long> {
@@ -44,4 +45,6 @@ public interface BidRepository extends JpaRepository<Bid, Long> {
     BigDecimal findLowestBidPriceByTenderId(@Param("tenderId") Long tenderId);
 
     List<Bid> findByTenderIdAndStatusIn(Long tenderId, Collection<Bid.BidStatus> statuses);
+
+    Optional<Bid> findByIdAndTraderProfileId(Long bidId, Long traderProfileId);
 }
