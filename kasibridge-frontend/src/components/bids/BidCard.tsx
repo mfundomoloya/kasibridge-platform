@@ -47,7 +47,7 @@ export function BidCard({
 
             <dl className="profile-details">
                 <div>
-                    <dt>Bidder alias</dt>
+                    <dt>Evaluation alias</dt>
                     <dd>{bid.bidderAlias}</dd>
                 </div>
 
