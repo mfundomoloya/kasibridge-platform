@@ -67,7 +67,14 @@ import {
 import {
     NotificationsPage,
 } from './pages/NotificationsPage'
-``
+
+import {
+    ProcurementSupportQueuePage,
+} from './pages/ProcurementSupportQueuePage'
+
+import {
+    ProcurementSupportTicketDetailsPage,
+} from './pages/ProcurementSupportTicketDetailsPage'
 
 import {
     UnauthorizedPage,
@@ -252,12 +259,44 @@ function App() {
                             'ROLE_SPECIFICATION_OFFICER',
                             'ROLE_EVALUATOR',
                             'ROLE_ADJUDICATOR',
+                            'ROLE_PLATFORM_ADMIN',
                         ]}
                     >
                         <ProcurementDashboardPage />
                     </RoleRoute>
                 }
             />
+
+            <Route
+                path="/procurement/support-tickets"
+                element={
+                    <RoleRoute
+                        allowedRoles={[
+                            'ROLE_SPECIFICATION_OFFICER',
+                            'ROLE_ADJUDICATOR',
+                            'ROLE_PLATFORM_ADMIN',
+                        ]}
+                    >
+                        <ProcurementSupportQueuePage />
+                    </RoleRoute>
+                }
+            />
+
+            <Route
+                path="/procurement/support-tickets/:ticketId"
+                element={
+                    <RoleRoute
+                        allowedRoles={[
+                            'ROLE_SPECIFICATION_OFFICER',
+                            'ROLE_ADJUDICATOR',
+                            'ROLE_PLATFORM_ADMIN',
+                        ]}
+                    >
+                        <ProcurementSupportTicketDetailsPage />
+                    </RoleRoute>
+                }
+            />
+
 
             <Route
                 path="/unauthorized"
