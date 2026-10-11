@@ -14,6 +14,8 @@ import {
     getOpenTenderById,
 } from '../api/tenderApi'
 
+import BidSubmissionForm from '../components/bids/BidSubmissionForm'
+
 import {
     AppLayout,
 } from '../components/layout/AppLayout'
@@ -168,9 +170,9 @@ export function TenderDetailsPage() {
                 <>
                     <section className="tender-detail-hero">
                         <div>
-              <span className="tender-reference">
-                {tender.tenderReference}
-              </span>
+                            <span className="tender-reference">
+                                {tender.tenderReference}
+                            </span>
 
                             <h1>{tender.title}</h1>
 
@@ -188,9 +190,9 @@ export function TenderDetailsPage() {
 
                     <section className="tender-detail-grid">
                         <article className="content-card">
-              <span className="eyebrow">
-                Opportunity details
-              </span>
+                            <span className="eyebrow">
+                                Opportunity details
+                            </span>
 
                             <h2>Tender description</h2>
 
@@ -200,9 +202,9 @@ export function TenderDetailsPage() {
                         </article>
 
                         <article className="content-card">
-              <span className="eyebrow">
-                Summary
-              </span>
+                            <span className="eyebrow">
+                                Summary
+                            </span>
 
                             <dl className="profile-details">
                                 <div>
@@ -226,7 +228,9 @@ export function TenderDetailsPage() {
                                 </div>
 
                                 <div>
-                                    <dt>Buyer organisation</dt>
+                                    <dt>
+                                        Buyer organisation
+                                    </dt>
 
                                     <dd>
                                         {formatBuyerOrganisation(
@@ -237,16 +241,20 @@ export function TenderDetailsPage() {
 
                                 <div>
                                     <dt>Status</dt>
-
                                     <dd>Open for bidding</dd>
                                 </div>
                             </dl>
                         </article>
 
-                        <article className="content-card tender-detail-wide">
-              <span className="eyebrow">
-                Evaluation
-              </span>
+                        <article
+                            className={
+                                'content-card '
+                                + 'tender-detail-wide'
+                            }
+                        >
+                            <span className="eyebrow">
+                                Evaluation
+                            </span>
 
                             <h2>Evaluation criteria</h2>
 
@@ -255,29 +263,19 @@ export function TenderDetailsPage() {
                             </p>
                         </article>
 
-                        <article className="content-card tender-detail-wide">
-              <span className="eyebrow">
-                Bid submission
-              </span>
+                        <article
+                            className={
+                                'content-card '
+                                + 'tender-detail-wide'
+                            }
+                        >
+                            <span className="eyebrow">
+                                Bid submission
+                            </span>
 
-                            <h2>
-                                Interested in this tender?
-                            </h2>
-
-                            <p className="tender-detail-text">
-                                Bid submission will be enabled
-                                after the deadline and compliance
-                                workflow is connected to the Trader
-                                Dashboard.
-                            </p>
-
-                            <button
-                                className="primary-button"
-                                type="button"
-                                disabled
-                            >
-                                Bid submission coming next
-                            </button>
+                            <BidSubmissionForm
+                                tenderId={tender.id}
+                            />
                         </article>
                     </section>
                 </>
