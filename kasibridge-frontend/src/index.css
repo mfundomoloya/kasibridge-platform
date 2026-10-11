@@ -1004,6 +1004,104 @@ form .primary-button {
   border-top: 1px solid #e3e8e4;
 }
 
+/* Trader dashboard surfaces */
+.dashboard-statistic-link {
+  color: inherit;
+  text-decoration: none;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
+}
+
+.dashboard-statistic-link:hover {
+  border-color: #a7c8b5;
+  box-shadow: 0 14px 34px rgba(31, 57, 43, 0.1);
+  transform: translateY(-2px);
+}
+
+.dashboard-statistic-link:focus-visible {
+  outline: 3px solid rgba(11, 107, 74, 0.24);
+  outline-offset: 3px;
+}
+
+.dashboard-statistic-link p {
+  min-height: 42px;
+}
+
+.dashboard-list {
+  display: grid;
+  gap: 0;
+}
+
+.dashboard-list-item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 20px 0;
+  border-bottom: 1px solid #e3e8e4;
+}
+
+.dashboard-list-item:first-child {
+  padding-top: 0;
+}
+
+.dashboard-list-item:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.dashboard-list-item > div {
+  min-width: 0;
+}
+
+.dashboard-list-item h3 {
+  margin: 7px 0 8px;
+  color: #1f392b;
+  overflow-wrap: anywhere;
+}
+
+.dashboard-list-item p {
+  margin: 5px 0 0;
+  line-height: 1.55;
+}
+
+.dashboard-list-item .secondary-link-button {
+  flex-shrink: 0;
+}
+
+.dashboard-notification {
+  display: block;
+}
+
+.dashboard-notification p {
+  white-space: pre-wrap;
+}
+
+.dashboard-grid .content-card {
+  min-width: 0;
+}
+
+.card-heading .text-button {
+  display: inline-flex;
+  align-items: center;
+  color: #0b6b4a;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.card-heading .text-button:hover {
+  color: #09583d;
+  text-decoration: underline;
+}
+
+.card-heading .text-button:focus-visible {
+  border-radius: 4px;
+  outline: 3px solid rgba(11, 107, 74, 0.24);
+  outline-offset: 3px;
+}
+
 @media (max-width: 760px) {
   .bid-card,
   .confirmation-dialog-content {
@@ -1062,6 +1160,26 @@ form .primary-button {
 
   .notification-count {
     text-align: center;
+  }
+}
+
+@media (max-width: 760px) {
+  .page-heading {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .page-heading .primary-link-button {
+    width: 100%;
+  }
+
+  .dashboard-list-item {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .dashboard-list-item .secondary-link-button {
+    width: 100%;
   }
 }
 
