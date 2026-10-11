@@ -17,7 +17,7 @@ const traderNavigation = [
     },
     {
         label: 'My bids',
-        path: '/bids',
+        path: '/my-bids',
     },
     {
         label: 'Support tickets',
