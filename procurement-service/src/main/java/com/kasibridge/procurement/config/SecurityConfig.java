@@ -349,14 +349,29 @@ public class SecurityConfig {
 
                                 /*
                                  * In-app notifications.
+                                 *
+                                 * Traders may access only their own notifications.
+                                 * Recipient scoping is enforced in the service layer.
                                  */
                                 .requestMatchers(
+                                        HttpMethod.GET,
                                         "/api/v1/notifications/outbox/in-app",
                                         "/api/v1/notifications/outbox/in-app/unread",
-                                        "/api/v1/notifications/outbox/in-app/read",
+                                        "/api/v1/notifications/outbox/in-app/read"
+                                )
+                                .hasAnyRole(
+                                        "TRADER",
+                                        "PLATFORM_ADMIN",
+                                        "ADJUDICATOR",
+                                        "SPECIFICATION_OFFICER"
+                                )
+
+                                .requestMatchers(
+                                        HttpMethod.PATCH,
                                         "/api/v1/notifications/outbox/in-app/{id}/read"
                                 )
                                 .hasAnyRole(
+                                        "TRADER",
                                         "PLATFORM_ADMIN",
                                         "ADJUDICATOR",
                                         "SPECIFICATION_OFFICER"
@@ -410,7 +425,7 @@ public class SecurityConfig {
                                  */
                                 .requestMatchers(
                                         HttpMethod.GET,
-                                        "/api/v1/bids/*y"
+                                        "/api/v1/bids/my"
                                 )
                                 .hasAnyRole("TRADER"
                                 )
