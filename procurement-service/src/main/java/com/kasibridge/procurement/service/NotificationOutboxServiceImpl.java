@@ -105,7 +105,12 @@ public class NotificationOutboxServiceImpl implements  NotificationOutboxService
 
         Long currentUserId = currentUserService.getCurrentUserId();
 
-        return repository.findByChannelAndRecipientUserIdAndReadAtIsNotNull(
+        log.info(
+                "Loading in-app notifications for scoped userId={}",
+                currentUserId
+        );
+
+        return repository.findByChannelAndRecipientUserId(
                 NotificationOutbox.NotificationChannel.IN_APP,
                         currentUserId,
                         pageable
@@ -119,11 +124,12 @@ public class NotificationOutboxServiceImpl implements  NotificationOutboxService
 
         boolean isPlatformAdmin = currentUserService.hasRole("ROLE_PLATFORM_ADMIN");
 
-        if (isPlatformAdmin) {
-            return repository.findByChannelAndReadAtIsNull(
-                    NotificationOutbox.NotificationChannel.IN_APP,
-                    pageable
-            )
+        if (currentUserService.hasRole("ROLE_PLATFORM_ADMIN")) {
+            return repository
+                    .findByChannelAndReadAtIsNotNull(
+                            NotificationOutbox.NotificationChannel.IN_APP,
+                            pageable
+                    )
                     .map(NotificationOutboxResponse::from);
         }
 
@@ -131,7 +137,7 @@ public class NotificationOutboxServiceImpl implements  NotificationOutboxService
 
         log.info("Loading unread in-app notifications for scoped userId={}", currentUserId);
 
-        return repository.findByChannelAndRecipientUserIdAndReadAtIsNull(
+        return repository.findByChannelAndRecipientUserIdAndReadAtIsNotNull(
                 NotificationOutbox.NotificationChannel.IN_APP,
                         currentUserId,
                         pageable
