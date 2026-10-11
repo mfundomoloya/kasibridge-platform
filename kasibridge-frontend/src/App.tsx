@@ -65,6 +65,11 @@ import {
 } from './pages/OfficialClarificationsPage'
 
 import {
+    NotificationsPage,
+} from './pages/NotificationsPage'
+``
+
+import {
     UnauthorizedPage,
 } from './pages/UnauthorizedPage'
 
@@ -195,6 +200,19 @@ function App() {
                         ]}
                     >
                         <OfficialClarificationsPage />
+                    </RoleRoute>
+                }
+            />
+
+            <Route
+                path="/notifications"
+                element={
+                    <RoleRoute
+                        allowedRoles={[
+                            'ROLE_TRADER',
+                        ]}
+                    >
+                        <NotificationsPage />
                     </RoleRoute>
                 }
             />
