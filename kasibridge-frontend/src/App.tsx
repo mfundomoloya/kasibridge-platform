@@ -20,31 +20,37 @@ import {
     AdminDashboardPage,
 } from './pages/AdminDashboardPage'
 
-import { LoginPage } from './pages/LoginPage'
+import {
+    LoginPage,
+} from './pages/LoginPage'
 
 import {
-    ProcurementDashboardPage,
-} from './pages/ProcurementDashboardPage'
-
-import {
-    TraderDashboardPage,
-} from './pages/TraderDashboardPage'
-
-import {
-    UnauthorizedPage,
-} from './pages/UnauthorizedPage'
-
-import {
-    TraderProfilePage,
-} from './pages/TraderProfilePage'
+    MyBidsPage,
+} from './pages/MyBidsPage'
 
 import {
     OpenTendersPage,
 } from './pages/OpenTendersPage'
 
 import {
+    ProcurementDashboardPage,
+} from './pages/ProcurementDashboardPage'
+
+import {
     TenderDetailsPage,
 } from './pages/TenderDetailsPage'
+
+import {
+    TraderDashboardPage,
+} from './pages/TraderDashboardPage'
+
+import {
+    TraderProfilePage,
+} from './pages/TraderProfilePage'
+
+import {
+    UnauthorizedPage,
+} from './pages/UnauthorizedPage'
 
 function App() {
     return (
@@ -108,6 +114,19 @@ function App() {
                         ]}
                     >
                         <TenderDetailsPage />
+                    </RoleRoute>
+                }
+            />
+
+            <Route
+                path="/my-bids"
+                element={
+                    <RoleRoute
+                        allowedRoles={[
+                            'ROLE_TRADER',
+                        ]}
+                    >
+                        <MyBidsPage />
                     </RoleRoute>
                 }
             />
