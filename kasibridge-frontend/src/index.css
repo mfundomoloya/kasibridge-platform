@@ -381,6 +381,208 @@ form .primary-button {
   }
 }
 
+/* Bid workflow surfaces */
+.bid-list {
+  display: grid;
+  gap: 20px;
+}
+
+.bid-card {
+  padding: 32px;
+}
+
+.bid-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  padding-bottom: 22px;
+  border-bottom: 1px solid #edf1ee;
+}
+
+.bid-card-header h2 {
+  margin: 8px 0 0;
+  font-size: 1.5rem;
+}
+
+.bid-status-badge {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  min-height: 30px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.status-submitted,
+.status-compliant,
+.status-awarded {
+  color: #145c35;
+  background: #e4f6ea;
+}
+
+.status-evaluation,
+.status-recommended {
+  color: #245a72;
+  background: #e5f2f8;
+}
+
+.status-failed,
+.status-rejected {
+  color: #8b1f1f;
+  background: #fff0f0;
+}
+
+.status-withdrawn {
+  color: #4d5751;
+  background: #e9edeb;
+}
+
+.bid-card .profile-details {
+  margin-top: 24px;
+}
+
+.bid-card-proposal,
+.bid-compliance-summary {
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid #edf1ee;
+}
+
+.bid-card-proposal h3,
+.bid-compliance-summary h3 {
+  margin: 0 0 10px;
+  font-size: 1rem;
+}
+
+.bid-card-proposal p,
+.bid-compliance-summary p {
+  margin: 0 0 10px;
+}
+
+.bid-compliance-summary {
+  color: #4f5e56;
+}
+
+.bid-compliance-summary strong {
+  color: #0e1a15;
+}
+
+.bid-submission-form,
+.bid-submission-success {
+  margin-top: 24px;
+}
+
+.bid-submission-form > h2,
+.bid-submission-success h2 {
+  margin: 0 0 8px;
+}
+
+.bid-submission-form > p,
+.bid-submission-success > p {
+  color: #4f5e56;
+  line-height: 1.6;
+}
+
+.bid-submission-form form {
+  gap: 20px;
+  margin-top: 24px;
+}
+
+.form-group {
+  display: grid;
+  gap: 8px;
+}
+
+.form-group label {
+  margin: 0;
+}
+
+.form-error-message,
+.field-error {
+  color: #8b1f1f;
+}
+
+.form-error-message {
+  margin-top: 18px;
+  padding: 12px 14px;
+  border: 1px solid #e6b9b9;
+  border-radius: 10px;
+  background: #fff1f1;
+  line-height: 1.5;
+}
+
+.field-error {
+  margin: 0;
+  font-size: 0.86rem;
+}
+
+.bid-submission-success {
+  padding: 22px;
+  border: 1px solid #afd8bf;
+  border-radius: 14px;
+  color: #0e1a15;
+  background: #edf9f1;
+}
+
+.bid-submission-success h2 {
+  color: #0e1a15;
+}
+
+.bid-submission-success p:last-child {
+  margin-bottom: 0;
+}
+
+.confirmation-dialog {
+  width: min(calc(100% - 40px), 520px);
+  padding: 0;
+  border: 0;
+  border-radius: 20px;
+  color: #0e1a15;
+  box-shadow: 0 24px 70px rgba(13, 43, 33, 0.2);
+}
+
+.confirmation-dialog::backdrop {
+  background: rgba(13, 43, 33, 0.48);
+}
+
+.confirmation-dialog-content {
+  padding: 32px;
+}
+
+.confirmation-dialog h2 {
+  margin: 8px 0 12px;
+}
+
+.confirmation-dialog-content > p {
+  color: #4f5e56;
+  line-height: 1.6;
+}
+
+.danger-button {
+  min-height: 44px;
+  padding: 0 20px;
+  border: 0;
+  border-radius: 999px;
+  color: #ffffff;
+  background: #a83232;
+  font-weight: 600;
+}
+
+@media (max-width: 760px) {
+  .bid-card,
+  .confirmation-dialog-content {
+    padding: 24px;
+  }
+
+  .bid-card-header {
+    flex-direction: column;
+  }
+}
+
 /* Trader dashboard reskin */
 :root {
   font-family: 'DM Sans', ui-sans-serif, system-ui, sans-serif;

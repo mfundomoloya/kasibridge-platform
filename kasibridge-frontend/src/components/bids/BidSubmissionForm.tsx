@@ -172,7 +172,8 @@ export default function BidSubmissionForm({
 
             <p>
                 Provide your technical proposal and
-                bid price. Your                recorded against this tender.
+                bid price. Your submission will be recorded
+                against this tender.
             </p>
 
             {errors.general && (
@@ -273,6 +274,7 @@ export default function BidSubmissionForm({
 
                 <div className="form-actions">
                     <button
+                        className="primary-button"
                         type="submit"
                         disabled={isSubmitting}
                     >
@@ -283,6 +285,7 @@ export default function BidSubmissionForm({
 
                     {onCancel && (
                         <button
+                            className="secondary-button"
                             type="button"
                             onClick={onCancel}
                             disabled={isSubmitting}

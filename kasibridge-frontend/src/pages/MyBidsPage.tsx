@@ -105,18 +105,20 @@ export function MyBidsPage() {
 
     return (
         <AppLayout>
-            <section className="page-header">
-                <span className="eyebrow">
-                    Trader portal
-                </span>
+            <section className="page-heading">
+                <div>
+                    <span className="eyebrow">
+                        Trader portal
+                    </span>
 
-                <h1>My bids</h1>
+                    <h1>My bids</h1>
 
-                <p>
-                    Review your submitted bids,
-                    compliance results, and current
-                    bid statuses.
-                </p>
+                    <p>
+                        Review your submitted bids,
+                        compliance results, and current
+                        bid statuses.
+                    </p>
+                </div>
             </section>
 
             {isLoading ? (
