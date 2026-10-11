@@ -572,6 +572,236 @@ form .primary-button {
   font-weight: 600;
 }
 
+/* Support ticket workflow */
+.support-ticket-list {
+  display: grid;
+  gap: 20px;
+}
+
+.support-ticket-card {
+  display: grid;
+  gap: 22px;
+}
+
+.support-ticket-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.support-ticket-card-header h2 {
+  margin: 6px 0 0;
+  overflow-wrap: anywhere;
+}
+
+.support-ticket-summary,
+.support-ticket-response,
+.support-ticket-closure {
+  padding-top: 18px;
+  border-top: 1px solid #e3e8e4;
+}
+
+.support-ticket-summary h3,
+.support-ticket-response h3,
+.support-ticket-closure h3 {
+  margin: 0 0 10px;
+}
+
+.support-ticket-timestamp,
+.field-help {
+  margin: 6px 0 0;
+  color: #68736c;
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+
+.support-ticket-status-badge {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 10px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.ticket-status-open {
+  border-color: #b8ccff;
+  color: #2549a8;
+  background: #eff4ff;
+}
+
+.ticket-status-review {
+  border-color: #c9b8ef;
+  color: #5c3593;
+  background: #f5f0ff;
+}
+
+.ticket-status-responded {
+  border-color: #a7d7bd;
+  color: #185c3d;
+  background: #edf9f1;
+}
+
+.ticket-status-closed {
+  border-color: #cdd3cf;
+  color: #59635d;
+  background: #f1f3f2;
+}
+
+.ticket-status-rejected {
+  border-color: #f2b8b5;
+  color: #8f1d18;
+  background: #fff1f0;
+}
+
+.support-ticket-form {
+  display: grid;
+  gap: 18px;
+}
+
+.support-ticket-form h1 {
+  margin: 0;
+}
+
+.support-ticket-form form {
+  display: grid;
+  gap: 20px;
+}
+
+.form-group select {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 46px;
+  padding: 12px 14px;
+  border: 1px solid #d5ddd7;
+  border-radius: 12px;
+  color: #1f2923;
+  background: #ffffff;
+  font: inherit;
+}
+
+.form-group select:focus {
+  border-color: #0b6b4a;
+  outline: 3px solid rgba(11, 107, 74, 0.16);
+}
+
+.form-group select:disabled {
+  cursor: not-allowed;
+  color: #6c776f;
+  background: #f2f5f3;
+}
+
+.form-group select[aria-invalid='true'] {
+  border-color: #b42318;
+}
+
+.page-header-actions {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.primary-link-button,
+.secondary-link-button {
+  display: inline-flex;
+  min-height: 44px;
+  box-sizing: border-box;
+  align-items: center;
+  justify-content: center;
+  padding: 0 20px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.primary-link-button {
+  color: #ffffff;
+  background: #0b6b4a;
+}
+
+.primary-link-button:hover {
+  background: #09583d;
+}
+
+.secondary-link-button {
+  border-color: #d5ddd7;
+  color: #0e1a15;
+  background: #ffffff;
+}
+
+.secondary-link-button:hover {
+  background: #f1f5f2;
+}
+
+.primary-link-button:focus-visible,
+.secondary-link-button:focus-visible {
+  outline: 3px solid rgba(11, 107, 74, 0.24);
+  outline-offset: 2px;
+}
+
+.pagination-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  margin-top: 24px;
+}
+
+.pagination-controls span {
+  color: #59635d;
+  font-weight: 700;
+}
+
+.ticket-detail-hero {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 24px;
+  padding: 32px;
+  border: 1px solid #e3e8e4;
+  border-radius: 20px;
+  background: #ffffff;
+  box-shadow: 0 8px 24px rgba(13, 43, 33, 0.06);
+}
+
+.ticket-detail-hero h1 {
+  margin: 8px 0 10px;
+}
+
+.ticket-detail-hero p {
+  margin: 0;
+  color: #68736c;
+}
+
+.ticket-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.ticket-detail-wide {
+  grid-column: 1 / -1;
+}
+
+.tender-support-actions {
+  display: grid;
+  gap: 14px;
+}
+
+.tender-support-actions h2,
+.tender-support-actions p {
+  margin-top: 0;
+}
+
 @media (max-width: 760px) {
   .bid-card,
   .confirmation-dialog-content {
@@ -580,6 +810,30 @@ form .primary-button {
 
   .bid-card-header {
     flex-direction: column;
+  }
+}
+
+@media (max-width: 760px) {
+  .support-ticket-card-header,
+  .page-header-actions,
+  .ticket-detail-hero {
+    flex-direction: column;
+  }
+
+  .ticket-detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ticket-detail-wide {
+    grid-column: auto;
+  }
+
+  .page-header-actions .primary-link-button {
+    width: 100%;
+  }
+
+  .pagination-controls {
+    flex-wrap: wrap;
   }
 }
 

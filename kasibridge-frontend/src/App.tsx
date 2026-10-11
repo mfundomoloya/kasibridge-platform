@@ -21,6 +21,10 @@ import {
 } from './pages/AdminDashboardPage'
 
 import {
+    CreateSupportTicketPage,
+} from './pages/CreateSupportTicketPage'
+
+import {
     LoginPage,
 } from './pages/LoginPage'
 
@@ -35,6 +39,14 @@ import {
 import {
     ProcurementDashboardPage,
 } from './pages/ProcurementDashboardPage'
+
+import {
+    SupportTicketDetailsPage,
+} from './pages/SupportTicketDetailsPage'
+
+import {
+    SupportTicketsPage,
+} from './pages/SupportTicketsPage'
 
 import {
     TenderDetailsPage,
@@ -127,6 +139,45 @@ function App() {
                         ]}
                     >
                         <MyBidsPage />
+                    </RoleRoute>
+                }
+            />
+
+            <Route
+                path="/support-tickets"
+                element={
+                    <RoleRoute
+                        allowedRoles={[
+                            'ROLE_TRADER',
+                        ]}
+                    >
+                        <SupportTicketsPage />
+                    </RoleRoute>
+                }
+            />
+
+            <Route
+                path="/support-tickets/new"
+                element={
+                    <RoleRoute
+                        allowedRoles={[
+                            'ROLE_TRADER',
+                        ]}
+                    >
+                        <CreateSupportTicketPage />
+                    </RoleRoute>
+                }
+            />
+
+            <Route
+                path="/support-tickets/:ticketId"
+                element={
+                    <RoleRoute
+                        allowedRoles={[
+                            'ROLE_TRADER',
+                        ]}
+                    >
+                        <SupportTicketDetailsPage />
                     </RoleRoute>
                 }
             />

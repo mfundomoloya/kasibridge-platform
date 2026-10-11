@@ -34,6 +34,10 @@ import {
     formatDateTime,
 } from '../utils/tenderFormatters'
 
+import {
+    TenderSupportActions,
+} from '../components/support/TenderSupportActions'
+
 function getTenderDetailsError(
     error: unknown
 ): string {
@@ -277,6 +281,10 @@ export function TenderDetailsPage() {
                                 tenderId={tender.id}
                             />
                         </article>
+
+                        <TenderSupportActions
+                            tenderId={tender.id}
+                        />
                     </section>
                 </>
             ) : null}
