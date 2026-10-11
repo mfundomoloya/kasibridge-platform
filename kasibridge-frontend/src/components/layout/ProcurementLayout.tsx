@@ -36,6 +36,14 @@ const procurementNavigation:
         ],
     },
     {
+        label: 'Unassigned tickets',
+        path:
+            '/procurement/support-tickets/unassigned',
+        roles: [
+            'ROLE_PLATFORM_ADMIN',
+        ],
+    },
+    {
         label: 'Tender specifications',
         path: '/procurement/specifications',
         roles: [

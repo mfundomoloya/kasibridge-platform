@@ -77,6 +77,10 @@ import {
 } from './pages/ProcurementSupportTicketDetailsPage'
 
 import {
+    UnassignedSupportTicketsPage,
+} from './pages/UnassignedSupportTicketsPage'
+
+import {
     UnauthorizedPage,
 } from './pages/UnauthorizedPage'
 
@@ -171,6 +175,20 @@ function App() {
                     </RoleRoute>
                 }
             />
+
+            <Route
+                path="/procurement/support-tickets/unassigned"
+                element={
+                    <RoleRoute
+                        allowedRoles={[
+                            'ROLE_PLATFORM_ADMIN',
+                        ]}
+                    >
+                        <UnassignedSupportTicketsPage />
+                    </RoleRoute>
+                }
+            />
+            `
 
             <Route
                 path="/support-tickets/new"
