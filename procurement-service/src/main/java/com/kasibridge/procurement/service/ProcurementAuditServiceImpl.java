@@ -27,7 +27,7 @@ public class ProcurementAuditServiceImpl implements ProcurementAuditService {
     private final ProcurementAuditEventRepository repository;
 
     @Override
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Transactional
     public void recordSuccess(ProcurementAuditEvent.AuditEventType eventType, Long tenderId, Long bidId, Long actorUserId, String message, String details) {
         record(
                 eventType,
