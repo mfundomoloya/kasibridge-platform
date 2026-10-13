@@ -10,6 +10,10 @@ import {
 } from 'react-router-dom'
 
 import {
+    useAuth,
+} from '../auth/useAuth'
+
+import {
     closeSupportTicket,
     rejectSupportTicket,
     respondToSupportTicket,
@@ -25,6 +29,10 @@ import {
 import {
     ProcurementLayout,
 } from '../components/layout/ProcurementLayout'
+
+import {
+    TicketAiAssessmentReviewPanel,
+} from '../components/support/TicketAiAssessmentReviewPanel'
 
 import {
     SupportTicketStatusBadge,
@@ -83,6 +91,7 @@ function parseTicketId(
 
 export function ProcurementSupportTicketDetailsPage() {
     const { ticketId } = useParams()
+    const { user } = useAuth()
 
     const [ticket, setTicket] =
         useState<SupportTicket | null>(null)
@@ -1278,6 +1287,24 @@ export function ProcurementSupportTicketDetailsPage() {
                                     </form>
                                 )}
                         </article>
+                        {ticket.ticketType
+                            === 'CLARIFICATION_REQUEST'
+                            && ticket.status
+                            === 'IN_REVIEW' && (
+                                <div
+                                    className={
+                                        'ticket-detail-wide'
+                                    }
+                                >
+                                    <TicketAiAssessmentReviewPanel
+                                        ticketId={ticket.id}
+                                        currentUserId={
+                                            user?.userId
+                                            ?? null
+                                        }
+                                    />
+                                </div>
+                            )}
                     </section>
                 </>
             ) : null}

@@ -152,9 +152,6 @@ export function OfficialClarificationsPage() {
         }
     }, [tenderId, currentPage])
 
-    useEffect(() => {
-        setCurrentPage(0)
-    }, [tenderId])
 
     function goToPreviousPage() {
         setCurrentPage((page) =>

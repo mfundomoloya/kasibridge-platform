@@ -81,6 +81,10 @@ import {
 } from './pages/UnassignedSupportTicketsPage'
 
 import {
+    TicketAiAssessmentsPage,
+} from './pages/TicketAiAssessmentsPage'
+
+import {
     UnauthorizedPage,
 } from './pages/UnauthorizedPage'
 
@@ -177,6 +181,20 @@ function App() {
             />
 
             <Route
+                path="/procurement/ai-assessments"
+                element={
+                    <RoleRoute
+                        allowedRoles={[
+                            'ROLE_SPECIFICATION_OFFICER',
+                            'ROLE_PLATFORM_ADMIN',
+                        ]}
+                    >
+                        <TicketAiAssessmentsPage />
+                    </RoleRoute>
+                }
+            />
+
+            <Route
                 path="/procurement/support-tickets/unassigned"
                 element={
                     <RoleRoute
@@ -188,7 +206,6 @@ function App() {
                     </RoleRoute>
                 }
             />
-            `
 
             <Route
                 path="/support-tickets/new"

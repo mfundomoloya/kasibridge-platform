@@ -36,6 +36,14 @@ const procurementNavigation:
         ],
     },
     {
+        label: 'AI assessment queue',
+        path: '/procurement/ai-assessments',
+        roles: [
+            'ROLE_SPECIFICATION_OFFICER',
+            'ROLE_PLATFORM_ADMIN',
+        ],
+    },
+    {
         label: 'Unassigned tickets',
         path:
             '/procurement/support-tickets/unassigned',
