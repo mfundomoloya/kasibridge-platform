@@ -48,10 +48,9 @@ public class SupportTicketAiAssessmentResponse {
     private Long version;
 
     public static SupportTicketAiAssessmentResponse from(
-            SupportTicketAiAssessment assessment) {
-
+            SupportTicketAiAssessment assessment
+    ) {
         return SupportTicketAiAssessmentResponse.builder()
-
                 .id(assessment.getId())
                 .assessmentReference(assessment.getAssessmentReference())
                 .ticketId(assessment.getTicketId())
@@ -67,6 +66,10 @@ public class SupportTicketAiAssessmentResponse {
                 .approvedResponse(assessment.getApprovedResponse())
                 .approvedByUserId(assessment.getApprovedByUserId())
                 .approvedAt(assessment.getApprovedAt())
+                .responseRelevanceConfirmed(assessment.isResponseRelevanceConfirmed())
+                .responseRelevanceConfirmedByUserId(assessment.getResponseRelevanceConfirmedByUserId())
+                .responseRelevanceConfirmedAt(assessment.getResponseRelevanceConfirmedAt())
+                .responseRelevanceConfirmationNotes(assessment.getResponseRelevanceConfirmationNotes())
                 .publishedByUserId(assessment.getPublishedByUserId())
                 .publishedAt(assessment.getPublishedAt())
                 .rejectedByUserId(assessment.getRejectedByUserId())
