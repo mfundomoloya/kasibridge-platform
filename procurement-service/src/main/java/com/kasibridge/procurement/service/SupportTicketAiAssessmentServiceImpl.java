@@ -319,6 +319,7 @@ public class SupportTicketAiAssessmentServiceImpl implements SupportTicketAiAsse
     }
 
     @Override
+    @Transactional
     public SupportTicketAiAssessmentResponse publishApprovedResponse(Long assessmentId) {
 
         Long actorUserId = currentUserService.getCurrentUserId();
