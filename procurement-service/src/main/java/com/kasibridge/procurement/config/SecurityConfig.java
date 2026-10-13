@@ -323,8 +323,7 @@ public class SecurityConfig {
                                         "/api/v1/tickets/{id}/respond",
                                         "/api/v1/tickets/{id}/reject",
                                         "/api/v1/tickets/{id}/close",
-                                        "/api/v1/tickets/{id}/return-to-queue",
-                                        "/api/v1/tickets/{id}/publish-clarification"
+                                        "/api/v1/tickets/{id}/return-to-queue"
                                 )
                                 .hasAnyRole(
                                         "PLATFORM_ADMIN",
