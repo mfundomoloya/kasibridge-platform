@@ -13,15 +13,14 @@ import org.springframework.transaction.annotation.Transactional;
 @Slf4j
 public class ProcurementAuditImmutabilityConfig {
 
-    private static final String MUTATION_TRIGGER_NAME =
-            "trg_procurement_audit_events_append_only";
-
-    private static final String TRUNCATE_TRIGGER_NAME =
-            "trg_procurement_audit_events_no_truncate";
-
     private final JdbcTemplate jdbcTemplate;
 
     @EventListener(ApplicationReadyEvent.class)
+    @Transactional
+    public void installOnApplicationReady() {
+        installAuditImmutabilityProtection();
+    }
+
     @Transactional
     @SuppressWarnings({
             "SqlResolve",
@@ -29,22 +28,6 @@ public class ProcurementAuditImmutabilityConfig {
             "SqlNoDataSourceInspection"
     })
     public void installAuditImmutabilityProtection() {
-        createMutationPreventionFunction();
-        replaceMutationTrigger();
-        replaceTruncateTrigger();
-
-        log.info(
-                "Installed append-only protection "
-                        + "for procurement audit events"
-        );
-    }
-
-    @SuppressWarnings({
-            "SqlResolve",
-            "SqlDialectInspection",
-            "SqlNoDataSourceInspection"
-    })
-    private void createMutationPreventionFunction() {
         jdbcTemplate.execute(
                 """
                 CREATE OR REPLACE FUNCTION
@@ -53,13 +36,6 @@ public class ProcurementAuditImmutabilityConfig {
                 LANGUAGE plpgsql
                 AS $function$
                 BEGIN
-                    IF current_setting(
-                        'kasibridge.audit_maintenance',
-                        true
-                    ) = 'enabled' THEN
-                        RETURN NULL;
-                    END IF;
-
                     RAISE EXCEPTION
                         'Procurement audit events are append-only. % is not permitted.',
                         TG_OP
@@ -68,17 +44,8 @@ public class ProcurementAuditImmutabilityConfig {
                 $function$
                 """
         );
-    }
 
-    @SuppressWarnings({
-            "SqlResolve",
-            "SqlDialectInspection",
-            "SqlNoDataSourceInspection"
-    })
-    private void replaceMutationTrigger() {
-        dropTriggerIfPresent(
-                MUTATION_TRIGGER_NAME
-        );
+        removeAuditImmutabilityProtection();
 
         jdbcTemplate.execute(
                 """
@@ -91,17 +58,6 @@ public class ProcurementAuditImmutabilityConfig {
                     prevent_procurement_audit_mutation()
                 """
         );
-    }
-
-    @SuppressWarnings({
-            "SqlResolve",
-            "SqlDialectInspection",
-            "SqlNoDataSourceInspection"
-    })
-    private void replaceTruncateTrigger() {
-        dropTriggerIfPresent(
-                TRUNCATE_TRIGGER_NAME
-        );
 
         jdbcTemplate.execute(
                 """
@@ -113,6 +69,27 @@ public class ProcurementAuditImmutabilityConfig {
                 EXECUTE FUNCTION
                     prevent_procurement_audit_mutation()
                 """
+        );
+
+        log.info(
+                "Installed append-only protection for "
+                        + "procurement audit events"
+        );
+    }
+
+    @Transactional
+    @SuppressWarnings({
+            "SqlResolve",
+            "SqlDialectInspection",
+            "SqlNoDataSourceInspection"
+    })
+    public void removeAuditImmutabilityProtection() {
+        dropTriggerIfPresent(
+                "trg_procurement_audit_events_append_only"
+        );
+
+        dropTriggerIfPresent(
+                "trg_procurement_audit_events_no_truncate"
         );
     }
 
@@ -138,16 +115,15 @@ public class ProcurementAuditImmutabilityConfig {
                         triggerName
                 );
 
-        if (Boolean.TRUE.equals(triggerExists)) {
-            String dropStatement =
-                    "DROP TRIGGER "
-                            + triggerName
-                            + " ON "
-                            + "procurement_audit_events";
-
-            jdbcTemplate.execute(
-                    dropStatement
-            );
+        if (!Boolean.TRUE.equals(triggerExists)) {
+            return;
         }
+
+        String statement =
+                "DROP TRIGGER "
+                        + triggerName
+                        + " ON procurement_audit_events";
+
+        jdbcTemplate.execute(statement);
     }
 }
