@@ -8,6 +8,16 @@ import java.time.LocalDateTime;
 @Entity
 @Table(
         name = "notification_outbox",
+        uniqueConstraints = {
+                @UniqueConstraint(
+                        name = "uk_notification_template_ticket_recipient",
+                        columnNames = {
+                                "template_type",
+                                "related_ticket_id",
+                                "recipient_user_id"
+                        }
+                )
+        },
         indexes = {
                 @Index(name = "idx_notification_channel", columnList = "channel"),
                 @Index(name = "idx_notification_status", columnList = "status"),
