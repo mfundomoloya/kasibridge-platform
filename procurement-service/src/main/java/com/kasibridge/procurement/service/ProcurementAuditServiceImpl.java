@@ -22,13 +22,24 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class ProcurementAuditServiceImpl implements ProcurementAuditService {
+public class ProcurementAuditServiceImpl
+        implements ProcurementAuditService {
+
+    private static final long AUDIT_CHAIN_LOCK_KEY =
+            4_917_331_001L;
 
     private final ProcurementAuditEventRepository repository;
 
     @Override
     @Transactional
-    public void recordSuccess(ProcurementAuditEvent.AuditEventType eventType, Long tenderId, Long bidId, Long actorUserId, String message, String details) {
+    public void recordSuccess(
+            ProcurementAuditEvent.AuditEventType eventType,
+            Long tenderId,
+            Long bidId,
+            Long actorUserId,
+            String message,
+            String details
+    ) {
         record(
                 eventType,
                 tenderId,
@@ -41,8 +52,17 @@ public class ProcurementAuditServiceImpl implements ProcurementAuditService {
     }
 
     @Override
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public void recordFailure(ProcurementAuditEvent.AuditEventType eventType, Long tenderId, Long bidId, Long actorUserId, String message, String details) {
+    @Transactional(
+            propagation = Propagation.REQUIRES_NEW
+    )
+    public void recordFailure(
+            ProcurementAuditEvent.AuditEventType eventType,
+            Long tenderId,
+            Long bidId,
+            Long actorUserId,
+            String message,
+            String details
+    ) {
         record(
                 eventType,
                 tenderId,
@@ -55,7 +75,9 @@ public class ProcurementAuditServiceImpl implements ProcurementAuditService {
     }
 
     @Override
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    @Transactional(
+            propagation = Propagation.REQUIRES_NEW
+    )
     public void recordRejected(
             ProcurementAuditEvent.AuditEventType eventType,
             Long tenderId,
@@ -85,33 +107,62 @@ public class ProcurementAuditServiceImpl implements ProcurementAuditService {
             String details
     ) {
         try {
-            String previousHash = repository.findTopByOrderByIdDesc()
-                    .map(ProcurementAuditEvent::getEventHash)
-                    .orElse(null);
+            repository.acquireAuditChainLock(
+                    AUDIT_CHAIN_LOCK_KEY
+            );
 
-            LocalDateTime createdAt = LocalDateTime.now()
-                    .truncatedTo(ChronoUnit.MICROS);
+            String previousHash =
+                    repository
+                            .findTopByOrderByIdDesc()
+                            .map(
+                                    ProcurementAuditEvent
+                                            ::getEventHash
+                            )
+                            .orElse(null);
 
-            ProcurementAuditEvent event = ProcurementAuditEvent.builder()
-                    .eventType(eventType)
-                    .tenderId(tenderId)
-                    .bidId(bidId)
-                    .actorUserId(actorUserId)
-                    .result(result)
-                    .message(trimToLength(message, 1000))
-                    .details(trimToLength(details, 3000))
-                    .createdAt(createdAt)
-                    .previousEventHash(previousHash)
-                    .eventHash("PENDING")
-                    .build();
+            LocalDateTime createdAt =
+                    LocalDateTime.now()
+                            .truncatedTo(
+                                    ChronoUnit.MICROS
+                            );
 
-            String eventHash = generateEventHash(event);
+            ProcurementAuditEvent event =
+                    ProcurementAuditEvent.builder()
+                            .eventType(eventType)
+                            .tenderId(tenderId)
+                            .bidId(bidId)
+                            .actorUserId(actorUserId)
+                            .result(result)
+                            .message(
+                                    trimToLength(
+                                            message,
+                                            1000
+                                    )
+                            )
+                            .details(
+                                    trimToLength(
+                                            details,
+                                            3000
+                                    )
+                            )
+                            .createdAt(createdAt)
+                            .previousEventHash(
+                                    previousHash
+                            )
+                            .eventHash("PENDING")
+                            .build();
+
+            String eventHash =
+                    generateEventHash(event);
+
             event.setEventHash(eventHash);
 
             repository.saveAndFlush(event);
 
             log.info(
-                    "Procurement audit event recorded: type={} tenderId={} bidId={} actorUserId={} result={} hash={}",
+                    "Procurement audit event recorded: "
+                            + "type={} tenderId={} bidId={} "
+                            + "actorUserId={} result={} hash={}",
                     eventType,
                     tenderId,
                     bidId,
@@ -119,145 +170,304 @@ public class ProcurementAuditServiceImpl implements ProcurementAuditService {
                     result,
                     eventHash
             );
-        } catch (Exception ex) {
+        } catch (Exception exception) {
             log.error(
-                    "Failed to record procurement audit event: type={} tenderId={} bidId={} actorUserId={} result={}",
+                    "Failed to record procurement audit event: "
+                            + "type={} tenderId={} bidId={} "
+                            + "actorUserId={} result={}",
                     eventType,
                     tenderId,
                     bidId,
                     actorUserId,
                     result,
-                    ex
+                    exception
             );
 
-            throw ex;
+            throw exception;
         }
     }
 
-    private String trimToLength(String value, int maxLength){
-        if(value == null){
+    private String trimToLength(
+            String value,
+            int maximumLength
+    ) {
+        if (value == null) {
             return null;
         }
 
-        if(value.length() <= maxLength){
+        if (value.length() <= maximumLength) {
             return value;
         }
 
-        return value.substring(0, maxLength);
+        return value.substring(
+                0,
+                maximumLength
+        );
     }
 
     @Override
-    public Page<ProcurementAuditResponse> getAuditEvents(Pageable pageable) {
-        return repository.findAll(pageable)
-                .map(ProcurementAuditResponse::from);
+    @Transactional(readOnly = true)
+    public Page<ProcurementAuditResponse>
+    getAuditEvents(
+            Pageable pageable
+    ) {
+        return repository
+                .findAll(pageable)
+                .map(
+                        ProcurementAuditResponse::from
+                );
     }
 
     @Override
-    public Page<ProcurementAuditResponse> getAuditEventsByTender(Long tenderId, Pageable pageable) {
-        return repository.findByTenderId(tenderId, pageable)
-                .map(ProcurementAuditResponse::from);
+    @Transactional(readOnly = true)
+    public Page<ProcurementAuditResponse>
+    getAuditEventsByTender(
+            Long tenderId,
+            Pageable pageable
+    ) {
+        return repository
+                .findByTenderId(
+                        tenderId,
+                        pageable
+                )
+                .map(
+                        ProcurementAuditResponse::from
+                );
     }
 
     @Override
-    public Page<ProcurementAuditResponse> getAuditEventsByBid(Long bidId, Pageable pageable) {
-        return repository.findByBidId(bidId, pageable)
-                .map(ProcurementAuditResponse::from);
+    @Transactional(readOnly = true)
+    public Page<ProcurementAuditResponse>
+    getAuditEventsByBid(
+            Long bidId,
+            Pageable pageable
+    ) {
+        return repository
+                .findByBidId(
+                        bidId,
+                        pageable
+                )
+                .map(
+                        ProcurementAuditResponse::from
+                );
     }
 
     @Override
-    public Page<ProcurementAuditResponse> getAuditEventsByActor(Long actorUserId, Pageable pageable) {
-        return repository.findByActorUserId(actorUserId, pageable)
-                .map(ProcurementAuditResponse::from);
+    @Transactional(readOnly = true)
+    public Page<ProcurementAuditResponse>
+    getAuditEventsByActor(
+            Long actorUserId,
+            Pageable pageable
+    ) {
+        return repository
+                .findByActorUserId(
+                        actorUserId,
+                        pageable
+                )
+                .map(
+                        ProcurementAuditResponse::from
+                );
     }
 
     @Override
-    public AuditChainVerificationResponse verifyAuditChain() {
-        List<ProcurementAuditEvent> events = repository.findAllByOrderByIdAsc();
+    @Transactional(readOnly = true)
+    public AuditChainVerificationResponse
+    verifyAuditChain() {
+        List<ProcurementAuditEvent> events =
+                repository
+                        .findAllByOrderByIdAsc();
 
         String expectedPreviousHash = null;
+        long checkedEvents = 0;
 
-        long checked = 0;
+        for (
+                ProcurementAuditEvent event
+                : events
+        ) {
+            checkedEvents++;
 
-        for (ProcurementAuditEvent event : events) {
-            checked++;
+            String actualPreviousHash =
+                    event.getPreviousEventHash();
 
-            String actualPreviousHash = event.getPreviousEventHash();
-
-            if (!safe(expectedPreviousHash).equals(safe(actualPreviousHash))) {
-                return AuditChainVerificationResponse.builder()
+            if (
+                    !safe(expectedPreviousHash)
+                            .equals(
+                                    safe(
+                                            actualPreviousHash
+                                    )
+                            )
+            ) {
+                return AuditChainVerificationResponse
+                        .builder()
                         .valid(false)
-                        .checkedEvents(checked)
-                        .failedEventId(event.getId())
-                        .message("Procurement audit hash chain verification failed. Previous hash mismatch.")
+                        .checkedEvents(
+                                checkedEvents
+                        )
+                        .failedEventId(
+                                event.getId()
+                        )
+                        .message(
+                                "Procurement audit hash "
+                                        + "chain verification "
+                                        + "failed. Previous "
+                                        + "hash mismatch."
+                        )
                         .build();
             }
 
-            String storedHash = event.getEventHash();
+            String storedHash =
+                    event.getEventHash();
 
-            String recalculatedHash = generateEventHash(event);
+            String recalculatedHash =
+                    generateEventHash(event);
 
-            if (!safe(storedHash).equals(safe(recalculatedHash))) {
-                return AuditChainVerificationResponse.builder()
+            if (
+                    !safe(storedHash)
+                            .equals(
+                                    safe(
+                                            recalculatedHash
+                                    )
+                            )
+            ) {
+                return AuditChainVerificationResponse
+                        .builder()
                         .valid(false)
-                        .checkedEvents(checked)
-                        .failedEventId(event.getId())
-                        .message("Procurement audit hash chain verification failed. Event hash mismatch.")
+                        .checkedEvents(
+                                checkedEvents
+                        )
+                        .failedEventId(
+                                event.getId()
+                        )
+                        .message(
+                                "Procurement audit hash "
+                                        + "chain verification "
+                                        + "failed. Event hash "
+                                        + "mismatch."
+                        )
                         .build();
             }
-            expectedPreviousHash = storedHash;
+
+            expectedPreviousHash =
+                    storedHash;
         }
 
-        return AuditChainVerificationResponse.builder()
+        return AuditChainVerificationResponse
+                .builder()
                 .valid(true)
-                .checkedEvents(checked)
+                .checkedEvents(
+                        checkedEvents
+                )
                 .failedEventId(null)
-                .message("Procurement audit hash chain verified.")
+                .message(
+                        "Procurement audit hash "
+                                + "chain verified."
+                )
                 .build();
     }
 
-    private String generateEventHash(ProcurementAuditEvent event) {
-        String source = String.join("|",
-                safe(event.getEventType() != null ? event.getEventType().name() : null),
-                safe(event.getTenderId()),
-                safe(event.getBidId()),
-                safe(event.getActorUserId()),
-                safe(event.getResult() != null ? event.getResult().name() : null),
-                safe(event.getMessage()),
-                safe(event.getDetails()),
-                safe(event.getPreviousEventHash()),
-                safe(event.getCreatedAt() != null
-                        ? event.getCreatedAt().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
-                        : null)
-        );
+    private String generateEventHash(
+            ProcurementAuditEvent event
+    ) {
+        String source =
+                String.join(
+                        "|",
+                        safe(
+                                event.getEventType()
+                                        != null
+                                        ? event
+                                        .getEventType()
+                                        .name()
+                                        : null
+                        ),
+                        safe(
+                                event.getTenderId()
+                        ),
+                        safe(
+                                event.getBidId()
+                        ),
+                        safe(
+                                event.getActorUserId()
+                        ),
+                        safe(
+                                event.getResult()
+                                        != null
+                                        ? event
+                                        .getResult()
+                                        .name()
+                                        : null
+                        ),
+                        safe(
+                                event.getMessage()
+                        ),
+                        safe(
+                                event.getDetails()
+                        ),
+                        safe(
+                                event.getPreviousEventHash()
+                        ),
+                        safe(
+                                event.getCreatedAt()
+                                        != null
+                                        ? event
+                                        .getCreatedAt()
+                                        .format(
+                                                DateTimeFormatter
+                                                        .ISO_LOCAL_DATE_TIME
+                                        )
+                                        : null
+                        )
+                );
 
         return sha256(source);
     }
 
-    private String sha256(String input) {
+    private String sha256(
+            String input
+    ) {
         try {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] encodedHash = digest.digest(input.getBytes(StandardCharsets.UTF_8));
+            MessageDigest digest =
+                    MessageDigest.getInstance(
+                            "SHA-256"
+                    );
 
-            StringBuilder hexString = new StringBuilder();
+            byte[] encodedHash =
+                    digest.digest(
+                            input.getBytes(
+                                    StandardCharsets.UTF_8
+                            )
+                    );
 
-            for (byte b : encodedHash) {
-                String hex = Integer.toHexString(0xff & b);
+            StringBuilder hexadecimal =
+                    new StringBuilder();
+
+            for (byte value : encodedHash) {
+                String hex =
+                        Integer.toHexString(
+                                0xff & value
+                        );
 
                 if (hex.length() == 1) {
-                    hexString.append('0');
+                    hexadecimal.append('0');
                 }
 
-                hexString.append(hex);
+                hexadecimal.append(hex);
             }
 
-            return hexString.toString();
-
-        } catch (Exception ex) {
-            throw new IllegalStateException("Failed to generate audit event hash", ex);
+            return hexadecimal.toString();
+        } catch (Exception exception) {
+            throw new IllegalStateException(
+                    "Failed to generate audit "
+                            + "event hash",
+                    exception
+            );
         }
     }
 
-    private String safe(Object value) {
-        return value == null ? "" : String.valueOf(value).trim();
+    private String safe(
+            Object value
+    ) {
+        return value == null
+                ? ""
+                : String.valueOf(value).trim();
     }
 }
