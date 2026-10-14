@@ -47,7 +47,8 @@ class SupportTicketAiAssessmentServiceImplTest {
     private SupportTicketRepository ticketRepository;
 
     @Mock
-    private SupportTicketAiAssessmentRepository assessmentRepository;
+    private SupportTicketAiAssessmentRepository
+            assessmentRepository;
 
     @Mock
     private TicketAiTriageService triageService;
@@ -73,7 +74,8 @@ class SupportTicketAiAssessmentServiceImplTest {
                                 .DRAFT_FOR_APPROVAL
                 );
 
-        SupportTicket ticket = clarificationTicket();
+        SupportTicket ticket =
+                clarificationTicket();
 
         ApproveTicketAiAssessmentRequest request =
                 approvalRequest(
@@ -88,12 +90,15 @@ class SupportTicketAiAssessmentServiceImplTest {
 
         when(assessmentRepository.findById(
                 ASSESSMENT_ID
-        )).thenReturn(Optional.of(assessment));
+        )).thenReturn(
+                Optional.of(assessment)
+        );
 
         when(assessmentRepository.saveAndFlush(
                 assessment
-        )).thenAnswer(invocation ->
-                invocation.getArgument(0)
+        )).thenAnswer(
+                invocation ->
+                        invocation.getArgument(0)
         );
 
         when(ticketRepository.findById(TICKET_ID))
@@ -122,10 +127,13 @@ class SupportTicketAiAssessmentServiceImplTest {
                 assessment.getApprovedByUserId()
         );
 
-        assertNotNull(assessment.getApprovedAt());
+        assertNotNull(
+                assessment.getApprovedAt()
+        );
 
         assertTrue(
-                assessment.isResponseRelevanceConfirmed()
+                assessment
+                        .isResponseRelevanceConfirmed()
         );
 
         assertEquals(
@@ -195,7 +203,9 @@ class SupportTicketAiAssessmentServiceImplTest {
                         )
                 );
 
-        verifyNoInteractions(supportTicketService);
+        verifyNoInteractions(
+                supportTicketService
+        );
     }
 
     @Test
@@ -207,7 +217,8 @@ class SupportTicketAiAssessmentServiceImplTest {
                                 .DRAFT_FOR_APPROVAL
                 );
 
-        SupportTicket ticket = clarificationTicket();
+        SupportTicket ticket =
+                clarificationTicket();
 
         ApproveTicketAiAssessmentRequest request =
                 approvalRequest(
@@ -221,12 +232,15 @@ class SupportTicketAiAssessmentServiceImplTest {
 
         when(assessmentRepository.findById(
                 ASSESSMENT_ID
-        )).thenReturn(Optional.of(assessment));
+        )).thenReturn(
+                Optional.of(assessment)
+        );
 
         when(assessmentRepository.saveAndFlush(
                 assessment
-        )).thenAnswer(invocation ->
-                invocation.getArgument(0)
+        )).thenAnswer(
+                invocation ->
+                        invocation.getArgument(0)
         );
 
         when(ticketRepository.findById(TICKET_ID))
@@ -279,15 +293,18 @@ class SupportTicketAiAssessmentServiceImplTest {
 
         when(assessmentRepository.findById(
                 ASSESSMENT_ID
-        )).thenReturn(Optional.of(assessment));
+        )).thenReturn(
+                Optional.of(assessment)
+        );
 
         TicketAiAssessmentStateException exception =
                 assertThrows(
                         TicketAiAssessmentStateException.class,
-                        () -> service.approveAssessment(
-                                ASSESSMENT_ID,
-                                request
-                        )
+                        () ->
+                                service.approveAssessment(
+                                        ASSESSMENT_ID,
+                                        request
+                                )
                 );
 
         assertEquals(
@@ -305,7 +322,8 @@ class SupportTicketAiAssessmentServiceImplTest {
         );
 
         assertFalse(
-                assessment.isResponseRelevanceConfirmed()
+                assessment
+                        .isResponseRelevanceConfirmed()
         );
 
         assertNull(
@@ -313,12 +331,14 @@ class SupportTicketAiAssessmentServiceImplTest {
                         .getResponseRelevanceConfirmedByUserId()
         );
 
-        verify(assessmentRepository, never())
-                .saveAndFlush(
-                        any(
-                                SupportTicketAiAssessment.class
-                        )
-                );
+        verify(
+                assessmentRepository,
+                never()
+        ).saveAndFlush(
+                any(
+                        SupportTicketAiAssessment.class
+                )
+        );
 
         verifyNoInteractions(
                 auditService,
@@ -347,15 +367,18 @@ class SupportTicketAiAssessmentServiceImplTest {
 
         when(assessmentRepository.findById(
                 ASSESSMENT_ID
-        )).thenReturn(Optional.of(assessment));
+        )).thenReturn(
+                Optional.of(assessment)
+        );
 
         TicketAiAssessmentStateException exception =
                 assertThrows(
                         TicketAiAssessmentStateException.class,
-                        () -> service.approveAssessment(
-                                ASSESSMENT_ID,
-                                request
-                        )
+                        () ->
+                                service.approveAssessment(
+                                        ASSESSMENT_ID,
+                                        request
+                                )
                 );
 
         assertEquals(
@@ -371,16 +394,26 @@ class SupportTicketAiAssessmentServiceImplTest {
                 assessment.getAssessmentStatus()
         );
 
-        assertNull(assessment.getApprovedByUserId());
-        assertNull(assessment.getApprovedAt());
-        assertNull(assessment.getApprovedResponse());
+        assertNull(
+                assessment.getApprovedByUserId()
+        );
 
-        verify(assessmentRepository, never())
-                .saveAndFlush(
-                        any(
-                                SupportTicketAiAssessment.class
-                        )
-                );
+        assertNull(
+                assessment.getApprovedAt()
+        );
+
+        assertNull(
+                assessment.getApprovedResponse()
+        );
+
+        verify(
+                assessmentRepository,
+                never()
+        ).saveAndFlush(
+                any(
+                        SupportTicketAiAssessment.class
+                )
+        );
 
         verifyNoInteractions(
                 auditService,
@@ -400,16 +433,19 @@ class SupportTicketAiAssessmentServiceImplTest {
         when(currentUserService.getCurrentUserId())
                 .thenReturn(APPROVER_USER_ID);
 
-        when(assessmentRepository.findById(
+        when(assessmentRepository.findByIdForUpdate(
                 ASSESSMENT_ID
-        )).thenReturn(Optional.of(assessment));
+        )).thenReturn(
+                Optional.of(assessment)
+        );
 
         TicketAiAssessmentStateException exception =
                 assertThrows(
                         TicketAiAssessmentStateException.class,
-                        () -> service.publishApprovedResponse(
-                                ASSESSMENT_ID
-                        )
+                        () ->
+                                service.publishApprovedResponse(
+                                        ASSESSMENT_ID
+                                )
                 );
 
         assertEquals(
@@ -426,19 +462,35 @@ class SupportTicketAiAssessmentServiceImplTest {
                 assessment.getAssessmentStatus()
         );
 
-        assertNull(assessment.getPublishedByUserId());
-        assertNull(assessment.getPublishedAt());
+        assertNull(
+                assessment.getPublishedByUserId()
+        );
 
-        verifyNoInteractions(supportTicketService);
+        assertNull(
+                assessment.getPublishedAt()
+        );
 
-        verify(assessmentRepository, never())
-                .saveAndFlush(
-                        any(
-                                SupportTicketAiAssessment.class
-                        )
+        verify(assessmentRepository)
+                .findByIdForUpdate(
+                        ASSESSMENT_ID
                 );
 
-        verifyNoInteractions(auditService);
+        verifyNoInteractions(
+                supportTicketService
+        );
+
+        verify(
+                assessmentRepository,
+                never()
+        ).saveAndFlush(
+                any(
+                        SupportTicketAiAssessment.class
+                )
+        );
+
+        verifyNoInteractions(
+                auditService
+        );
     }
 
     @Test
@@ -469,7 +521,9 @@ class SupportTicketAiAssessmentServiceImplTest {
                 LocalDateTime.now()
         );
 
-        publishedTicket.setPublicClarification(true);
+        publishedTicket.setPublicClarification(
+                true
+        );
 
         SupportTicketResponse publishedResponse =
                 SupportTicketResponse.from(
@@ -479,21 +533,26 @@ class SupportTicketAiAssessmentServiceImplTest {
         when(currentUserService.getCurrentUserId())
                 .thenReturn(PUBLISHER_USER_ID);
 
-        when(assessmentRepository.findById(
+        when(assessmentRepository.findByIdForUpdate(
                 ASSESSMENT_ID
-        )).thenReturn(Optional.of(assessment));
+        )).thenReturn(
+                Optional.of(assessment)
+        );
 
-        when(supportTicketService
-                .publishOfficialClarification(
-                        TICKET_ID,
-                        assessment.getApprovedResponse()
-                )
+        when(
+                supportTicketService
+                        .publishOfficialClarification(
+                                TICKET_ID,
+                                assessment
+                                        .getApprovedResponse()
+                        )
         ).thenReturn(publishedResponse);
 
         when(assessmentRepository.saveAndFlush(
                 assessment
-        )).thenAnswer(invocation ->
-                invocation.getArgument(0)
+        )).thenAnswer(
+                invocation ->
+                        invocation.getArgument(0)
         );
 
         SupportTicketAiAssessmentResponse response =
@@ -513,7 +572,9 @@ class SupportTicketAiAssessmentServiceImplTest {
                 assessment.getPublishedByUserId()
         );
 
-        assertNotNull(assessment.getPublishedAt());
+        assertNotNull(
+                assessment.getPublishedAt()
+        );
 
         assertEquals(
                 APPROVER_USER_ID,
@@ -531,6 +592,11 @@ class SupportTicketAiAssessmentServiceImplTest {
                 PUBLISHER_USER_ID,
                 response.getPublishedByUserId()
         );
+
+        verify(assessmentRepository)
+                .findByIdForUpdate(
+                        ASSESSMENT_ID
+                );
 
         verify(supportTicketService)
                 .publishOfficialClarification(
@@ -583,16 +649,19 @@ class SupportTicketAiAssessmentServiceImplTest {
         when(currentUserService.getCurrentUserId())
                 .thenReturn(PUBLISHER_USER_ID);
 
-        when(assessmentRepository.findById(
+        when(assessmentRepository.findByIdForUpdate(
                 ASSESSMENT_ID
-        )).thenReturn(Optional.of(assessment));
+        )).thenReturn(
+                Optional.of(assessment)
+        );
 
         TicketAiAssessmentStateException exception =
                 assertThrows(
                         TicketAiAssessmentStateException.class,
-                        () -> service.publishApprovedResponse(
-                                ASSESSMENT_ID
-                        )
+                        () ->
+                                service.publishApprovedResponse(
+                                        ASSESSMENT_ID
+                                )
                 );
 
         assertEquals(
@@ -608,19 +677,35 @@ class SupportTicketAiAssessmentServiceImplTest {
                 assessment.getAssessmentStatus()
         );
 
-        assertNull(assessment.getPublishedByUserId());
-        assertNull(assessment.getPublishedAt());
+        assertNull(
+                assessment.getPublishedByUserId()
+        );
 
-        verifyNoInteractions(supportTicketService);
+        assertNull(
+                assessment.getPublishedAt()
+        );
 
-        verify(assessmentRepository, never())
-                .saveAndFlush(
-                        any(
-                                SupportTicketAiAssessment.class
-                        )
+        verify(assessmentRepository)
+                .findByIdForUpdate(
+                        ASSESSMENT_ID
                 );
 
-        verifyNoInteractions(auditService);
+        verifyNoInteractions(
+                supportTicketService
+        );
+
+        verify(
+                assessmentRepository,
+                never()
+        ).saveAndFlush(
+                any(
+                        SupportTicketAiAssessment.class
+                )
+        );
+
+        verifyNoInteractions(
+                auditService
+        );
     }
 
     private SupportTicketAiAssessment generatedAssessment(
@@ -660,9 +745,15 @@ class SupportTicketAiAssessmentServiceImplTest {
                 .confidenceScore(
                         new BigDecimal("0.94")
                 )
-                .modelVersion("test-model-1")
-                .createdAt(LocalDateTime.now())
-                .updatedAt(LocalDateTime.now())
+                .modelVersion(
+                        "test-model-1"
+                )
+                .createdAt(
+                        LocalDateTime.now()
+                )
+                .updatedAt(
+                        LocalDateTime.now()
+                )
                 .version(0L)
                 .build();
     }
@@ -672,7 +763,8 @@ class SupportTicketAiAssessmentServiceImplTest {
                     status
     ) {
         LocalDateTime approvedAt =
-                LocalDateTime.now().minusMinutes(5);
+                LocalDateTime.now()
+                        .minusMinutes(5);
 
         return SupportTicketAiAssessment.builder()
                 .id(ASSESSMENT_ID)
@@ -708,7 +800,9 @@ class SupportTicketAiAssessmentServiceImplTest {
                         "The tender permits phased delivery "
                                 + "subject to the final deadline."
                 )
-                .approvedByUserId(APPROVER_USER_ID)
+                .approvedByUserId(
+                        APPROVER_USER_ID
+                )
                 .approvedAt(approvedAt)
                 .responseRelevanceConfirmed(true)
                 .responseRelevanceConfirmedByUserId(
@@ -724,7 +818,9 @@ class SupportTicketAiAssessmentServiceImplTest {
                 .confidenceScore(
                         new BigDecimal("0.94")
                 )
-                .modelVersion("test-model-1")
+                .modelVersion(
+                        "test-model-1"
+                )
                 .createdAt(
                         approvedAt.minusMinutes(5)
                 )
@@ -757,14 +853,23 @@ class SupportTicketAiAssessmentServiceImplTest {
                         "Can deliveries be completed "
                                 + "in approved phases?"
                 )
-                .assignedToUserId(PUBLISHER_USER_ID)
-                .reviewedByUserId(PUBLISHER_USER_ID)
-                .createdAt(LocalDateTime.now())
-                .updatedAt(LocalDateTime.now())
+                .assignedToUserId(
+                        PUBLISHER_USER_ID
+                )
+                .reviewedByUserId(
+                        PUBLISHER_USER_ID
+                )
+                .createdAt(
+                        LocalDateTime.now()
+                )
+                .updatedAt(
+                        LocalDateTime.now()
+                )
                 .build();
     }
 
-    private ApproveTicketAiAssessmentRequest approvalRequest(
+    private ApproveTicketAiAssessmentRequest
+    approvalRequest(
             String approvedResponse,
             boolean relevanceConfirmed,
             String relevanceNotes
@@ -772,10 +877,14 @@ class SupportTicketAiAssessmentServiceImplTest {
         ApproveTicketAiAssessmentRequest request =
                 new ApproveTicketAiAssessmentRequest();
 
-        request.setApprovedResponse(approvedResponse);
+        request.setApprovedResponse(
+                approvedResponse
+        );
+
         request.setResponseRelevanceConfirmed(
                 relevanceConfirmed
         );
+
         request.setResponseRelevanceConfirmationNotes(
                 relevanceNotes
         );

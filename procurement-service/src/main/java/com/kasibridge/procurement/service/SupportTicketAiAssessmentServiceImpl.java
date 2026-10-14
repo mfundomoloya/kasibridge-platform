@@ -324,7 +324,7 @@ public class SupportTicketAiAssessmentServiceImpl implements SupportTicketAiAsse
 
         Long actorUserId = currentUserService.getCurrentUserId();
 
-        SupportTicketAiAssessment assessment = findAssessment(assessmentId);
+        SupportTicketAiAssessment assessment = findAssessmentForUpdate(assessmentId);
 
         if (Objects.equals(assessment.getApprovedByUserId(), actorUserId)) {
             throw new TicketAiAssessmentStateException(
@@ -412,6 +412,19 @@ public class SupportTicketAiAssessmentServiceImpl implements SupportTicketAiAsse
         return assessmentRepository.findById(assessmentId)
                 .orElseThrow(() -> new TicketAiAssessmentException("Ticket AI assessment not found with ID: " + assessmentId));
 
+    }
+
+    private SupportTicketAiAssessment
+    findAssessmentForUpdate(Long assessmentId) {
+        return assessmentRepository
+                .findByIdForUpdate(assessmentId)
+                .orElseThrow(() ->
+                        new TicketAiAssessmentException(
+                                "Ticket AI assessment "
+                                        + "not found with ID: "
+                                        + assessmentId
+                        )
+                );
     }
 
     private void assertAssessmentIsGenerated(SupportTicketAiAssessment assessment) {
