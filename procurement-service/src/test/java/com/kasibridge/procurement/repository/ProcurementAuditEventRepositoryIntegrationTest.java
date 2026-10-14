@@ -1,6 +1,7 @@
 package com.kasibridge.procurement.repository;
 
 import com.kasibridge.procurement.entity.ProcurementAuditEvent;
+import com.kasibridge.procurement.testsupport.ProcurementAuditTestCleaner;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,7 +33,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 )
 @Testcontainers
 class ProcurementAuditEventRepositoryIntegrationTest {
-
+    @Autowired
+    private ProcurementAuditTestCleaner auditTestCleaner;
     private static final long AUDIT_CHAIN_LOCK_KEY =
             4_917_331_001L;
 
@@ -85,7 +87,7 @@ class ProcurementAuditEventRepositoryIntegrationTest {
 
     @BeforeEach
     void setUp() {
-        repository.deleteAll();
+        auditTestCleaner.clearAuditEvents();
     }
 
     @Test

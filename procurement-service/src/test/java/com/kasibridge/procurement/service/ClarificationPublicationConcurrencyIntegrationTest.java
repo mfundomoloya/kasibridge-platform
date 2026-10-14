@@ -10,6 +10,7 @@ import com.kasibridge.procurement.repository.NotificationOutboxRepository;
 import com.kasibridge.procurement.repository.ProcurementAuditEventRepository;
 import com.kasibridge.procurement.repository.SupportTicketAiAssessmentRepository;
 import com.kasibridge.procurement.repository.SupportTicketRepository;
+import com.kasibridge.procurement.testsupport.ProcurementAuditTestCleaner;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -57,7 +58,8 @@ class ClarificationPublicationConcurrencyIntegrationTest {
     private static final Long SECOND_PUBLISHER_USER_ID = 74L;
     private static final Long TRADER_USER_ID = 91L;
     private static final Long TENDER_ID = 301L;
-
+    @Autowired
+    private ProcurementAuditTestCleaner auditTestCleaner;
     private final ThreadLocal<Long> currentActorUserId =
             new ThreadLocal<>();
 
@@ -134,7 +136,7 @@ class ClarificationPublicationConcurrencyIntegrationTest {
         notificationOutboxRepository.deleteAll();
         assessmentRepository.deleteAll();
         ticketRepository.deleteAll();
-        auditEventRepository.deleteAll();
+        auditTestCleaner.clearAuditEvents();
 
         executorService =
                 Executors.newFixedThreadPool(2);

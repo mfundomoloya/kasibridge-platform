@@ -3,6 +3,7 @@ package com.kasibridge.procurement.service;
 import com.kasibridge.procurement.dto.AuditChainVerificationResponse;
 import com.kasibridge.procurement.entity.ProcurementAuditEvent;
 import com.kasibridge.procurement.repository.ProcurementAuditEventRepository;
+import com.kasibridge.procurement.testsupport.ProcurementAuditTestCleaner;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -43,7 +44,8 @@ class ProcurementAuditChainConcurrencyIntegrationTest {
 
     private static final int CONCURRENT_WRITER_COUNT = 12;
     private static final Long TENDER_ID = 301L;
-
+    @Autowired
+    private ProcurementAuditTestCleaner auditTestCleaner;
     @Container
     static final PostgreSQLContainer<?> POSTGRES =
             new PostgreSQLContainer<>(
@@ -95,7 +97,7 @@ class ProcurementAuditChainConcurrencyIntegrationTest {
 
     @BeforeEach
     void setUp() {
-        repository.deleteAll();
+        auditTestCleaner.clearAuditEvents();
 
         executorService =
                 Executors.newFixedThreadPool(
@@ -105,6 +107,10 @@ class ProcurementAuditChainConcurrencyIntegrationTest {
 
     @AfterEach
     void tearDown() throws InterruptedException {
+        if (executorService == null) {
+            return;
+        }
+
         executorService.shutdownNow();
 
         assertTrue(

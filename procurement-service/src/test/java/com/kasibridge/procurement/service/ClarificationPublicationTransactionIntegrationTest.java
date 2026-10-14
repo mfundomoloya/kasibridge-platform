@@ -8,6 +8,7 @@ import com.kasibridge.procurement.repository.NotificationOutboxRepository;
 import com.kasibridge.procurement.repository.ProcurementAuditEventRepository;
 import com.kasibridge.procurement.repository.SupportTicketAiAssessmentRepository;
 import com.kasibridge.procurement.repository.SupportTicketRepository;
+import com.kasibridge.procurement.testsupport.ProcurementAuditTestCleaner;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -52,7 +53,8 @@ class ClarificationPublicationTransactionIntegrationTest {
     private static final Long PUBLISHER_USER_ID = 73L;
     private static final Long TRADER_USER_ID = 91L;
     private static final Long TENDER_ID = 301L;
-
+    @Autowired
+    private ProcurementAuditTestCleaner auditTestCleaner;
     @Container
     static final PostgreSQLContainer<?> POSTGRES =
             new PostgreSQLContainer<>(
@@ -128,7 +130,7 @@ class ClarificationPublicationTransactionIntegrationTest {
         notificationOutboxRepository.deleteAll();
         assessmentRepository.deleteAll();
         ticketRepository.deleteAll();
-        auditEventRepository.deleteAll();
+        auditTestCleaner.clearAuditEvents();
 
         when(currentUserService.getCurrentUserId())
                 .thenReturn(PUBLISHER_USER_ID);
