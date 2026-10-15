@@ -29,9 +29,13 @@ class ProcurementBaselineExecutionTest {
 
     private static final Path BASELINE_FILE =
             Path.of(
-                    "schema-draft",
+                    "src",
+                    "main",
+                    "resources",
+                    "db",
+                    "migration",
                     "V1__procurement_schema_baseline.sql"
-            );
+            );g
 
     private static final Set<String> EXPECTED_TABLES =
             Set.of(
