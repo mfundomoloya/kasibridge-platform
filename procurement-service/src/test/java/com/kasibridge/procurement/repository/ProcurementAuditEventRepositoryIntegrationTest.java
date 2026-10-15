@@ -77,6 +77,11 @@ class ProcurementAuditEventRepositoryIntegrationTest {
                 "spring.jpa.hibernate.ddl-auto",
                 () -> "create-drop"
         );
+
+        registry.add(
+                "spring.flyway.enabled",
+                () -> "false"
+        );
     }
 
     @Autowired

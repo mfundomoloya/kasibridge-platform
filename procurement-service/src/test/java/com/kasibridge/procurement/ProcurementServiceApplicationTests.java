@@ -8,14 +8,36 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-@SpringBootTest
+@SpringBootTest(
+        properties = {
+                "spring.jpa.hibernate.ddl-auto=validate",
+                "spring.flyway.enabled=true",
+                "spring.flyway.locations=classpath:db/migration",
+                "spring.flyway.validate-on-migrate=true",
+                "spring.flyway.clean-disabled=true",
+                "kasibridge.notifications.dispatch.enabled=false",
+                "kasibridge.notifications.mock-whatsapp.enabled=true",
+                "kasibridge.notifications.whatsapp.enabled=false",
+                "kasibridge.ticket-ai.auto-assessment.enabled=false",
+                "kasibridge.internal.system.username=test-system",
+                "kasibridge.internal.system.password=test-password"
+        }
+)
 @Testcontainers
+@SuppressWarnings({
+        "resource",
+        "SpringBootApplicationProperties"
+})
 class ProcurementServiceApplicationTests {
 
     @Container
     static final PostgreSQLContainer<?> POSTGRES =
-            new PostgreSQLContainer<>("postgres:16-alpine")
-                    .withDatabaseName("procurement_test")
+            new PostgreSQLContainer<>(
+                    "postgres:16-alpine"
+            )
+                    .withDatabaseName(
+                            "procurement_context_test"
+                    )
                     .withUsername("test")
                     .withPassword("test");
 

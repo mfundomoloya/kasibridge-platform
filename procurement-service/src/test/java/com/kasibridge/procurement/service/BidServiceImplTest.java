@@ -1,5 +1,6 @@
 package com.kasibridge.procurement.service;
 
+import com.kasibridge.procurement.dto.AnonymizedBidResponse;
 import com.kasibridge.procurement.dto.BidResponse;
 import com.kasibridge.procurement.dto.SubmitBidRequest;
 import com.kasibridge.procurement.dto.TraderProfileClientResponse;
@@ -10,6 +11,7 @@ import com.kasibridge.procurement.entity.Tender;
 import com.kasibridge.procurement.exception.BidNotFoundException;
 import com.kasibridge.procurement.exception.BidStateException;
 import com.kasibridge.procurement.exception.DuplicateBidException;
+import com.kasibridge.procurement.exception.TenderNotFoundException;
 import com.kasibridge.procurement.exception.TenderStateException;
 import com.kasibridge.procurement.repository.BidComplianceResultRepository;
 import com.kasibridge.procurement.repository.BidRepository;
@@ -24,9 +26,15 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -47,13 +55,15 @@ class BidServiceImplTest {
     private BidRepository bidRepository;
 
     @Mock
-    private BidComplianceResultRepository complianceRepository;
+    private BidComplianceResultRepository
+            complianceRepository;
 
     @Mock
     private TenderRepository tenderRepository;
 
     @Mock
-    private ComplianceGatekeeperService gatekeeperService;
+    private ComplianceGatekeeperService
+            gatekeeperService;
 
     @Mock
     private ProcurementAuditService auditService;
@@ -65,7 +75,8 @@ class BidServiceImplTest {
     private TraderProfileClient traderProfileClient;
 
     @Mock
-    private ProcurementNotificationService procurementNotificationService;
+    private ProcurementNotificationService
+            procurementNotificationService;
 
     @InjectMocks
     private BidServiceImpl bidService;
@@ -76,70 +87,130 @@ class BidServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        trader = new TraderProfileClientResponse();
-        trader.setId(TRADER_PROFILE_ID);
-        trader.setUserId(CURRENT_USER_ID);
+        trader =
+                new TraderProfileClientResponse();
 
-        publishedTender = Tender.builder()
-                .id(TENDER_ID)
-                .tenderReference("KB-TENDER-436FC79F")
-                .title(
-                        "Supply of ICT Equipment for Municipal Offices"
-                )
-                .status(Tender.TenderStatus.PUBLISHED)
-                .build();
+        trader.setId(
+                TRADER_PROFILE_ID
+        );
 
-        compliantBid = Bid.builder()
-                .id(BID_ID)
-                .bidReference("KB-BID-623BEF93")
-                .tenderId(TENDER_ID)
-                .traderProfileId(TRADER_PROFILE_ID)
-                .submittedByUserId(CURRENT_USER_ID)
-                .bidderAlias("Bidder A")
-                .technicalProposal(
-                        "Technical proposal for delivery and commissioning."
-                )
-                .priceAmount(
-                        new BigDecimal("690000.00")
-                )
-                .status(Bid.BidStatus.COMPLIANT)
-                .submittedAt(
-                        LocalDateTime.now().minusDays(1)
-                )
-                .updatedAt(
-                        LocalDateTime.now().minusDays(1)
-                )
-                .build();
+        trader.setUserId(
+                CURRENT_USER_ID
+        );
+
+        publishedTender =
+                Tender.builder()
+                        .id(TENDER_ID)
+                        .tenderReference(
+                                "KB-TENDER-436FC79F"
+                        )
+                        .title(
+                                "Supply of ICT Equipment "
+                                        + "for Municipal Offices"
+                        )
+                        .status(
+                                Tender.TenderStatus.PUBLISHED
+                        )
+                        .build();
+
+        compliantBid =
+                Bid.builder()
+                        .id(BID_ID)
+                        .bidReference(
+                                "KB-BID-623BEF93"
+                        )
+                        .tenderId(TENDER_ID)
+                        .traderProfileId(
+                                TRADER_PROFILE_ID
+                        )
+                        .submittedByUserId(
+                                CURRENT_USER_ID
+                        )
+                        .bidderAlias("Bidder A")
+                        .technicalProposal(
+                                "Technical proposal for "
+                                        + "delivery and "
+                                        + "commissioning."
+                        )
+                        .priceAmount(
+                                new BigDecimal(
+                                        "690000.00"
+                                )
+                        )
+                        .status(
+                                Bid.BidStatus.COMPLIANT
+                        )
+                        .submittedAt(
+                                LocalDateTime.now()
+                                        .minusDays(1)
+                        )
+                        .updatedAt(
+                                LocalDateTime.now()
+                                        .minusDays(1)
+                        )
+                        .build();
     }
 
     @Test
     void shouldWithdrawOwnedBidWhileTenderIsPublished() {
-        when(currentUserService.getCurrentUserId())
-                .thenReturn(CURRENT_USER_ID);
+        when(
+                currentUserService
+                        .getCurrentUserId()
+        ).thenReturn(
+                CURRENT_USER_ID
+        );
 
-        when(traderProfileClient.getCurrentTraderProfile())
-                .thenReturn(trader);
+        when(
+                traderProfileClient
+                        .getCurrentTraderProfile()
+        ).thenReturn(
+                trader
+        );
 
-        when(bidRepository.findById(BID_ID))
-                .thenReturn(
-                        Optional.of(compliantBid)
-                );
+        when(
+                bidRepository
+                        .findByIdAndTraderProfileId(
+                                BID_ID,
+                                TRADER_PROFILE_ID
+                        )
+        ).thenReturn(
+                Optional.of(
+                        compliantBid
+                )
+        );
 
-        when(tenderRepository.findById(TENDER_ID))
-                .thenReturn(
-                        Optional.of(publishedTender)
-                );
+        when(
+                tenderRepository.findById(
+                        TENDER_ID
+                )
+        ).thenReturn(
+                Optional.of(
+                        publishedTender
+                )
+        );
 
-        when(bidRepository.save(any(Bid.class)))
-                .thenAnswer(
-                        invocation -> invocation.getArgument(0)
-                );
+        when(
+                bidRepository.save(
+                        any(Bid.class)
+                )
+        ).thenAnswer(
+                invocation ->
+                        invocation.getArgument(0)
+        );
 
-        when(complianceRepository.findByBidId(BID_ID))
-                .thenReturn(Optional.empty());
+        when(
+                complianceRepository.findByBidId(
+                        BID_ID
+                )
+        ).thenReturn(
+                Optional.empty()
+        );
 
         BidResponse response =
-                bidService.withdrawCurrentTraderBid(BID_ID);
+                bidService
+                        .withdrawCurrentTraderBid(
+                                BID_ID
+                        );
 
         assertEquals(
                 Bid.BidStatus.WITHDRAWN,
@@ -157,7 +228,15 @@ class BidServiceImplTest {
         );
 
         ArgumentCaptor<Bid> bidCaptor =
-                ArgumentCaptor.forClass(Bid.class);
+                ArgumentCaptor.forClass(
+                        Bid.class
+                );
+
+        verify(bidRepository)
+                .findByIdAndTraderProfileId(
+                        BID_ID,
+                        TRADER_PROFILE_ID
+                );
 
         verify(bidRepository)
                 .save(
@@ -166,7 +245,9 @@ class BidServiceImplTest {
 
         assertEquals(
                 Bid.BidStatus.WITHDRAWN,
-                bidCaptor.getValue().getStatus()
+                bidCaptor
+                        .getValue()
+                        .getStatus()
         );
 
         verify(auditService)
@@ -183,34 +264,67 @@ class BidServiceImplTest {
                         anyString()
                 );
 
-        verify(procurementNotificationService)
-                .queueBidWithdrawn(
-                        compliantBid,
-                        publishedTender
-                );
+        verify(
+                procurementNotificationService
+        ).queueBidWithdrawn(
+                compliantBid,
+                publishedTender
+        );
     }
 
     @Test
     void shouldRejectWithdrawalWhenBidDoesNotExist() {
-        when(currentUserService.getCurrentUserId())
-                .thenReturn(CURRENT_USER_ID);
+        when(
+                currentUserService
+                        .getCurrentUserId()
+        ).thenReturn(
+                CURRENT_USER_ID
+        );
 
-        when(traderProfileClient.getCurrentTraderProfile())
-                .thenReturn(trader);
+        when(
+                traderProfileClient
+                        .getCurrentTraderProfile()
+        ).thenReturn(
+                trader
+        );
 
-        when(bidRepository.findById(BID_ID))
-                .thenReturn(Optional.empty());
+        when(
+                bidRepository
+                        .findByIdAndTraderProfileId(
+                                BID_ID,
+                                TRADER_PROFILE_ID
+                        )
+        ).thenReturn(
+                Optional.empty()
+        );
 
         BidNotFoundException exception =
                 assertThrows(
                         BidNotFoundException.class,
-                        () -> bidService
-                                .withdrawCurrentTraderBid(BID_ID)
+                        () ->
+                                bidService
+                                        .withdrawCurrentTraderBid(
+                                                BID_ID
+                                        )
                 );
 
         assertEquals(
-                "Bid not found with ID: " + BID_ID,
+                "Bid not found or does not belong "
+                        + "to the authenticated trader.",
                 exception.getMessage()
+        );
+
+        verify(bidRepository)
+                .findByIdAndTraderProfileId(
+                        BID_ID,
+                        TRADER_PROFILE_ID
+                );
+
+        verify(
+                tenderRepository,
+                never()
+        ).findById(
+                any()
         );
 
         verify(
@@ -243,34 +357,65 @@ class BidServiceImplTest {
 
     @Test
     void shouldConcealBidWhenAuthenticatedTraderIsNotOwner() {
+        Long differentUserId = 100L;
+        Long differentTraderProfileId = 99L;
+
         TraderProfileClientResponse differentTrader =
                 new TraderProfileClientResponse();
 
-        differentTrader.setId(99L);
-        differentTrader.setUserId(100L);
+        differentTrader.setId(
+                differentTraderProfileId
+        );
 
-        when(currentUserService.getCurrentUserId())
-                .thenReturn(100L);
+        differentTrader.setUserId(
+                differentUserId
+        );
 
-        when(traderProfileClient.getCurrentTraderProfile())
-                .thenReturn(differentTrader);
+        when(
+                currentUserService
+                        .getCurrentUserId()
+        ).thenReturn(
+                differentUserId
+        );
 
-        when(bidRepository.findById(BID_ID))
-                .thenReturn(
-                        Optional.of(compliantBid)
-                );
+        when(
+                traderProfileClient
+                        .getCurrentTraderProfile()
+        ).thenReturn(
+                differentTrader
+        );
+
+        when(
+                bidRepository
+                        .findByIdAndTraderProfileId(
+                                BID_ID,
+                                differentTraderProfileId
+                        )
+        ).thenReturn(
+                Optional.empty()
+        );
 
         BidNotFoundException exception =
                 assertThrows(
                         BidNotFoundException.class,
-                        () -> bidService
-                                .withdrawCurrentTraderBid(BID_ID)
+                        () ->
+                                bidService
+                                        .withdrawCurrentTraderBid(
+                                                BID_ID
+                                        )
                 );
 
         assertEquals(
-                "Bid not found or does not belong to the authenticated trader.",
+                "Bid not found or does not belong "
+                        + "to the authenticated trader.",
                 exception.getMessage()
         );
+
+        verify(bidRepository)
+                .findByIdAndTraderProfileId(
+                        BID_ID,
+                        differentTraderProfileId
+                );
 
         verify(
                 tenderRepository,
@@ -313,33 +458,62 @@ class BidServiceImplTest {
                 Bid.BidStatus.WITHDRAWN
         );
 
-        when(currentUserService.getCurrentUserId())
-                .thenReturn(CURRENT_USER_ID);
+        when(
+                currentUserService
+                        .getCurrentUserId()
+        ).thenReturn(
+                CURRENT_USER_ID
+        );
 
-        when(traderProfileClient.getCurrentTraderProfile())
-                .thenReturn(trader);
+        when(
+                traderProfileClient
+                        .getCurrentTraderProfile()
+        ).thenReturn(
+                trader
+        );
 
-        when(bidRepository.findById(BID_ID))
-                .thenReturn(
-                        Optional.of(compliantBid)
-                );
+        when(
+                bidRepository
+                        .findByIdAndTraderProfileId(
+                                BID_ID,
+                                TRADER_PROFILE_ID
+                        )
+        ).thenReturn(
+                Optional.of(
+                        compliantBid
+                )
+        );
 
-        when(tenderRepository.findById(TENDER_ID))
-                .thenReturn(
-                        Optional.of(publishedTender)
-                );
+        when(
+                tenderRepository.findById(
+                        TENDER_ID
+                )
+        ).thenReturn(
+                Optional.of(
+                        publishedTender
+                )
+        );
 
         BidStateException exception =
                 assertThrows(
                         BidStateException.class,
-                        () -> bidService
-                                .withdrawCurrentTraderBid(BID_ID)
+                        () ->
+                                bidService
+                                        .withdrawCurrentTraderBid(
+                                                BID_ID
+                                        )
                 );
 
         assertEquals(
                 "Bid has already been withdrawn.",
                 exception.getMessage()
         );
+
+        verify(bidRepository)
+                .findByIdAndTraderProfileId(
+                        BID_ID,
+                        TRADER_PROFILE_ID
+                );
 
         verify(
                 bidRepository,
@@ -375,33 +549,63 @@ class BidServiceImplTest {
                 Tender.TenderStatus.EVALUATION
         );
 
-        when(currentUserService.getCurrentUserId())
-                .thenReturn(CURRENT_USER_ID);
+        when(
+                currentUserService
+                        .getCurrentUserId()
+        ).thenReturn(
+                CURRENT_USER_ID
+        );
 
-        when(traderProfileClient.getCurrentTraderProfile())
-                .thenReturn(trader);
+        when(
+                traderProfileClient
+                        .getCurrentTraderProfile()
+        ).thenReturn(
+                trader
+        );
 
-        when(bidRepository.findById(BID_ID))
-                .thenReturn(
-                        Optional.of(compliantBid)
-                );
+        when(
+                bidRepository
+                        .findByIdAndTraderProfileId(
+                                BID_ID,
+                                TRADER_PROFILE_ID
+                        )
+        ).thenReturn(
+                Optional.of(
+                        compliantBid
+                )
+        );
 
-        when(tenderRepository.findById(TENDER_ID))
-                .thenReturn(
-                        Optional.of(publishedTender)
-                );
+        when(
+                tenderRepository.findById(
+                        TENDER_ID
+                )
+        ).thenReturn(
+                Optional.of(
+                        publishedTender
+                )
+        );
 
         TenderStateException exception =
                 assertThrows(
                         TenderStateException.class,
-                        () -> bidService
-                                .withdrawCurrentTraderBid(BID_ID)
+                        () ->
+                                bidService
+                                        .withdrawCurrentTraderBid(
+                                                BID_ID
+                                        )
                 );
 
         assertEquals(
-                "A bid can only be withdrawn while the tender is open for bidding.",
+                "A bid can only be withdrawn while "
+                        + "the tender is open for bidding.",
                 exception.getMessage()
         );
+
+        verify(bidRepository)
+                .findByIdAndTraderProfileId(
+                        BID_ID,
+                        TRADER_PROFILE_ID
+                );
 
         verify(
                 bidRepository,
@@ -437,33 +641,63 @@ class BidServiceImplTest {
                 Bid.BidStatus.UNDER_EVALUATION
         );
 
-        when(currentUserService.getCurrentUserId())
-                .thenReturn(CURRENT_USER_ID);
+        when(
+                currentUserService
+                        .getCurrentUserId()
+        ).thenReturn(
+                CURRENT_USER_ID
+        );
 
-        when(traderProfileClient.getCurrentTraderProfile())
-                .thenReturn(trader);
+        when(
+                traderProfileClient
+                        .getCurrentTraderProfile()
+        ).thenReturn(
+                trader
+        );
 
-        when(bidRepository.findById(BID_ID))
-                .thenReturn(
-                        Optional.of(compliantBid)
-                );
+        when(
+                bidRepository
+                        .findByIdAndTraderProfileId(
+                                BID_ID,
+                                TRADER_PROFILE_ID
+                        )
+        ).thenReturn(
+                Optional.of(
+                        compliantBid
+                )
+        );
 
-        when(tenderRepository.findById(TENDER_ID))
-                .thenReturn(
-                        Optional.of(publishedTender)
-                );
+        when(
+                tenderRepository.findById(
+                        TENDER_ID
+                )
+        ).thenReturn(
+                Optional.of(
+                        publishedTender
+                )
+        );
 
         BidStateException exception =
                 assertThrows(
                         BidStateException.class,
-                        () -> bidService
-                                .withdrawCurrentTraderBid(BID_ID)
+                        () ->
+                                bidService
+                                        .withdrawCurrentTraderBid(
+                                                BID_ID
+                                        )
                 );
 
         assertEquals(
-                "A bid in status UNDER_EVALUATION cannot be withdrawn.",
+                "A bid in status UNDER_EVALUATION "
+                        + "cannot be withdrawn.",
                 exception.getMessage()
         );
+
+        verify(bidRepository)
+                .findByIdAndTraderProfileId(
+                        BID_ID,
+                        TRADER_PROFILE_ID
+                );
 
         verify(
                 bidRepository,
@@ -495,23 +729,37 @@ class BidServiceImplTest {
 
     @Test
     void shouldRejectSubmissionWhenTraderHasActiveBidForTender() {
-        when(currentUserService.getCurrentUserId())
-                .thenReturn(CURRENT_USER_ID);
-
-        when(traderProfileClient.getCurrentTraderProfile())
-                .thenReturn(trader);
-
-        when(tenderRepository.findById(TENDER_ID))
-                .thenReturn(
-                        Optional.of(publishedTender)
-                );
+        when(
+                currentUserService
+                        .getCurrentUserId()
+        ).thenReturn(
+                CURRENT_USER_ID
+        );
 
         when(
-                bidRepository.existsActiveBidForTrader(
-                        TENDER_ID,
-                        TRADER_PROFILE_ID,
-                        Bid.BidStatus.WITHDRAWN
+                traderProfileClient
+                        .getCurrentTraderProfile()
+        ).thenReturn(
+                trader
+        );
+
+        when(
+                tenderRepository.findById(
+                        TENDER_ID
                 )
+        ).thenReturn(
+                Optional.of(
+                        publishedTender
+                )
+        );
+
+        when(
+                bidRepository
+                        .existsActiveBidForTrader(
+                                TENDER_ID,
+                                TRADER_PROFILE_ID,
+                                Bid.BidStatus.WITHDRAWN
+                        )
         ).thenReturn(true);
 
         SubmitBidRequest request =
@@ -520,14 +768,16 @@ class BidServiceImplTest {
         DuplicateBidException exception =
                 assertThrows(
                         DuplicateBidException.class,
-                        () -> bidService.submitBid(
-                                TENDER_ID,
-                                request
-                        )
+                        () ->
+                                bidService.submitBid(
+                                        TENDER_ID,
+                                        request
+                                )
                 );
 
         assertEquals(
-                "Trader already has an active bid for this tender.",
+                "Trader already has an active bid "
+                        + "for this tender.",
                 exception.getMessage()
         );
 
@@ -574,63 +824,93 @@ class BidServiceImplTest {
         SubmitBidRequest request =
                 validSubmitBidRequest();
 
-        ComplianceGatekeeperService.ComplianceDecision decision =
-                new ComplianceGatekeeperService.ComplianceDecision(
+        ComplianceGatekeeperService.ComplianceDecision
+                decision =
+                new ComplianceGatekeeperService
+                        .ComplianceDecision(
                         true,
                         null
                 );
 
-        when(currentUserService.getCurrentUserId())
-                .thenReturn(CURRENT_USER_ID);
-
-        when(traderProfileClient.getCurrentTraderProfile())
-                .thenReturn(trader);
-
-        when(tenderRepository.findById(TENDER_ID))
-                .thenReturn(
-                        Optional.of(publishedTender)
-                );
+        when(
+                currentUserService
+                        .getCurrentUserId()
+        ).thenReturn(
+                CURRENT_USER_ID
+        );
 
         when(
-                bidRepository.existsActiveBidForTrader(
-                        TENDER_ID,
-                        TRADER_PROFILE_ID,
-                        Bid.BidStatus.WITHDRAWN
+                traderProfileClient
+                        .getCurrentTraderProfile()
+        ).thenReturn(
+                trader
+        );
+
+        when(
+                tenderRepository.findById(
+                        TENDER_ID
                 )
+        ).thenReturn(
+                Optional.of(
+                        publishedTender
+                )
+        );
+
+        when(
+                bidRepository
+                        .existsActiveBidForTrader(
+                                TENDER_ID,
+                                TRADER_PROFILE_ID,
+                                Bid.BidStatus.WITHDRAWN
+                        )
         ).thenReturn(false);
 
-        when(bidRepository.countByTenderId(TENDER_ID))
-                .thenReturn(1L);
+        when(
+                bidRepository.countByTenderId(
+                        TENDER_ID
+                )
+        ).thenReturn(1L);
 
-        when(bidRepository.save(any(Bid.class)))
-                .thenAnswer(invocation -> {
-                    Bid bid = invocation.getArgument(0);
+        when(
+                bidRepository.save(
+                        any(Bid.class)
+                )
+        ).thenAnswer(invocation -> {
+            Bid bid =
+                    invocation.getArgument(0);
 
-                    if (bid.getId() == null) {
-                        bid.setId(replacementBidId);
-                    }
+            if (bid.getId() == null) {
+                bid.setId(
+                        replacementBidId
+                );
+            }
 
-                    if (bid.getSubmittedAt() == null) {
-                        bid.setSubmittedAt(
-                                LocalDateTime.now()
-                        );
-                    }
+            if (bid.getSubmittedAt() == null) {
+                bid.setSubmittedAt(
+                        LocalDateTime.now()
+                );
+            }
 
-                    if (bid.getUpdatedAt() == null) {
-                        bid.setUpdatedAt(
-                                LocalDateTime.now()
-                        );
-                    }
+            if (bid.getUpdatedAt() == null) {
+                bid.setUpdatedAt(
+                        LocalDateTime.now()
+                );
+            }
 
-                    return bid;
-                });
+            return bid;
+        });
 
-        when(gatekeeperService.evaluate(request))
-                .thenReturn(decision);
+        when(
+                gatekeeperService.evaluate(
+                        request
+                )
+        ).thenReturn(decision);
 
         when(
                 complianceRepository.save(
-                        any(BidComplianceResult.class)
+                        any(
+                                BidComplianceResult.class
+                        )
                 )
         ).thenAnswer(invocation -> {
             BidComplianceResult complianceResult =
@@ -707,7 +987,9 @@ class BidServiceImplTest {
         );
 
         ArgumentCaptor<Bid> bidCaptor =
-                ArgumentCaptor.forClass(Bid.class);
+                ArgumentCaptor.forClass(
+                        Bid.class
+                );
 
         verify(
                 bidRepository,
@@ -717,7 +999,9 @@ class BidServiceImplTest {
         );
 
         Bid savedBid =
-                bidCaptor.getAllValues().get(1);
+                bidCaptor
+                        .getAllValues()
+                        .get(1);
 
         assertEquals(
                 replacementBidId,
@@ -745,7 +1029,8 @@ class BidServiceImplTest {
         );
 
         assertEquals(
-                "Technical proposal for delivery and commissioning.",
+                "Technical proposal for delivery "
+                        + "and commissioning.",
                 savedBid.getTechnicalProposal()
         );
 
@@ -768,7 +1053,8 @@ class BidServiceImplTest {
                         .startsWith("KB-BID-")
         );
 
-        ArgumentCaptor<BidComplianceResult> complianceCaptor =
+        ArgumentCaptor<BidComplianceResult>
+                complianceCaptor =
                 ArgumentCaptor.forClass(
                         BidComplianceResult.class
                 );
@@ -791,7 +1077,8 @@ class BidServiceImplTest {
         );
 
         assertTrue(
-                savedCompliance.isTaxClearanceValid()
+                savedCompliance
+                        .isTaxClearanceValid()
         );
 
         assertTrue(
@@ -799,7 +1086,8 @@ class BidServiceImplTest {
         );
 
         assertTrue(
-                savedCompliance.isRequiredDocumentsUploaded()
+                savedCompliance
+                        .isRequiredDocumentsUploaded()
         );
 
         assertTrue(
@@ -837,23 +1125,28 @@ class BidServiceImplTest {
                         eq(TENDER_ID),
                         eq(replacementBidId),
                         eq(CURRENT_USER_ID),
-                        eq("Bid compliance passed"),
                         eq(
-                                "All baseline compliance checks passed"
+                                "Bid compliance passed"
+                        ),
+                        eq(
+                                "All baseline compliance "
+                                        + "checks passed"
                         )
                 );
 
-        verify(procurementNotificationService)
-                .queueBidReceived(
-                        savedBid,
-                        publishedTender
-                );
+        verify(
+                procurementNotificationService
+        ).queueBidReceived(
+                savedBid,
+                publishedTender
+        );
 
-        verify(procurementNotificationService)
-                .queueCompliancePassed(
-                        savedBid,
-                        publishedTender
-                );
+        verify(
+                procurementNotificationService
+        ).queueCompliancePassed(
+                savedBid,
+                publishedTender
+        );
 
         verify(
                 procurementNotificationService,
@@ -880,63 +1173,93 @@ class BidServiceImplTest {
                 "Tax clearance is invalid or missing; "
                         + "Required documents were not uploaded";
 
-        ComplianceGatekeeperService.ComplianceDecision decision =
-                new ComplianceGatekeeperService.ComplianceDecision(
+        ComplianceGatekeeperService.ComplianceDecision
+                decision =
+                new ComplianceGatekeeperService
+                        .ComplianceDecision(
                         false,
                         failureReason
                 );
 
-        when(currentUserService.getCurrentUserId())
-                .thenReturn(CURRENT_USER_ID);
-
-        when(traderProfileClient.getCurrentTraderProfile())
-                .thenReturn(trader);
-
-        when(tenderRepository.findById(TENDER_ID))
-                .thenReturn(
-                        Optional.of(publishedTender)
-                );
+        when(
+                currentUserService
+                        .getCurrentUserId()
+        ).thenReturn(
+                CURRENT_USER_ID
+        );
 
         when(
-                bidRepository.existsActiveBidForTrader(
-                        TENDER_ID,
-                        TRADER_PROFILE_ID,
-                        Bid.BidStatus.WITHDRAWN
+                traderProfileClient
+                        .getCurrentTraderProfile()
+        ).thenReturn(
+                trader
+        );
+
+        when(
+                tenderRepository.findById(
+                        TENDER_ID
                 )
+        ).thenReturn(
+                Optional.of(
+                        publishedTender
+                )
+        );
+
+        when(
+                bidRepository
+                        .existsActiveBidForTrader(
+                                TENDER_ID,
+                                TRADER_PROFILE_ID,
+                                Bid.BidStatus.WITHDRAWN
+                        )
         ).thenReturn(false);
 
-        when(bidRepository.countByTenderId(TENDER_ID))
-                .thenReturn(2L);
+        when(
+                bidRepository.countByTenderId(
+                        TENDER_ID
+                )
+        ).thenReturn(2L);
 
-        when(bidRepository.save(any(Bid.class)))
-                .thenAnswer(invocation -> {
-                    Bid bid = invocation.getArgument(0);
+        when(
+                bidRepository.save(
+                        any(Bid.class)
+                )
+        ).thenAnswer(invocation -> {
+            Bid bid =
+                    invocation.getArgument(0);
 
-                    if (bid.getId() == null) {
-                        bid.setId(replacementBidId);
-                    }
+            if (bid.getId() == null) {
+                bid.setId(
+                        replacementBidId
+                );
+            }
 
-                    if (bid.getSubmittedAt() == null) {
-                        bid.setSubmittedAt(
-                                LocalDateTime.now()
-                        );
-                    }
+            if (bid.getSubmittedAt() == null) {
+                bid.setSubmittedAt(
+                        LocalDateTime.now()
+                );
+            }
 
-                    if (bid.getUpdatedAt() == null) {
-                        bid.setUpdatedAt(
-                                LocalDateTime.now()
-                        );
-                    }
+            if (bid.getUpdatedAt() == null) {
+                bid.setUpdatedAt(
+                        LocalDateTime.now()
+                );
+            }
 
-                    return bid;
-                });
+            return bid;
+        });
 
-        when(gatekeeperService.evaluate(request))
-                .thenReturn(decision);
+        when(
+                gatekeeperService.evaluate(
+                        request
+                )
+        ).thenReturn(decision);
 
         when(
                 complianceRepository.save(
-                        any(BidComplianceResult.class)
+                        any(
+                                BidComplianceResult.class
+                        )
                 )
         ).thenAnswer(invocation -> {
             BidComplianceResult complianceResult =
@@ -999,7 +1322,8 @@ class BidServiceImplTest {
         );
 
         assertFalse(
-                response.getCompliance().isTaxClearanceValid()
+                response.getCompliance()
+                        .isTaxClearanceValid()
         );
 
         assertFalse(
@@ -1009,11 +1333,14 @@ class BidServiceImplTest {
 
         assertEquals(
                 failureReason,
-                response.getCompliance().getFailureReason()
+                response.getCompliance()
+                        .getFailureReason()
         );
 
         ArgumentCaptor<Bid> bidCaptor =
-                ArgumentCaptor.forClass(Bid.class);
+                ArgumentCaptor.forClass(
+                        Bid.class
+                );
 
         verify(
                 bidRepository,
@@ -1023,7 +1350,9 @@ class BidServiceImplTest {
         );
 
         Bid savedBid =
-                bidCaptor.getAllValues().get(1);
+                bidCaptor
+                        .getAllValues()
+                        .get(1);
 
         assertEquals(
                 replacementBidId,
@@ -1050,7 +1379,8 @@ class BidServiceImplTest {
                 savedBid.getStatus()
         );
 
-        ArgumentCaptor<BidComplianceResult> complianceCaptor =
+        ArgumentCaptor<BidComplianceResult>
+                complianceCaptor =
                 ArgumentCaptor.forClass(
                         BidComplianceResult.class
                 );
@@ -1073,7 +1403,8 @@ class BidServiceImplTest {
         );
 
         assertFalse(
-                savedCompliance.isTaxClearanceValid()
+                savedCompliance
+                        .isTaxClearanceValid()
         );
 
         assertTrue(
@@ -1081,7 +1412,8 @@ class BidServiceImplTest {
         );
 
         assertFalse(
-                savedCompliance.isRequiredDocumentsUploaded()
+                savedCompliance
+                        .isRequiredDocumentsUploaded()
         );
 
         assertFalse(
@@ -1120,22 +1452,26 @@ class BidServiceImplTest {
                         eq(TENDER_ID),
                         eq(replacementBidId),
                         eq(CURRENT_USER_ID),
-                        eq("Bid compliance failed"),
+                        eq(
+                                "Bid compliance failed"
+                        ),
                         eq(failureReason)
                 );
 
-        verify(procurementNotificationService)
-                .queueBidReceived(
-                        savedBid,
-                        publishedTender
-                );
+        verify(
+                procurementNotificationService
+        ).queueBidReceived(
+                savedBid,
+                publishedTender
+        );
 
-        verify(procurementNotificationService)
-                .queueComplianceFailed(
-                        savedBid,
-                        publishedTender,
-                        failureReason
-                );
+        verify(
+                procurementNotificationService
+        ).queueComplianceFailed(
+                savedBid,
+                publishedTender,
+                failureReason
+        );
 
         verify(
                 procurementNotificationService,
@@ -1148,49 +1484,75 @@ class BidServiceImplTest {
 
     @Test
     void shouldReturnActiveAnonymizedBidsAndExcludeWithdrawnBids() {
-        Bid activeBid = Bid.builder()
-                .id(16L)
-                .bidReference("KB-BID-68742A06")
-                .tenderId(TENDER_ID)
-                .traderProfileId(TRADER_PROFILE_ID)
-                .submittedByUserId(CURRENT_USER_ID)
-                .bidderAlias("Bidder B")
-                .technicalProposal(
-                        "Active technical proposal."
-                )
-                .priceAmount(
-                        new BigDecimal("690000.00")
-                )
-                .status(Bid.BidStatus.COMPLIANT)
-                .submittedAt(
-                        LocalDateTime.now().minusHours(2)
-                )
-                .updatedAt(
-                        LocalDateTime.now().minusHours(2)
-                )
-                .build();
+        Bid activeBid =
+                Bid.builder()
+                        .id(16L)
+                        .bidReference(
+                                "KB-BID-68742A06"
+                        )
+                        .tenderId(TENDER_ID)
+                        .traderProfileId(
+                                TRADER_PROFILE_ID
+                        )
+                        .submittedByUserId(
+                                CURRENT_USER_ID
+                        )
+                        .bidderAlias("Bidder B")
+                        .technicalProposal(
+                                "Active technical proposal."
+                        )
+                        .priceAmount(
+                                new BigDecimal(
+                                        "690000.00"
+                                )
+                        )
+                        .status(
+                                Bid.BidStatus.COMPLIANT
+                        )
+                        .submittedAt(
+                                LocalDateTime.now()
+                                        .minusHours(2)
+                        )
+                        .updatedAt(
+                                LocalDateTime.now()
+                                        .minusHours(2)
+                        )
+                        .build();
 
-        Bid withdrawnBid = Bid.builder()
-                .id(15L)
-                .bidReference("KB-BID-623BEF93")
-                .tenderId(TENDER_ID)
-                .traderProfileId(TRADER_PROFILE_ID)
-                .submittedByUserId(CURRENT_USER_ID)
-                .bidderAlias("Bidder A")
-                .technicalProposal(
-                        "Withdrawn technical proposal."
-                )
-                .priceAmount(
-                        new BigDecimal("700000.00")
-                )
-                .status(Bid.BidStatus.WITHDRAWN)
-                .submittedAt(
-                        LocalDateTime.now().minusDays(1)
-                )
-                .updatedAt(
-                        LocalDateTime.now().minusHours(1)
-                )
-                .build();
+        Bid withdrawnBid =
+                Bid.builder()
+                        .id(15L)
+                        .bidReference(
+                                "KB-BID-623BEF93"
+                        )
+                        .tenderId(TENDER_ID)
+                        .traderProfileId(
+                                TRADER_PROFILE_ID
+                        )
+                        .submittedByUserId(
+                                CURRENT_USER_ID
+                        )
+                        .bidderAlias("Bidder A")
+                        .technicalProposal(
+                                "Withdrawn technical proposal."
+                        )
+                        .priceAmount(
+                                new BigDecimal(
+                                        "700000.00"
+                                )
+                        )
+                        .status(
+                                Bid.BidStatus.WITHDRAWN
+                        )
+                        .submittedAt(
+                                LocalDateTime.now()
+                                        .minusDays(1)
+                        )
+                        .updatedAt(
+                                LocalDateTime.now()
+                                        .minusHours(1)
+                        )
+                        .build();
 
         BidComplianceResult activeCompliance =
                 BidComplianceResult.builder()
@@ -1199,39 +1561,50 @@ class BidServiceImplTest {
                         .csdValid(true)
                         .taxClearanceValid(true)
                         .bbbeeValid(true)
-                        .requiredDocumentsUploaded(true)
+                        .requiredDocumentsUploaded(
+                                true
+                        )
                         .passed(true)
                         .failureReason(null)
                         .build();
 
-        when(tenderRepository.existsById(TENDER_ID))
-                .thenReturn(true);
-
-        when(bidRepository.findByTenderId(TENDER_ID))
-                .thenReturn(
-                        java.util.List.of(
-                                activeBid,
-                                withdrawnBid
-                        )
-                );
-
-        when(complianceRepository.findByBidId(16L))
-                .thenReturn(
-                        Optional.of(activeCompliance)
-                );
-
-        java.util.List<com.kasibridge.procurement.dto.AnonymizedBidResponse>
-                responses =
-                bidService.getAnonymizedBidsForTender(
+        when(
+                tenderRepository.existsById(
                         TENDER_ID
-                );
+                )
+        ).thenReturn(true);
+
+        when(
+                bidRepository.findByTenderId(
+                        TENDER_ID
+                )
+        ).thenReturn(
+                List.of(
+                        activeBid,
+                        withdrawnBid
+                )
+        );
+
+        when(
+                complianceRepository.findByBidId(
+                        16L
+                )
+        ).thenReturn(
+                Optional.of(activeCompliance)
+        );
+
+        List<AnonymizedBidResponse> responses =
+                bidService
+                        .getAnonymizedBidsForTender(
+                                TENDER_ID
+                        );
 
         assertEquals(
                 1,
                 responses.size()
         );
 
-        com.kasibridge.procurement.dto.AnonymizedBidResponse response =
+        AnonymizedBidResponse response =
                 responses.get(0);
 
         assertEquals(
@@ -1283,22 +1656,25 @@ class BidServiceImplTest {
 
     @Test
     void shouldRejectAnonymizedBidRetrievalWhenTenderDoesNotExist() {
-        when(tenderRepository.existsById(TENDER_ID))
-                .thenReturn(false);
+        when(
+                tenderRepository.existsById(
+                        TENDER_ID
+                )
+        ).thenReturn(false);
 
-        com.kasibridge.procurement.exception.TenderNotFoundException
-                exception =
+        TenderNotFoundException exception =
                 assertThrows(
-                        com.kasibridge.procurement.exception
-                                .TenderNotFoundException.class,
-                        () -> bidService
-                                .getAnonymizedBidsForTender(
-                                        TENDER_ID
-                                )
+                        TenderNotFoundException.class,
+                        () ->
+                                bidService
+                                        .getAnonymizedBidsForTender(
+                                                TENDER_ID
+                                        )
                 );
 
         assertEquals(
-                "Tender not found with ID: " + TENDER_ID,
+                "Tender not found with ID: "
+                        + TENDER_ID,
                 exception.getMessage()
         );
 
@@ -1319,41 +1695,59 @@ class BidServiceImplTest {
 
     @Test
     void shouldReturnEmptyAnonymizedListWhenAllBidsAreWithdrawn() {
-        Bid withdrawnBid = Bid.builder()
-                .id(BID_ID)
-                .bidReference("KB-BID-623BEF93")
-                .tenderId(TENDER_ID)
-                .traderProfileId(TRADER_PROFILE_ID)
-                .submittedByUserId(CURRENT_USER_ID)
-                .bidderAlias("Bidder A")
-                .technicalProposal(
-                        "Withdrawn technical proposal."
-                )
-                .priceAmount(
-                        new BigDecimal("690000.00")
-                )
-                .status(Bid.BidStatus.WITHDRAWN)
-                .submittedAt(
-                        LocalDateTime.now().minusDays(1)
-                )
-                .updatedAt(
-                        LocalDateTime.now()
-                )
-                .build();
+        Bid withdrawnBid =
+                Bid.builder()
+                        .id(BID_ID)
+                        .bidReference(
+                                "KB-BID-623BEF93"
+                        )
+                        .tenderId(TENDER_ID)
+                        .traderProfileId(
+                                TRADER_PROFILE_ID
+                        )
+                        .submittedByUserId(
+                                CURRENT_USER_ID
+                        )
+                        .bidderAlias("Bidder A")
+                        .technicalProposal(
+                                "Withdrawn technical proposal."
+                        )
+                        .priceAmount(
+                                new BigDecimal(
+                                        "690000.00"
+                                )
+                        )
+                        .status(
+                                Bid.BidStatus.WITHDRAWN
+                        )
+                        .submittedAt(
+                                LocalDateTime.now()
+                                        .minusDays(1)
+                        )
+                        .updatedAt(
+                                LocalDateTime.now()
+                        )
+                        .build();
 
-        when(tenderRepository.existsById(TENDER_ID))
-                .thenReturn(true);
-
-        when(bidRepository.findByTenderId(TENDER_ID))
-                .thenReturn(
-                        java.util.List.of(withdrawnBid)
-                );
-
-        java.util.List<com.kasibridge.procurement.dto.AnonymizedBidResponse>
-                responses =
-                bidService.getAnonymizedBidsForTender(
+        when(
+                tenderRepository.existsById(
                         TENDER_ID
-                );
+                )
+        ).thenReturn(true);
+
+        when(
+                bidRepository.findByTenderId(
+                        TENDER_ID
+                )
+        ).thenReturn(
+                List.of(withdrawnBid)
+        );
+
+        List<AnonymizedBidResponse> responses =
+                bidService
+                        .getAnonymizedBidsForTender(
+                                TENDER_ID
+                        );
 
         assertTrue(
                 responses.isEmpty()
@@ -1372,7 +1766,8 @@ class BidServiceImplTest {
                 new SubmitBidRequest();
 
         request.setTechnicalProposal(
-                "Technical proposal for delivery and commissioning."
+                "Technical proposal for delivery "
+                        + "and commissioning."
         );
 
         request.setPriceAmount(

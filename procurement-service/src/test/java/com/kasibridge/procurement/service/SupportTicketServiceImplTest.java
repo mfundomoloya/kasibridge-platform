@@ -411,15 +411,21 @@ class SupportTicketServiceImplTest {
 
         SupportTicket ticket =
                 SupportTicket.builder()
-                        .ticketReference("KB-TICKET-OPEN001")
+                        .ticketReference(
+                                "KB-TICKET-OPEN001"
+                        )
                         .tenderId(3L)
                         .ticketType(
-                                SupportTicket.TicketType.GENERAL_SUPPORT
+                                SupportTicket.TicketType
+                                        .GENERAL_SUPPORT
                         )
                         .status(
-                                SupportTicket.TicketStatus.OPEN
+                                SupportTicket.TicketStatus
+                                        .OPEN
                         )
-                        .assignedToUserId(assignedUserId)
+                        .assignedToUserId(
+                                assignedUserId
+                        )
                         .build();
 
         RespondToTicketRequest request =
@@ -429,24 +435,31 @@ class SupportTicketServiceImplTest {
                 "The support request has been reviewed."
         );
 
-        when(currentUserService.getCurrentUserId())
-                .thenReturn(assignedUserId);
+        when(
+                currentUserService
+                        .getCurrentUserId()
+        ).thenReturn(
+                assignedUserId
+        );
 
-        when(currentUserService.hasRole(
-                "ROLE_PLATFORM_ADMIN"
-        )).thenReturn(false);
-
-        when(ticketRepository.findByIdForUpdate(ticketId))
-                .thenReturn(Optional.of(ticket));
+        when(
+                ticketRepository
+                        .findByIdForUpdate(
+                                ticketId
+                        )
+        ).thenReturn(
+                Optional.of(ticket)
+        );
 
         SupportTicketStateException exception =
                 assertThrows(
                         SupportTicketStateException.class,
-                        () -> supportTicketService
-                                .respondToTicket(
-                                        ticketId,
-                                        request
-                                )
+                        () ->
+                                supportTicketService
+                                        .respondToTicket(
+                                                ticketId,
+                                                request
+                                        )
                 );
 
         assertEquals(
@@ -459,18 +472,32 @@ class SupportTicketServiceImplTest {
                 ticket.getStatus()
         );
 
-        assertNull(ticket.getResponse());
+        assertNull(
+                ticket.getResponse()
+        );
 
         verify(ticketRepository)
-                .findByIdForUpdate(ticketId);
+                .findByIdForUpdate(
+                        ticketId
+                );
 
-        verify(ticketRepository, never())
-                .save(any(SupportTicket.class));
+        verify(
+                ticketRepository,
+                never()
+        ).save(
+                any(SupportTicket.class)
+        );
 
-        verify(ticketRepository, never())
-                .saveAndFlush(any(SupportTicket.class));
+        verify(
+                ticketRepository,
+                never()
+        ).saveAndFlush(
+                any(SupportTicket.class)
+        );
 
-        verifyNoInteractions(auditService);
+        verifyNoInteractions(
+                auditService
+        );
     }
 
     @Test
@@ -658,10 +685,6 @@ class SupportTicketServiceImplTest {
 
         when(currentUserService.getCurrentUserId())
                 .thenReturn(assignedUserId);
-
-        when(currentUserService.hasRole(
-                "ROLE_PLATFORM_ADMIN"
-        )).thenReturn(false);
 
         when(ticketRepository.findByIdForUpdate(ticketId))
                 .thenReturn(Optional.of(ticket));
