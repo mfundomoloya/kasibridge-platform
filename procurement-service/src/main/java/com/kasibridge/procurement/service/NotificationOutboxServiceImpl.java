@@ -211,8 +211,10 @@ public class NotificationOutboxServiceImpl implements  NotificationOutboxService
 
     @Override
     @Transactional
-    public NotificationOutboxResponse markFailed(Long id, MarkNotificationFailedRequest request) {
-
+    public NotificationOutboxResponse markFailed(
+            Long id,
+            MarkNotificationFailedRequest request
+    ) {
         if (request == null
                 || request.getFailureReason() == null
                 || request.getFailureReason().isBlank()) {
@@ -239,26 +241,54 @@ public class NotificationOutboxServiceImpl implements  NotificationOutboxService
             );
         }
 
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now =
+                LocalDateTime.now();
+
+        long retryDelaySeconds =
+                calculateRetryDelaySeconds(
+                        notification.getRetryCount()
+                );
 
         notification.setStatus(
                 NotificationOutbox.NotificationStatus.FAILED
         );
+
         notification.setFailureReason(
                 request.getFailureReason().trim()
         );
-        notification.setRetryCount(
-                notification.getRetryCount() + 1
+
+        notification.setNextAttemptAt(
+                now.plusSeconds(
+                        retryDelaySeconds
+                )
         );
+
+        notification.setClaimedAt(null);
+        notification.setClaimedBy(null);
+        notification.setClaimExpiresAt(null);
+
         notification.setProviderMessageId(null);
         notification.setUpdatedAt(now);
 
         NotificationOutbox saved =
-                repository.saveAndFlush(notification);
+                repository.saveAndFlush(
+                        notification
+                );
 
-        return NotificationOutboxResponse.from(saved);
+        log.warn(
+                "Notification dispatch failed: "
+                        + "id={} retryCount={} "
+                        + "nextAttemptAt={} reason={}",
+                saved.getId(),
+                saved.getRetryCount(),
+                saved.getNextAttemptAt(),
+                saved.getFailureReason()
+        );
+
+        return NotificationOutboxResponse.from(
+                saved
+        );
     }
-
     @Override
     @Transactional
     public NotificationOutboxResponse markSent(Long id, String providerMessageId) {
@@ -357,6 +387,24 @@ public class NotificationOutboxServiceImpl implements  NotificationOutboxService
                 .replace("-", "")
                 .substring(0, 8)
                 .toUpperCase();
+    }
+
+    private long calculateRetryDelaySeconds(
+            int retryCount
+    ) {
+        int normalizedRetryCount =
+                Math.max(
+                        retryCount,
+                        1
+                );
+
+        int exponent =
+                Math.min(
+                        normalizedRetryCount - 1,
+                        10
+                );
+
+        return 60L << exponent;
     }
 
     private void validateQueueRequest(
