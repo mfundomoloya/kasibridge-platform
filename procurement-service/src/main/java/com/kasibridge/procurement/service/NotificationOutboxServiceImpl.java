@@ -1,5 +1,6 @@
 package com.kasibridge.procurement.service;
 
+import com.kasibridge.procurement.config.NotificationRetryProperties;
 import com.kasibridge.procurement.dto.MarkNotificationFailedRequest;
 import com.kasibridge.procurement.dto.NotificationOutboxResponse;
 import com.kasibridge.procurement.entity.NotificationOutbox;
@@ -25,6 +26,7 @@ public class NotificationOutboxServiceImpl implements  NotificationOutboxService
 
     private final NotificationOutboxRepository repository;
     private final CurrentUserService currentUserService;
+    private final NotificationRetryProperties retryProperties;
 
     @Override
     @Transactional
@@ -401,10 +403,27 @@ public class NotificationOutboxServiceImpl implements  NotificationOutboxService
         int exponent =
                 Math.min(
                         normalizedRetryCount - 1,
-                        10
+                        62
                 );
 
-        return 60L << exponent;
+        long multiplier =
+                1L << exponent;
+
+        long baseDelaySeconds =
+                retryProperties.baseDelaySeconds();
+
+        long maxDelaySeconds =
+                retryProperties.maxDelaySeconds();
+
+        if (baseDelaySeconds
+                > maxDelaySeconds / multiplier) {
+            return maxDelaySeconds;
+        }
+
+        return Math.min(
+                baseDelaySeconds * multiplier,
+                maxDelaySeconds
+        );
     }
 
     private void validateQueueRequest(

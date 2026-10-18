@@ -1,10 +1,12 @@
 package com.kasibridge.procurement.service;
 
+import com.kasibridge.procurement.config.NotificationRetryProperties;
 import com.kasibridge.procurement.dto.MarkNotificationFailedRequest;
 import com.kasibridge.procurement.entity.NotificationOutbox;
 import com.kasibridge.procurement.exception.NotificationOutboxException;
 import com.kasibridge.procurement.exception.NotificationStateException;
 import com.kasibridge.procurement.repository.NotificationOutboxRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -27,8 +29,26 @@ class NotificationOutboxServiceImplTest {
     @Mock
     private CurrentUserService currentUserService;
 
+    @Mock
+    private NotificationRetryProperties retryProperties;
+
     @InjectMocks
     private NotificationOutboxServiceImpl outboxService;
+
+    @BeforeEach
+    void setUp() {
+        lenient()
+                .when(
+                        retryProperties.baseDelaySeconds()
+                )
+                .thenReturn(60L);
+
+        lenient()
+                .when(
+                        retryProperties.maxDelaySeconds()
+                )
+                .thenReturn(3600L);
+    }
 
     @Test
     void markFailed_shouldPreserveAttemptCountAndScheduleRetry() {
@@ -380,7 +400,6 @@ class NotificationOutboxServiceImplTest {
                 .saveAndFlush(any());
     }
 
-
     @Test
     void markFailed_shouldRejectCancelledNotification() {
         NotificationOutbox notification =
@@ -444,4 +463,119 @@ class NotificationOutboxServiceImplTest {
                 .saveAndFlush(any());
     }
 
+    @Test
+    void markFailed_shouldCapBackoffAtConfiguredMaximumDelay() {
+        LocalDateTime claimedAt =
+                LocalDateTime.now()
+                        .minusSeconds(10);
+
+        NotificationOutbox notification =
+                NotificationOutbox.builder()
+                        .id(6L)
+                        .notificationReference(
+                                "KB-NOTIF-BACKOFF-06"
+                        )
+                        .channel(
+                                NotificationOutbox
+                                        .NotificationChannel
+                                        .WHATSAPP
+                        )
+                        .templateType(
+                                NotificationOutbox
+                                        .NotificationTemplateType
+                                        .SUPPORT_TICKET_CREATED
+                        )
+                        .status(
+                                NotificationOutbox
+                                        .NotificationStatus
+                                        .PROCESSING
+                        )
+                        .recipientUserId(106L)
+                        .recipientPhone(
+                                "+27610000106"
+                        )
+                        .message(
+                                "Maximum backoff test."
+                        )
+                        .retryCount(8)
+                        .claimedAt(claimedAt)
+                        .claimedBy(
+                                "dispatcher-worker"
+                        )
+                        .claimExpiresAt(
+                                claimedAt.plusMinutes(5)
+                        )
+                        .createdAt(
+                                claimedAt.minusMinutes(1)
+                        )
+                        .updatedAt(claimedAt)
+                        .build();
+
+        MarkNotificationFailedRequest request =
+                new MarkNotificationFailedRequest();
+
+        request.setFailureReason(
+                "Provider remains unavailable."
+        );
+
+        when(repository.findById(6L))
+                .thenReturn(
+                        Optional.of(notification)
+                );
+
+        when(repository.saveAndFlush(notification))
+                .thenReturn(notification);
+
+        when(retryProperties.baseDelaySeconds())
+                .thenReturn(60L);
+
+        when(retryProperties.maxDelaySeconds())
+                .thenReturn(300L);
+
+        LocalDateTime beforeFailure =
+                LocalDateTime.now();
+
+        outboxService.markFailed(
+                6L,
+                request
+        );
+
+        LocalDateTime afterFailure =
+                LocalDateTime.now();
+
+        ArgumentCaptor<NotificationOutbox> captor =
+                ArgumentCaptor.forClass(
+                        NotificationOutbox.class
+                );
+
+        verify(repository).saveAndFlush(
+                captor.capture()
+        );
+
+        NotificationOutbox saved =
+                captor.getValue();
+
+        assertEquals(
+                8,
+                saved.getRetryCount()
+        );
+
+        assertNotNull(
+                saved.getNextAttemptAt()
+        );
+
+        assertTrue(
+                !saved.getNextAttemptAt()
+                        .isBefore(
+                                beforeFailure.plusSeconds(300)
+                        )
+        );
+
+        assertTrue(
+                !saved.getNextAttemptAt()
+                        .isAfter(
+                                afterFailure.plusSeconds(300)
+                        )
+        );
+    }
 }
