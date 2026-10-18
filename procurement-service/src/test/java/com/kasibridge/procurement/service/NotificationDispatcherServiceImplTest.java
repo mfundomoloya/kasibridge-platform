@@ -17,12 +17,10 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import org.springframework.data.domain.PageRequest;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -47,6 +45,9 @@ class NotificationDispatcherServiceImplTest {
     @Mock
     private WhatsAppProvider whatsAppProvider;
 
+    @Mock
+    private NotificationDispatchClaimService claimService;
+
     @InjectMocks
     private NotificationDispatcherServiceImpl dispatcherService;
 
@@ -63,6 +64,18 @@ class NotificationDispatcherServiceImplTest {
                 "maxRetries",
                 3
         );
+
+        ReflectionTestUtils.setField(
+                dispatcherService,
+                "workerId",
+                "test-worker"
+        );
+
+        ReflectionTestUtils.setField(
+                dispatcherService,
+                "leaseSeconds",
+                300
+        );
     }
 
     @Test
@@ -76,12 +89,13 @@ class NotificationDispatcherServiceImplTest {
                         "Your support ticket was created."
                 );
 
-        when(repository
-                .findByStatusAndChannelOrderByCreatedAtAsc(
-                        eq(NotificationOutbox.NotificationStatus.PENDING),
-                        eq(NotificationOutbox.NotificationChannel.WHATSAPP),
-                        any(PageRequest.class)
-                ))
+        when(claimService.claimBatch(
+                eq(NotificationOutbox.NotificationChannel.WHATSAPP),
+                eq(3),
+                eq(20),
+                eq("test-worker"),
+                eq(300)
+        ))
                 .thenReturn(List.of(notification));
 
         when(whatsAppProvider.sendMessage(
@@ -125,15 +139,13 @@ class NotificationDispatcherServiceImplTest {
                         "Retry notification."
                 );
 
-        when(repository
-                .findByStatusInAndChannelAndRetryCountLessThanOrderByCreatedAtAsc(
-                        eq(Set.of(
-                                NotificationOutbox.NotificationStatus.FAILED
-                        )),
-                        eq(NotificationOutbox.NotificationChannel.WHATSAPP),
-                        eq(3),
-                        any(PageRequest.class)
-                ))
+        when(claimService.claimBatch(
+                eq(NotificationOutbox.NotificationChannel.WHATSAPP),
+                eq(3),
+                eq(20),
+                eq("test-worker"),
+                eq(300)
+        ))
                 .thenReturn(List.of(notification));
 
         when(whatsAppProvider.sendMessage(
@@ -172,12 +184,14 @@ class NotificationDispatcherServiceImplTest {
                         "Provider rejection test."
                 );
 
-        when(repository
-                .findByStatusAndChannelOrderByCreatedAtAsc(
-                        eq(NotificationOutbox.NotificationStatus.PENDING),
-                        eq(NotificationOutbox.NotificationChannel.WHATSAPP),
-                        any(PageRequest.class)
-                ))
+
+        when(claimService.claimBatch(
+                eq(NotificationOutbox.NotificationChannel.WHATSAPP),
+                eq(3),
+                eq(20),
+                eq("test-worker"),
+                eq(300)
+        ))
                 .thenReturn(List.of(notification));
 
         when(whatsAppProvider.sendMessage(
@@ -226,12 +240,14 @@ class NotificationDispatcherServiceImplTest {
                         "Notification without a phone number."
                 );
 
-        when(repository
-                .findByStatusAndChannelOrderByCreatedAtAsc(
-                        eq(NotificationOutbox.NotificationStatus.PENDING),
-                        eq(NotificationOutbox.NotificationChannel.WHATSAPP),
-                        any(PageRequest.class)
-                ))
+
+        when(claimService.claimBatch(
+                eq(NotificationOutbox.NotificationChannel.WHATSAPP),
+                eq(3),
+                eq(20),
+                eq("test-worker"),
+                eq(300)
+        ))
                 .thenReturn(List.of(notification));
 
         NotificationDispatchResponse response =
@@ -271,12 +287,14 @@ class NotificationDispatcherServiceImplTest {
                         null
                 );
 
-        when(repository
-                .findByStatusAndChannelOrderByCreatedAtAsc(
-                        eq(NotificationOutbox.NotificationStatus.PENDING),
-                        eq(NotificationOutbox.NotificationChannel.WHATSAPP),
-                        any(PageRequest.class)
-                ))
+
+        when(claimService.claimBatch(
+                eq(NotificationOutbox.NotificationChannel.WHATSAPP),
+                eq(3),
+                eq(20),
+                eq("test-worker"),
+                eq(300)
+        ))
                 .thenReturn(List.of(notification));
 
         NotificationDispatchResponse response =
@@ -316,8 +334,16 @@ class NotificationDispatcherServiceImplTest {
                         "Already sent."
                 );
 
-        when(repository.findById(6L))
-                .thenReturn(Optional.of(notification));
+        when(claimService.claimOne(
+                eq(6L),
+                eq(3),
+                eq("test-worker"),
+                eq(300)
+        )).thenThrow(
+                new NotificationOutboxException(
+                        "Notification has already been sent."
+                )
+        );
 
         NotificationOutboxException exception =
                 assertThrows(
@@ -347,8 +373,16 @@ class NotificationDispatcherServiceImplTest {
                         "Cancelled notification."
                 );
 
-        when(repository.findById(7L))
-                .thenReturn(Optional.of(notification));
+        when(claimService.claimOne(
+                eq(7L),
+                eq(3),
+                eq("test-worker"),
+                eq(300)
+        )).thenThrow(
+                new NotificationOutboxException(
+                        "Cancelled notification cannot be dispatched."
+                )
+        );
 
         NotificationOutboxException exception =
                 assertThrows(
@@ -378,8 +412,16 @@ class NotificationDispatcherServiceImplTest {
                         "Maximum retry notification."
                 );
 
-        when(repository.findById(8L))
-                .thenReturn(Optional.of(notification));
+        when(claimService.claimOne(
+                eq(8L),
+                eq(3),
+                eq("test-worker"),
+                eq(300)
+        )).thenThrow(
+                new NotificationOutboxException(
+                        "Notification has reached the maximum retry limit."
+                )
+        );
 
         NotificationOutboxException exception =
                 assertThrows(
@@ -403,8 +445,8 @@ class NotificationDispatcherServiceImplTest {
         NotificationOutbox notification =
                 createNotification(
                         9L,
-                        NotificationOutbox.NotificationStatus.PENDING,
-                        0,
+                        NotificationOutbox.NotificationStatus.PROCESSING,
+                        1,
                         "+27610000009",
                         "Single dispatch notification."
                 );
@@ -414,8 +456,14 @@ class NotificationDispatcherServiceImplTest {
                         NotificationOutboxResponse.class
                 );
 
-        when(repository.findById(9L))
-                .thenReturn(Optional.of(notification));
+        when(claimService.claimOne(
+                eq(9L),
+                eq(3),
+                eq("test-worker"),
+                eq(300)
+        )).thenReturn(
+                Optional.of(notification)
+        );
 
         when(whatsAppProvider.sendMessage(
                 "+27610000009",
@@ -465,12 +513,13 @@ class NotificationDispatcherServiceImplTest {
                         "Second notification."
                 );
 
-        when(repository
-                .findByStatusAndChannelOrderByCreatedAtAsc(
-                        eq(NotificationOutbox.NotificationStatus.PENDING),
-                        eq(NotificationOutbox.NotificationChannel.WHATSAPP),
-                        any(PageRequest.class)
-                ))
+        when(claimService.claimBatch(
+                eq(NotificationOutbox.NotificationChannel.WHATSAPP),
+                eq(3),
+                eq(20),
+                eq("test-worker"),
+                eq(300)
+        ))
                 .thenReturn(
                         List.of(
                                 firstNotification,

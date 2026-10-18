@@ -83,6 +83,25 @@ public class NotificationOutbox {
     @Column(name = "retry_count", nullable = false)
     private int retryCount = 0;
 
+    @Column(name = "claimed_at")
+    private LocalDateTime claimedAt;
+
+    @Column(name = "claimed_by", length = 100)
+    private String claimedBy;
+
+    @Column(name = "claim_expires_at")
+    private LocalDateTime claimExpiresAt;
+
+    @Column(name = "next_attempt_at")
+    private LocalDateTime nextAttemptAt;
+
+    @Column(name = "processing_started_at")
+    private LocalDateTime processingStartedAt;
+
+    @Version
+    @Column(name = "version", nullable = false)
+    private Long version;
+
     @Column(name = "failure_reason", length = 1000)
     private String failureReason;
 
@@ -125,7 +144,8 @@ public class NotificationOutbox {
 
     @PrePersist
     protected void onCreate() {
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now =
+                LocalDateTime.now();
 
         if (createdAt == null) {
             createdAt = now;
@@ -134,8 +154,14 @@ public class NotificationOutbox {
         if (updatedAt == null) {
             updatedAt = now;
         }
+
         if (status == null) {
-            status = NotificationStatus.PENDING;
+            status =
+                    NotificationStatus.PENDING;
+        }
+
+        if (version == null) {
+            version = 0L;
         }
     }
 
@@ -155,6 +181,7 @@ public class NotificationOutbox {
 
     public enum NotificationStatus {
         PENDING,
+        PROCESSING,
         SENT,
         FAILED,
         CANCELLED

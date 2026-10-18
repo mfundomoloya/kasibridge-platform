@@ -25,6 +25,7 @@ public class NotificationDispatcherServiceImpl implements NotificationDispatcher
     private final NotificationOutboxRepository repository;
     private final NotificationOutboxService outboxService;
     private final WhatsAppProvider whatsAppProvider;
+    private final NotificationDispatchClaimService claimService;
 
     @Value("${kasibridge.notifications.dispatch.batch-size:20}")
     private int batchSize;
@@ -32,55 +33,67 @@ public class NotificationDispatcherServiceImpl implements NotificationDispatcher
     @Value("${kasibridge.notifications.max-retries:3}")
     private int maxRetries;
 
+    @Value("${kasibridge.notifications.dispatch.worker-id:local-dispatcher}")
+    private String workerId;
+
+    @Value("${kasibridge.notifications.dispatch.lease-seconds:300}")
+    private int leaseSeconds;
+
+
     @Override
     public NotificationDispatchResponse dispatchPending() {
 
-        List<NotificationOutbox> pendingNotifications = repository.findByStatusAndChannelOrderByCreatedAtAsc(
-                NotificationOutbox.NotificationStatus.PENDING,
-                NotificationOutbox.NotificationChannel.WHATSAPP,
-                PageRequest.of(0, batchSize)
-        );
+        List<NotificationOutbox> claimedNotifications =
+                claimService.claimBatch(
+                        NotificationOutbox.NotificationChannel.WHATSAPP,
+                        maxRetries,
+                        batchSize,
+                        workerId,
+                        leaseSeconds
+                );
 
-        return dispatchBatch(pendingNotifications);
+        return dispatchBatch(claimedNotifications);
     }
 
     @Override
     public NotificationDispatchResponse retryFailed() {
         List<NotificationOutbox> retryableNotifications =
-        repository.findByStatusInAndChannelAndRetryCountLessThanOrderByCreatedAtAsc(
-                Set.of(NotificationOutbox.NotificationStatus.FAILED),
-                NotificationOutbox.NotificationChannel.WHATSAPP,
-                maxRetries,
-                PageRequest.of(0, batchSize)
-        );
+                claimService.claimBatch(
+                        NotificationOutbox.NotificationChannel.WHATSAPP,
+                        maxRetries,
+                        batchSize,
+                        workerId,
+                        leaseSeconds
+                );
 
         return dispatchBatch(retryableNotifications);
     }
 
     @Override
-    public NotificationOutboxResponse dispatchOne(Long notificationId) {
-
-        NotificationOutbox notification = repository.findById(notificationId)
-                .orElseThrow(() -> new NotificationOutboxException(
-                        "Notification not found with ID: " + notificationId
-                ));
-
-        if (notification.getStatus() == NotificationOutbox.NotificationStatus.SENT) {
-            throw new NotificationOutboxException("Notification has already been sent.");
-        }
-
-        if (notification.getStatus() == NotificationOutbox.NotificationStatus.CANCELLED) {
-            throw new NotificationOutboxException("Cancelled notification cannot be dispatched.");
-        }
-
-        if (notification.getRetryCount() >= maxRetries) {
-            throw new NotificationOutboxException("Notification has reached the maximum retry limit.");
-        }
+    public NotificationOutboxResponse dispatchOne(
+            Long notificationId
+    ) {
+        NotificationOutbox notification =
+                claimService.claimOne(
+                                notificationId,
+                                maxRetries,
+                                workerId,
+                                leaseSeconds
+                        )
+                        .orElseThrow(() ->
+                                new NotificationOutboxException(
+                                        "Notification could not be claimed "
+                                                + "for dispatch."
+                                )
+                        );
 
         dispatchNotification(notification);
 
-        return outboxService.getNotificationById(notificationId);
+        return outboxService.getNotificationById(
+                notificationId
+        );
     }
+
 
     private NotificationDispatchResponse dispatchBatch(List<NotificationOutbox> notifications
     ) {

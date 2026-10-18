@@ -4,6 +4,8 @@ import com.kasibridge.procurement.entity.NotificationOutbox;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.Collection;
 import java.util.List;
@@ -75,4 +77,62 @@ public interface NotificationOutboxRepository extends JpaRepository<Notification
     );
 
     Optional<NotificationOutbox> findByProviderMessageId(String providerMessageId);
+
+    @Query(
+            value = """
+                SELECT notification.*
+                FROM public.notification_outbox notification
+                WHERE notification.channel = :channel
+                  AND notification.retry_count < :maxRetries
+                  AND (
+                      notification.status = 'PENDING'
+                      OR (
+                          notification.status = 'FAILED'
+                          AND (
+                              notification.next_attempt_at
+                                  IS NULL
+                              OR notification.next_attempt_at
+                                  <= CURRENT_TIMESTAMP
+                          )
+                      )
+                      OR (
+                          notification.status = 'PROCESSING'
+                          AND notification.claim_expires_at
+                              IS NOT NULL
+                          AND notification.claim_expires_at
+                              < CURRENT_TIMESTAMP
+                      )
+                  )
+                ORDER BY
+                    notification.created_at,
+                    notification.id
+                FOR UPDATE SKIP LOCKED
+                LIMIT :batchSize
+                """,
+            nativeQuery = true
+    )
+    List<NotificationOutbox>
+    findDispatchCandidatesForUpdate(
+            @Param("channel")
+            String channel,
+            @Param("maxRetries")
+            int maxRetries,
+            @Param("batchSize")
+            int batchSize
+    );
+
+    @Query(
+            value = """
+                SELECT notification.*
+                FROM public.notification_outbox notification
+                WHERE notification.id = :notificationId
+                FOR UPDATE SKIP LOCKED
+                """,
+            nativeQuery = true
+    )
+    Optional<NotificationOutbox>
+    findByIdForDispatchClaim(
+            @Param("notificationId")
+            Long notificationId
+    );
 }
