@@ -21,6 +21,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
 import java.util.Optional;
+import static org.mockito.ArgumentMatchers.anyInt;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -89,7 +90,7 @@ class NotificationDispatcherServiceImplTest {
                         "Your support ticket was created."
                 );
 
-        when(claimService.claimBatch(
+        when(claimService.claimPendingBatch(
                 eq(NotificationOutbox.NotificationChannel.WHATSAPP),
                 eq(3),
                 eq(20),
@@ -107,10 +108,26 @@ class NotificationDispatcherServiceImplTest {
                 )
         );
 
-        NotificationDispatchResponse response =
-                dispatcherService.dispatchPending();
+        NotificationDispatchResponse response = dispatcherService.dispatchPending();
 
         assertNotNull(response);
+
+        verify(claimService).claimPendingBatch(
+                NotificationOutbox.NotificationChannel.WHATSAPP,
+                3,
+                20,
+                "test-worker",
+                300
+        );
+
+        verify(claimService, never()).claimRetryBatch(
+                any(NotificationOutbox.NotificationChannel.class),
+                anyInt(),
+                anyInt(),
+                any(String.class),
+                anyInt()
+        );
+
 
         verify(whatsAppProvider).sendMessage(
                 "+27610000001",
@@ -139,7 +156,7 @@ class NotificationDispatcherServiceImplTest {
                         "Retry notification."
                 );
 
-        when(claimService.claimBatch(
+        when(claimService.claimRetryBatch(
                 eq(NotificationOutbox.NotificationChannel.WHATSAPP),
                 eq(3),
                 eq(20),
@@ -157,10 +174,25 @@ class NotificationDispatcherServiceImplTest {
                 )
         );
 
-        NotificationDispatchResponse response =
-                dispatcherService.retryFailed();
+        NotificationDispatchResponse response = dispatcherService.retryFailed();
 
         assertNotNull(response);
+
+        verify(claimService).claimRetryBatch(
+                NotificationOutbox.NotificationChannel.WHATSAPP,
+                3,
+                20,
+                "test-worker",
+                300
+        );
+
+        verify(claimService, never()).claimPendingBatch(
+                any(NotificationOutbox.NotificationChannel.class),
+                anyInt(),
+                anyInt(),
+                any(String.class),
+                anyInt()
+        );
 
         verify(whatsAppProvider).sendMessage(
                 "+27610000002",
@@ -185,7 +217,7 @@ class NotificationDispatcherServiceImplTest {
                 );
 
 
-        when(claimService.claimBatch(
+        when(claimService.claimPendingBatch(
                 eq(NotificationOutbox.NotificationChannel.WHATSAPP),
                 eq(3),
                 eq(20),
@@ -241,7 +273,8 @@ class NotificationDispatcherServiceImplTest {
                 );
 
 
-        when(claimService.claimBatch(
+
+        when(claimService.claimPendingBatch(
                 eq(NotificationOutbox.NotificationChannel.WHATSAPP),
                 eq(3),
                 eq(20),
@@ -288,7 +321,7 @@ class NotificationDispatcherServiceImplTest {
                 );
 
 
-        when(claimService.claimBatch(
+        when(claimService.claimPendingBatch(
                 eq(NotificationOutbox.NotificationChannel.WHATSAPP),
                 eq(3),
                 eq(20),
@@ -513,7 +546,7 @@ class NotificationDispatcherServiceImplTest {
                         "Second notification."
                 );
 
-        when(claimService.claimBatch(
+        when(claimService.claimPendingBatch(
                 eq(NotificationOutbox.NotificationChannel.WHATSAPP),
                 eq(3),
                 eq(20),

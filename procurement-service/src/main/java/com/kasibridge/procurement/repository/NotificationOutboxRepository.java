@@ -11,14 +11,28 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
-public interface NotificationOutboxRepository extends JpaRepository<NotificationOutbox, Long> {
-    Page<NotificationOutbox> findByStatus(NotificationOutbox.NotificationStatus status, Pageable pageable);
+public interface NotificationOutboxRepository
+        extends JpaRepository<NotificationOutbox, Long> {
 
-    Page<NotificationOutbox> findByRecipientUserId(Long recipientUserId, Pageable pageable);
+    Page<NotificationOutbox> findByStatus(
+            NotificationOutbox.NotificationStatus status,
+            Pageable pageable
+    );
 
-    Page<NotificationOutbox> findByRelatedTenderId(Long relatedTenderId, Pageable pageable);
+    Page<NotificationOutbox> findByRecipientUserId(
+            Long recipientUserId,
+            Pageable pageable
+    );
 
-    Page<NotificationOutbox> findByRelatedTicketId(Long relatedTicketId, Pageable pageable);
+    Page<NotificationOutbox> findByRelatedTenderId(
+            Long relatedTenderId,
+            Pageable pageable
+    );
+
+    Page<NotificationOutbox> findByRelatedTicketId(
+            Long relatedTicketId,
+            Pageable pageable
+    );
 
     Page<NotificationOutbox> findByChannel(
             NotificationOutbox.NotificationChannel channel,
@@ -35,22 +49,27 @@ public interface NotificationOutboxRepository extends JpaRepository<Notification
             Pageable pageable
     );
 
-    List<NotificationOutbox> findByStatusAndChannelOrderByCreatedAtAsc(
+    List<NotificationOutbox>
+    findByStatusAndChannelOrderByCreatedAtAsc(
             NotificationOutbox.NotificationStatus status,
             NotificationOutbox.NotificationChannel channel,
-            Pageable pageable);
+            Pageable pageable
+    );
 
-    List<NotificationOutbox> findByStatusInAndRetryCountLessThanOrderByCreatedAtAsc(
+    List<NotificationOutbox>
+    findByStatusInAndRetryCountLessThanOrderByCreatedAtAsc(
             Collection<NotificationOutbox.NotificationStatus> statuses,
             int retryCount,
             Pageable pageable
     );
 
-    List<NotificationOutbox> findByStatusInAndChannelAndRetryCountLessThanOrderByCreatedAtAsc(
+    List<NotificationOutbox>
+    findByStatusInAndChannelAndRetryCountLessThanOrderByCreatedAtAsc(
             Collection<NotificationOutbox.NotificationStatus> statuses,
             NotificationOutbox.NotificationChannel channel,
             int retryCount,
-            Pageable pageable);
+            Pageable pageable
+    );
 
     Page<NotificationOutbox> findByChannelAndRecipientUserId(
             NotificationOutbox.NotificationChannel channel,
@@ -58,13 +77,15 @@ public interface NotificationOutboxRepository extends JpaRepository<Notification
             Pageable pageable
     );
 
-    Page<NotificationOutbox> findByChannelAndRecipientUserIdAndReadAtIsNull(
+    Page<NotificationOutbox>
+    findByChannelAndRecipientUserIdAndReadAtIsNull(
             NotificationOutbox.NotificationChannel channel,
             Long recipientUserId,
             Pageable pageable
     );
 
-    Page<NotificationOutbox> findByChannelAndRecipientUserIdAndReadAtIsNotNull(
+    Page<NotificationOutbox>
+    findByChannelAndRecipientUserIdAndReadAtIsNotNull(
             NotificationOutbox.NotificationChannel channel,
             Long recipientUserId,
             Pageable pageable
@@ -76,39 +97,45 @@ public interface NotificationOutboxRepository extends JpaRepository<Notification
             Long recipientUserId
     );
 
-    Optional<NotificationOutbox> findByProviderMessageId(String providerMessageId);
+    Optional<NotificationOutbox> findByProviderMessageId(
+            String providerMessageId
+    );
 
+    /*
+     * Legacy combined claim query.
+     *
+     * Keep this temporarily because the existing concurrency integration
+     * tests still exercise claimBatch(), which currently calls this method.
+     */
     @Query(
             value = """
-                SELECT notification.*
-                FROM public.notification_outbox notification
-                WHERE notification.channel = :channel
-                  AND notification.retry_count < :maxRetries
-                  AND (
-                      notification.status = 'PENDING'
-                      OR (
-                          notification.status = 'FAILED'
-                          AND (
-                              notification.next_attempt_at
-                                  IS NULL
-                              OR notification.next_attempt_at
-                                  <= CURRENT_TIMESTAMP
+                    SELECT notification.*
+                    FROM public.notification_outbox notification
+                    WHERE notification.channel = :channel
+                      AND notification.retry_count < :maxRetries
+                      AND (
+                          notification.status = 'PENDING'
+                          OR (
+                              notification.status = 'FAILED'
+                              AND (
+                                  notification.next_attempt_at IS NULL
+                                  OR notification.next_attempt_at
+                                      <= CURRENT_TIMESTAMP
+                              )
+                          )
+                          OR (
+                              notification.status = 'PROCESSING'
+                              AND notification.claim_expires_at IS NOT NULL
+                              AND notification.claim_expires_at
+                                  < CURRENT_TIMESTAMP
                           )
                       )
-                      OR (
-                          notification.status = 'PROCESSING'
-                          AND notification.claim_expires_at
-                              IS NOT NULL
-                          AND notification.claim_expires_at
-                              < CURRENT_TIMESTAMP
-                      )
-                  )
-                ORDER BY
-                    notification.created_at,
-                    notification.id
-                FOR UPDATE SKIP LOCKED
-                LIMIT :batchSize
-                """,
+                    ORDER BY
+                        notification.created_at,
+                        notification.id
+                    FOR UPDATE SKIP LOCKED
+                    LIMIT :batchSize
+                    """,
             nativeQuery = true
     )
     List<NotificationOutbox>
@@ -121,13 +148,90 @@ public interface NotificationOutboxRepository extends JpaRepository<Notification
             int batchSize
     );
 
+    /*
+     * Claims only new notifications that have not yet entered processing.
+     */
     @Query(
             value = """
-                SELECT notification.*
-                FROM public.notification_outbox notification
-                WHERE notification.id = :notificationId
-                FOR UPDATE SKIP LOCKED
-                """,
+                    SELECT notification.*
+                    FROM public.notification_outbox notification
+                    WHERE notification.channel = :channel
+                      AND notification.status = 'PENDING'
+                      AND notification.retry_count < :maxRetries
+                    ORDER BY
+                        notification.created_at,
+                        notification.id
+                    FOR UPDATE SKIP LOCKED
+                    LIMIT :batchSize
+                    """,
+            nativeQuery = true
+    )
+    List<NotificationOutbox>
+    findPendingDispatchCandidatesForUpdate(
+            @Param("channel")
+            String channel,
+            @Param("maxRetries")
+            int maxRetries,
+            @Param("batchSize")
+            int batchSize
+    );
+
+    /*
+     * Claims eligible failed notifications and abandoned processing claims.
+     *
+     * FAILED rows must have reached next_attempt_at.
+     * PROCESSING rows must have an expired lease.
+     */
+    @Query(
+            value = """
+                    SELECT notification.*
+                    FROM public.notification_outbox notification
+                    WHERE notification.channel = :channel
+                      AND notification.retry_count < :maxRetries
+                      AND (
+                          (
+                              notification.status = 'FAILED'
+                              AND (
+                                  notification.next_attempt_at IS NULL
+                                  OR notification.next_attempt_at
+                                      <= CURRENT_TIMESTAMP
+                              )
+                          )
+                          OR (
+                              notification.status = 'PROCESSING'
+                              AND notification.claim_expires_at IS NOT NULL
+                              AND notification.claim_expires_at
+                                  < CURRENT_TIMESTAMP
+                          )
+                      )
+                    ORDER BY
+                        notification.created_at,
+                        notification.id
+                    FOR UPDATE SKIP LOCKED
+                    LIMIT :batchSize
+                    """,
+            nativeQuery = true
+    )
+    List<NotificationOutbox>
+    findRetryDispatchCandidatesForUpdate(
+            @Param("channel")
+            String channel,
+            @Param("maxRetries")
+            int maxRetries,
+            @Param("batchSize")
+            int batchSize
+    );
+
+    /*
+     * Locks one notification for an explicit single-item dispatch claim.
+     */
+    @Query(
+            value = """
+                    SELECT notification.*
+                    FROM public.notification_outbox notification
+                    WHERE notification.id = :notificationId
+                    FOR UPDATE SKIP LOCKED
+                    """,
             nativeQuery = true
     )
     Optional<NotificationOutbox>

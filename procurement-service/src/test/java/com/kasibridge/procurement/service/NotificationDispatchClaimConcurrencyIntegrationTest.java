@@ -894,7 +894,470 @@ class NotificationDispatchClaimConcurrencyIntegrationTest {
         );
     }
 
-    private Callable<List<NotificationOutbox>> claimTask(
+    @Test
+    void claimPendingBatch_shouldClaimOnlyPendingNotifications() {
+        LocalDateTime now =
+                LocalDateTime.now();
+
+        NotificationOutbox pendingNotification =
+                savePendingNotification(
+                        "KB-NOTIF-PENDING-ONLY-01",
+                        91L,
+                        "+27610000091"
+                );
+
+        NotificationOutbox failedNotification =
+                NotificationOutbox.builder()
+                        .notificationReference(
+                                "KB-NOTIF-PENDING-ONLY-02"
+                        )
+                        .channel(
+                                NotificationOutbox
+                                        .NotificationChannel
+                                        .WHATSAPP
+                        )
+                        .templateType(
+                                NotificationOutbox
+                                        .NotificationTemplateType
+                                        .BID_COMPLIANCE_FAILED
+                        )
+                        .status(
+                                NotificationOutbox
+                                        .NotificationStatus
+                                        .FAILED
+                        )
+                        .recipientUserId(92L)
+                        .recipientPhone(
+                                "+27610000092"
+                        )
+                        .message(
+                                "Eligible failed notification."
+                        )
+                        .retryCount(1)
+                        .nextAttemptAt(
+                                now.minusMinutes(1)
+                        )
+                        .failureReason(
+                                "Temporary provider failure."
+                        )
+                        .createdAt(
+                                now.minusMinutes(2)
+                        )
+                        .updatedAt(now)
+                        .build();
+
+        NotificationOutbox savedFailedNotification =
+                repository.saveAndFlush(
+                        failedNotification
+                );
+
+        List<NotificationOutbox> claimed =
+                claimService.claimPendingBatch(
+                        NotificationOutbox
+                                .NotificationChannel
+                                .WHATSAPP,
+                        MAX_RETRIES,
+                        10,
+                        "pending-worker",
+                        LEASE_SECONDS
+                );
+
+        assertEquals(
+                1,
+                claimed.size()
+        );
+
+        assertEquals(
+                pendingNotification.getId(),
+                claimed.getFirst().getId()
+        );
+
+        NotificationOutbox storedPending =
+                repository.findById(
+                                pendingNotification.getId()
+                        )
+                        .orElseThrow();
+
+        assertEquals(
+                NotificationOutbox
+                        .NotificationStatus
+                        .PROCESSING,
+                storedPending.getStatus()
+        );
+
+        assertEquals(
+                "pending-worker",
+                storedPending.getClaimedBy()
+        );
+
+        assertEquals(
+                1,
+                storedPending.getRetryCount()
+        );
+
+        NotificationOutbox storedFailed =
+                repository.findById(
+                                savedFailedNotification.getId()
+                        )
+                        .orElseThrow();
+
+        assertEquals(
+                NotificationOutbox
+                        .NotificationStatus
+                        .FAILED,
+                storedFailed.getStatus()
+        );
+
+        assertEquals(
+                1,
+                storedFailed.getRetryCount()
+        );
+
+
+        assertNull(
+                storedFailed.getClaimedBy()
+        );
+    }
+
+        @Test
+        void claimRetryBatch_shouldClaimOnlyEligibleRetryNotifications() {
+            LocalDateTime now =
+                    LocalDateTime.now();
+
+            NotificationOutbox pendingNotification =
+                    savePendingNotification(
+                            "KB-NOTIF-RETRY-ONLY-01",
+                            93L,
+                            "+27610000093"
+                    );
+
+            NotificationOutbox failedNotification =
+                    NotificationOutbox.builder()
+                            .notificationReference(
+                                    "KB-NOTIF-RETRY-ONLY-02"
+                            )
+                            .channel(
+                                    NotificationOutbox
+                                            .NotificationChannel
+                                            .WHATSAPP
+                            )
+                            .templateType(
+                                    NotificationOutbox
+                                            .NotificationTemplateType
+                                            .BID_COMPLIANCE_FAILED
+                            )
+                            .status(
+                                    NotificationOutbox
+                                            .NotificationStatus
+                                            .FAILED
+                            )
+                            .recipientUserId(94L)
+                            .recipientPhone(
+                                    "+27610000094"
+                            )
+                            .message(
+                                    "Eligible retry notification."
+                            )
+                            .retryCount(1)
+                            .nextAttemptAt(
+                                    now.minusMinutes(1)
+                            )
+                            .failureReason(
+                                    "Temporary provider failure."
+                            )
+                            .createdAt(
+                                    now.minusMinutes(2)
+                            )
+                            .updatedAt(now)
+                            .build();
+
+            NotificationOutbox savedFailedNotification =
+                    repository.saveAndFlush(
+                            failedNotification
+                    );
+
+            List<NotificationOutbox> claimed =
+                    claimService.claimRetryBatch(
+                            NotificationOutbox
+                                    .NotificationChannel
+                                    .WHATSAPP,
+                            MAX_RETRIES,
+                            10,
+                            "retry-worker",
+                            LEASE_SECONDS
+                    );
+
+            assertEquals(
+                    1,
+                    claimed.size()
+            );
+
+            assertEquals(
+                    savedFailedNotification.getId(),
+                    claimed.getFirst().getId()
+            );
+
+            NotificationOutbox storedFailed =
+                    repository.findById(
+                                    savedFailedNotification.getId()
+                            )
+                            .orElseThrow();
+
+            assertEquals(
+                    NotificationOutbox
+                            .NotificationStatus
+                            .PROCESSING,
+                    storedFailed.getStatus()
+            );
+
+            assertEquals(
+                    "retry-worker",
+                    storedFailed.getClaimedBy()
+            );
+
+            assertEquals(
+                    2,
+                    storedFailed.getRetryCount()
+            );
+
+            assertNull(
+                    storedFailed.getNextAttemptAt()
+            );
+
+            NotificationOutbox storedPending =
+                    repository.findById(
+                                    pendingNotification.getId()
+                            )
+                            .orElseThrow();
+
+            assertEquals(
+                    NotificationOutbox
+                            .NotificationStatus
+                            .PENDING,
+                    storedPending.getStatus()
+            );
+
+            assertEquals(
+                    0,
+                    storedPending.getRetryCount()
+            );
+
+            assertNull(
+                    storedPending.getClaimedBy()
+            );
+        }
+
+    @Test
+    void claimRetryBatch_shouldReclaimExpiredProcessingNotification() {
+        LocalDateTime now =
+                LocalDateTime.now();
+
+        NotificationOutbox notification =
+                NotificationOutbox.builder()
+                        .notificationReference(
+                                "KB-NOTIF-RETRY-EXPIRED-01"
+                        )
+                        .channel(
+                                NotificationOutbox
+                                        .NotificationChannel
+                                        .WHATSAPP
+                        )
+                        .templateType(
+                                NotificationOutbox
+                                        .NotificationTemplateType
+                                        .BID_RECEIVED
+                        )
+                        .status(
+                                NotificationOutbox
+                                        .NotificationStatus
+                                        .PROCESSING
+                        )
+                        .recipientUserId(95L)
+                        .recipientPhone(
+                                "+27610000095"
+                        )
+                        .message(
+                                "Expired processing claim."
+                        )
+                        .retryCount(1)
+                        .claimedAt(
+                                now.minusMinutes(5)
+                        )
+                        .claimedBy(
+                                "failed-worker"
+                        )
+                        .claimExpiresAt(
+                                now.minusMinutes(4)
+                        )
+                        .createdAt(
+                                now.minusMinutes(10)
+                        )
+                        .updatedAt(
+                                now.minusMinutes(5)
+                        )
+                        .build();
+
+        NotificationOutbox saved =
+                repository.saveAndFlush(
+                        notification
+                );
+
+        List<NotificationOutbox> claimed =
+                claimService.claimRetryBatch(
+                        NotificationOutbox
+                                .NotificationChannel
+                                .WHATSAPP,
+                        MAX_RETRIES,
+                        10,
+                        "recovery-worker",
+                        LEASE_SECONDS
+                );
+
+        assertEquals(
+                1,
+                claimed.size()
+        );
+
+        assertEquals(
+                saved.getId(),
+                claimed.getFirst().getId()
+        );
+
+        NotificationOutbox stored =
+                repository.findById(
+                                saved.getId()
+                        )
+                        .orElseThrow();
+
+        assertEquals(
+                NotificationOutbox
+                        .NotificationStatus
+                        .PROCESSING,
+                stored.getStatus()
+        );
+
+        assertEquals(
+                "recovery-worker",
+                stored.getClaimedBy()
+        );
+
+        assertEquals(
+                2,
+                stored.getRetryCount()
+        );
+
+        assertNotNull(
+                stored.getClaimedAt()
+        );
+
+        assertNotNull(
+                stored.getClaimExpiresAt()
+        );
+
+        assertTrue(
+                stored.getClaimExpiresAt()
+                        .isAfter(
+                                stored.getClaimedAt()
+                        )
+        );
+    }
+
+
+    @Test
+    void claimRetryBatch_shouldNotClaimActiveProcessingNotification() {
+        LocalDateTime now =
+                LocalDateTime.now();
+
+        NotificationOutbox notification =
+                NotificationOutbox.builder()
+                        .notificationReference(
+                                "KB-NOTIF-RETRY-ACTIVE-01"
+                        )
+                        .channel(
+                                NotificationOutbox
+                                        .NotificationChannel
+                                        .WHATSAPP
+                        )
+                        .templateType(
+                                NotificationOutbox
+                                        .NotificationTemplateType
+                                        .BID_RECEIVED
+                        )
+                        .status(
+                                NotificationOutbox
+                                        .NotificationStatus
+                                        .PROCESSING
+                        )
+                        .recipientUserId(96L)
+                        .recipientPhone(
+                                "+27610000096"
+                        )
+                        .message(
+                                "Active processing claim."
+                        )
+                        .retryCount(1)
+                        .claimedAt(
+                                now.minusSeconds(10)
+                        )
+                        .claimedBy(
+                                "active-worker"
+                        )
+                        .claimExpiresAt(
+                                now.plusMinutes(5)
+                        )
+                        .createdAt(
+                                now.minusMinutes(1)
+                        )
+                        .updatedAt(
+                                now.minusSeconds(10)
+                        )
+                        .build();
+
+        NotificationOutbox saved =
+                repository.saveAndFlush(
+                        notification
+                );
+
+        List<NotificationOutbox> claimed =
+                claimService.claimRetryBatch(
+                        NotificationOutbox
+                                .NotificationChannel
+                                .WHATSAPP,
+                        MAX_RETRIES,
+                        10,
+                        "retry-worker",
+                        LEASE_SECONDS
+                );
+
+        assertTrue(
+                claimed.isEmpty()
+        );
+
+        NotificationOutbox stored =
+                repository.findById(
+                                saved.getId()
+                        )
+                        .orElseThrow();
+
+        assertEquals(
+                NotificationOutbox
+                        .NotificationStatus
+                        .PROCESSING,
+                stored.getStatus()
+        );
+
+        assertEquals(
+                "active-worker",
+                stored.getClaimedBy()
+        );
+
+        assertEquals(
+                1,
+                stored.getRetryCount()
+        );
+    }
+
+        private Callable<List<NotificationOutbox>> claimTask(
             CountDownLatch readyLatch,
             CountDownLatch startLatch,
             String workerId,

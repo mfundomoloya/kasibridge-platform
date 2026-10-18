@@ -44,7 +44,7 @@ public class NotificationDispatcherServiceImpl implements NotificationDispatcher
     public NotificationDispatchResponse dispatchPending() {
 
         List<NotificationOutbox> claimedNotifications =
-                claimService.claimBatch(
+                claimService.claimPendingBatch(
                         NotificationOutbox.NotificationChannel.WHATSAPP,
                         maxRetries,
                         batchSize,
@@ -52,13 +52,15 @@ public class NotificationDispatcherServiceImpl implements NotificationDispatcher
                         leaseSeconds
                 );
 
-        return dispatchBatch(claimedNotifications);
+        return dispatchBatch(
+                claimedNotifications
+        );
     }
 
     @Override
     public NotificationDispatchResponse retryFailed() {
         List<NotificationOutbox> retryableNotifications =
-                claimService.claimBatch(
+                claimService.claimRetryBatch(
                         NotificationOutbox.NotificationChannel.WHATSAPP,
                         maxRetries,
                         batchSize,
@@ -66,7 +68,9 @@ public class NotificationDispatcherServiceImpl implements NotificationDispatcher
                         leaseSeconds
                 );
 
-        return dispatchBatch(retryableNotifications);
+        return dispatchBatch(
+                retryableNotifications
+        );
     }
 
     @Override

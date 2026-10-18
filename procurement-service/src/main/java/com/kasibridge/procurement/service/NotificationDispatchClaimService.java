@@ -7,6 +7,27 @@ import java.util.Optional;
 
 public interface NotificationDispatchClaimService {
 
+    List<NotificationOutbox> claimPendingBatch(
+            NotificationOutbox.NotificationChannel channel,
+            int maxRetries,
+            int batchSize,
+            String workerId,
+            int leaseSeconds
+    );
+
+    List<NotificationOutbox> claimRetryBatch(
+            NotificationOutbox.NotificationChannel channel,
+            int maxRetries,
+            int batchSize,
+            String workerId,
+            int leaseSeconds
+    );
+
+    /*
+     * Temporarily retained for existing concurrency integration tests.
+     * Remove after those tests are migrated to the focused claim methods.
+     */
+
     List<NotificationOutbox> claimBatch(
             NotificationOutbox.NotificationChannel channel,
             int maxRetries,

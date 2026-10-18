@@ -25,6 +25,78 @@ public class NotificationDispatchClaimServiceImpl
     @Transactional(
             propagation = Propagation.REQUIRES_NEW
     )
+    public List<NotificationOutbox> claimPendingBatch(
+            NotificationOutbox.NotificationChannel channel,
+            int maxRetries,
+            int batchSize,
+            String workerId,
+            int leaseSeconds
+    ) {
+        validateClaimRequest(
+                channel,
+                maxRetries,
+                batchSize,
+                workerId,
+                leaseSeconds
+        );
+
+        List<NotificationOutbox> candidates =
+                repository
+                        .findPendingDispatchCandidatesForUpdate(
+                                channel.name(),
+                                maxRetries,
+                                batchSize
+                        );
+
+        return claimCandidates(
+                candidates,
+                channel,
+                workerId,
+                leaseSeconds,
+                "pending"
+        );
+    }
+
+    @Override
+    @Transactional(
+            propagation = Propagation.REQUIRES_NEW
+    )
+    public List<NotificationOutbox> claimRetryBatch(
+            NotificationOutbox.NotificationChannel channel,
+            int maxRetries,
+            int batchSize,
+            String workerId,
+            int leaseSeconds
+    ) {
+        validateClaimRequest(
+                channel,
+                maxRetries,
+                batchSize,
+                workerId,
+                leaseSeconds
+        );
+
+        List<NotificationOutbox> candidates =
+                repository
+                        .findRetryDispatchCandidatesForUpdate(
+                                channel.name(),
+                                maxRetries,
+                                batchSize
+                        );
+
+        return claimCandidates(
+                candidates,
+                channel,
+                workerId,
+                leaseSeconds,
+                "retry"
+        );
+    }
+
+    @Override
+    @Transactional(
+            propagation = Propagation.REQUIRES_NEW
+    )
     public List<NotificationOutbox> claimBatch(
             NotificationOutbox.NotificationChannel channel,
             int maxRetries,
@@ -48,39 +120,12 @@ public class NotificationDispatchClaimServiceImpl
                                 batchSize
                         );
 
-        LocalDateTime claimedAt =
-                LocalDateTime.now();
-
-        LocalDateTime expiresAt =
-                claimedAt.plusSeconds(
-                        leaseSeconds
-                );
-
-        candidates.forEach(notification ->
-                claimNotification(
-                        notification,
-                        workerId,
-                        claimedAt,
-                        expiresAt
-                )
-        );
-
-        if (!candidates.isEmpty()) {
-            repository.saveAllAndFlush(
-                    candidates
-            );
-        }
-
-        log.info(
-                "Notification dispatch batch claimed: "
-                        + "workerId={} channel={} count={}",
-                workerId,
+        return claimCandidates(
+                candidates,
                 channel,
-                candidates.size()
-        );
-
-        return List.copyOf(
-                candidates
+                workerId,
+                leaseSeconds,
+                "combined"
         );
     }
 
@@ -141,6 +186,50 @@ public class NotificationDispatchClaimServiceImpl
                 repository.saveAndFlush(
                         notification
                 )
+        );
+    }
+
+    private List<NotificationOutbox> claimCandidates(
+            List<NotificationOutbox> candidates,
+            NotificationOutbox.NotificationChannel channel,
+            String workerId,
+            int leaseSeconds,
+            String claimType
+    ) {
+        LocalDateTime claimedAt =
+                LocalDateTime.now();
+
+        LocalDateTime expiresAt =
+                claimedAt.plusSeconds(
+                        leaseSeconds
+                );
+
+        candidates.forEach(notification ->
+                claimNotification(
+                        notification,
+                        workerId,
+                        claimedAt,
+                        expiresAt
+                )
+        );
+
+        if (!candidates.isEmpty()) {
+            repository.saveAllAndFlush(
+                    candidates
+            );
+        }
+
+        log.info(
+                "Notification dispatch batch claimed: "
+                        + "type={} workerId={} channel={} count={}",
+                claimType,
+                workerId,
+                channel,
+                candidates.size()
+        );
+
+        return List.copyOf(
+                candidates
         );
     }
 
