@@ -1,5 +1,6 @@
 import {
     useEffect,
+    useRef,
     useState,
 } from 'react'
 
@@ -85,11 +86,28 @@ export function TraderDashboardPage() {
     const [isLoading, setIsLoading] =
         useState(true)
 
+    const [isRefreshing, setIsRefreshing] =
+        useState(false)
+
+    const [refreshVersion, setRefreshVersion] =
+        useState(0)
+
+    const hasLoadedRef =
+        useRef(false)
+
     useEffect(() => {
         let isActive = true
 
         async function loadDashboard() {
-            setIsLoading(true)
+            const isRefresh =
+                hasLoadedRef.current
+
+            if (isRefresh) {
+                setIsRefreshing(true)
+            } else {
+                setIsLoading(true)
+            }
+
             setLoadErrors({})
 
             const [
@@ -119,84 +137,163 @@ export function TraderDashboardPage() {
                 return
             }
 
-            const nextStatistics:
-                DashboardStatistics = {
-                ...initialStatistics,
-            }
-
             const nextErrors:
                 DashboardLoadErrors = {}
 
             if (
                 tenderResult.status === 'fulfilled'
             ) {
-                nextStatistics.openTenders =
-                    tenderResult.value
-                        .page.totalElements
-
                 setRecentTenders(
                     tenderResult.value.content
                 )
             } else {
-                setRecentTenders([])
-
                 nextErrors.tenders =
-                    'Open tenders could not be loaded.'
+                    isRefresh
+                        ? (
+                            'Open tenders could not '
+                            + 'be refreshed.'
+                        )
+                        : (
+                            'Open tenders could not '
+                            + 'be loaded.'
+                        )
+
+                if (!isRefresh) {
+                    setRecentTenders([])
+                }
             }
 
             if (
-                bidResult.status === 'fulfilled'
+                bidResult.status !== 'fulfilled'
             ) {
-                nextStatistics.activeBids =
-                    bidResult.value.filter(
-                        (bid) =>
-                            bid.status !== 'WITHDRAWN'
-                            && bid.status !== 'REJECTED'
-                            && bid.status !== 'AWARDED'
-                    ).length
-            } else {
                 nextErrors.bids =
-                    'Bid activity could not be loaded.'
+                    isRefresh
+                        ? (
+                            'Bid activity could not '
+                            + 'be refreshed.'
+                        )
+                        : (
+                            'Bid activity could not '
+                            + 'be loaded.'
+                        )
             }
 
             if (
-                ticketResult.status === 'fulfilled'
+                ticketResult.status !== 'fulfilled'
             ) {
-                nextStatistics.openSupportTickets =
-                    ticketResult.value.content.filter(
-                        (ticket) =>
-                            ticket.status === 'OPEN'
-                            || ticket.status
-                            === 'IN_REVIEW'
-                            || ticket.status
-                            === 'RESPONDED'
-                    ).length
-            } else {
                 nextErrors.supportTickets =
-                    'Support activity could not be loaded.'
+                    isRefresh
+                        ? (
+                            'Support activity could not '
+                            + 'be refreshed.'
+                        )
+                        : (
+                            'Support activity could not '
+                            + 'be loaded.'
+                        )
             }
 
             if (
                 notificationResult.status
                 === 'fulfilled'
             ) {
-                nextStatistics.unreadNotifications =
-                    notificationResult.value
-                        .totalElements
-
                 setRecentNotifications(
                     notificationResult.value.content
                 )
             } else {
-                setRecentNotifications([])
-
                 nextErrors.notifications =
-                    'Notifications could not be loaded.'
+                    isRefresh
+                        ? (
+                            'Notifications could not '
+                            + 'be refreshed.'
+                        )
+                        : (
+                            'Notifications could not '
+                            + 'be loaded.'
+                        )
+
+                if (!isRefresh) {
+                    setRecentNotifications([])
+                }
             }
 
-            setStatistics(nextStatistics)
+            setStatistics(
+                (currentStatistics) => ({
+                    openTenders:
+                        tenderResult.status
+                        === 'fulfilled'
+                            ? (
+                                tenderResult.value
+                                    .page.totalElements
+                            )
+                            : (
+                                currentStatistics
+                                    .openTenders
+                            ),
+
+                    activeBids:
+                        bidResult.status
+                        === 'fulfilled'
+                            ? (
+                                bidResult.value.filter(
+                                    (bid) =>
+                                        bid.status
+                                        !== 'WITHDRAWN'
+                                        && bid.status
+                                        !== 'REJECTED'
+                                        && bid.status
+                                        !== 'AWARDED'
+                                ).length
+                            )
+                            : (
+                                currentStatistics
+                                    .activeBids
+                            ),
+
+                    openSupportTickets:
+                        ticketResult.status
+                        === 'fulfilled'
+                            ? (
+                                ticketResult.value
+                                    .content
+                                    .filter(
+                                        (ticket) =>
+                                            ticket.status
+                                            === 'OPEN'
+                                            || ticket.status
+                                            === 'IN_REVIEW'
+                                            || ticket.status
+                                            === 'RESPONDED'
+                                    )
+                                    .length
+                            )
+                            : (
+                                currentStatistics
+                                    .openSupportTickets
+                            ),
+
+                    unreadNotifications:
+                        notificationResult.status
+                        === 'fulfilled'
+                            ? (
+                                notificationResult
+                                    .value
+                                    .page
+                                    .totalElements
+                            )
+                            : (
+                                currentStatistics
+                                    .unreadNotifications
+                            ),
+                })
+            )
+
             setLoadErrors(nextErrors)
+
+            hasLoadedRef.current = true
+
             setIsLoading(false)
+            setIsRefreshing(false)
         }
 
         void loadDashboard()
@@ -204,7 +301,18 @@ export function TraderDashboardPage() {
         return () => {
             isActive = false
         }
-    }, [])
+    }, [refreshVersion])
+
+    function handleRefresh() {
+        if (isLoading || isRefreshing) {
+            return
+        }
+
+        setRefreshVersion(
+            (currentVersion) =>
+                currentVersion + 1
+        )
+    }
 
     const dashboardStatistics = [
         {
@@ -261,17 +369,49 @@ export function TraderDashboardPage() {
                     </p>
                 </div>
 
-                <Link
-                    className="primary-link-button"
-                    to="/tenders"
-                >
-                    Browse open tenders
-                </Link>
+                <div className="form-actions">
+                    <button
+                        className="secondary-button"
+                        type="button"
+                        disabled={
+                            isLoading
+                            || isRefreshing
+                        }
+                        onClick={handleRefresh}
+                    >
+                        {isRefreshing
+                            ? 'Refreshing...'
+                            : 'Refresh dashboard'}
+                    </button>
+
+                    <Link
+                        className="primary-link-button"
+                        to="/tenders"
+                    >
+                        Browse open tenders
+                    </Link>
+                </div>
             </section>
+
+            <div
+                className="visually-hidden"
+                role="status"
+                aria-live="polite"
+            >
+                {isRefreshing
+                    ? (
+                        'Refreshing dashboard '
+                        + 'information.'
+                    )
+                    : ''}
+            </div>
 
             <section
                 className="statistics-grid"
                 aria-label="Trader activity summary"
+                aria-busy={
+                    isLoading || isRefreshing
+                }
             >
                 {dashboardStatistics.map(
                     (statistic) => (
@@ -330,85 +470,98 @@ export function TraderDashboardPage() {
                                 Loading open tenders...
                             </p>
                         </div>
-                    ) : loadErrors.tenders ? (
-                        <div
-                            className="error-message"
-                            role="alert"
-                        >
-                            {loadErrors.tenders}
-                        </div>
-                    ) : recentTenders.length === 0 ? (
-                        <div className="empty-state">
-                            <h3>
-                                No open tenders
-                            </h3>
-
-                            <p>
-                                There are currently no
-                                published opportunities
-                                available for bidding.
-                            </p>
-                        </div>
                     ) : (
-                        <div className="dashboard-list">
-                            {recentTenders.map(
-                                (tender) => (
-                                    <article
-                                        className={
-                                            'dashboard-list-item'
-                                        }
-                                        key={tender.id}
-                                    >
-                                        <div>
-                                            <span
-                                                className={
-                                                    'tender-reference'
-                                                }
-                                            >
-                                                {
-                                                    tender
-                                                        .tenderReference
-                                                }
-                                            </span>
-
-                                            <h3>
-                                                {tender.title}
-                                            </h3>
-
-                                            <p>
-                                                {formatCurrency(
-                                                    tender
-                                                        .budgetAmount
-                                                )}
-                                            </p>
-
-                                            <p
-                                                className={
-                                                    'field-help'
-                                                }
-                                            >
-                                                Published{' '}
-                                                {formatDateTime(
-                                                    tender
-                                                        .publishedAt
-                                                )}
-                                            </p>
-                                        </div>
-
-                                        <Link
-                                            className={
-                                                'secondary-link-button'
-                                            }
-                                            to={
-                                                `/tenders/${tender.id}`
-                                            }
-                                        >
-                                            View tender
-                                        </Link>
-                                    </article>
-                                )
+                        <>
+                            {loadErrors.tenders && (
+                                <div
+                                    className="error-message"
+                                    role="alert"
+                                >
+                                    {loadErrors.tenders}
+                                </div>
                             )}
-                        </div>
+
+                            {recentTenders.length === 0 ? (
+                                <div className="empty-state">
+                                    <h3>
+                                        No open tenders
+                                    </h3>
+
+                                    <p>
+                                        There are currently
+                                        no published
+                                        opportunities
+                                        available for
+                                        bidding.
+                                    </p>
+                                </div>
+                            ) : (
+                                <div className="dashboard-list">
+                                    {recentTenders.map(
+                                        (tender) => (
+                                            <article
+                                                className={
+                                                    'dashboard-list-item'
+                                                }
+                                                key={
+                                                    tender.id
+                                                }
+                                            >
+                                                <div>
+                                                    <span
+                                                        className={
+                                                            'tender-reference'
+                                                        }
+                                                    >
+                                                        {
+                                                            tender
+                                                                .tenderReference
+                                                        }
+                                                    </span>
+
+                                                    <h3>
+                                                        {
+                                                            tender
+                                                                .title
+                                                        }
+                                                    </h3>
+
+                                                    <p>
+                                                        {formatCurrency(
+                                                            tender
+                                                                .budgetAmount
+                                                        )}
+                                                    </p>
+
+                                                    <p
+                                                        className={
+                                                            'field-help'
+                                                        }
+                                                    >
+                                                        Published{' '}
+                                                        {formatDateTime(
+                                                            tender
+                                                                .publishedAt
+                                                        )}
+                                                    </p>
+                                                </div>
+
+                                                <Link
+                                                    className={
+                                                        'secondary-link-button'
+                                                    }
+                                                    to={
+                                                        `/tenders/${tender.id}`
+                                                    }
+                                                >
+                                                    View tender
+                                                </Link>
+                                            </article>
+                                        )
+                                    )}
+                                </div>
+                            )}
+                        </>
                     )}
                 </article>
 
@@ -439,77 +592,86 @@ export function TraderDashboardPage() {
                                 Loading notifications...
                             </p>
                         </div>
-                    ) : loadErrors.notifications ? (
-                        <div
-                            className="error-message"
-                            role="alert"
-                        >
-                            {
-                                loadErrors.notifications
-                            }
-                        </div>
-                    ) : recentNotifications.length
-                    === 0 ? (
-                        <div className="empty-state">
-                            <h3>
-                                No unread
-                                notifications
-                            </h3>
-
-                            <p>
-                                You have reviewed all
-                                current updates.
-                            </p>
-                        </div>
                     ) : (
-                        <div className="dashboard-list">
-                            {recentNotifications.map(
-                                (notification) => (
-                                    <article
-                                        className={
-                                            'dashboard-list-item '
-                                            + 'dashboard-notification'
-                                        }
-                                        key={
-                                            notification.id
-                                        }
-                                    >
-                                        <div>
-                                                <span
-                                                    className={
-                                                        'eyebrow'
-                                                    }
-                                                >
-                                                    {
-                                                        NOTIFICATION_TEMPLATE_LABELS[
-                                                            notification
-                                                                .templateType
-                                                            ]
-                                                    }
-                                                </span>
+                        <>
+                            {loadErrors.notifications && (
+                                <div
+                                    className="error-message"
+                                    role="alert"
+                                >
+                                    {
+                                        loadErrors
+                                            .notifications
+                                    }
+                                </div>
+                            )}
 
-                                            <p>
-                                                {
-                                                    notification
-                                                        .message
-                                                }
-                                            </p>
+                            {recentNotifications.length
+                            === 0 ? (
+                                <div className="empty-state">
+                                    <h3>
+                                        No unread
+                                        notifications
+                                    </h3>
 
-                                            <p
+                                    <p>
+                                        You have reviewed
+                                        all current
+                                        updates.
+                                    </p>
+                                </div>
+                            ) : (
+                                <div className="dashboard-list">
+                                    {recentNotifications.map(
+                                        (notification) => (
+                                            <article
                                                 className={
-                                                    'field-help'
+                                                    'dashboard-list-item '
+                                                    + 'dashboard-notification'
+                                                }
+                                                key={
+                                                    notification
+                                                        .id
                                                 }
                                             >
-                                                {formatDateTime(
-                                                    notification
-                                                        .createdAt
-                                                )}
-                                            </p>
-                                        </div>
-                                    </article>
-                                )
+                                                <div>
+                                                    <span
+                                                        className={
+                                                            'eyebrow'
+                                                        }
+                                                    >
+                                                        {
+                                                            NOTIFICATION_TEMPLATE_LABELS[
+                                                                notification
+                                                                    .templateType
+                                                                ]
+                                                        }
+                                                    </span>
+
+                                                    <p>
+                                                        {
+                                                            notification
+                                                                .message
+                                                        }
+                                                    </p>
+
+                                                    <p
+                                                        className={
+                                                            'field-help'
+                                                        }
+                                                    >
+                                                        {formatDateTime(
+                                                            notification
+                                                                .createdAt
+                                                        )}
+                                                    </p>
+                                                </div>
+                                            </article>
+                                        )
+                                    )}
+                                </div>
                             )}
-                        </div>
+                        </>
                     )}
                 </article>
             </section>

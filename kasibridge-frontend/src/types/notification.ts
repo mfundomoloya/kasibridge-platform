@@ -47,33 +47,16 @@ export interface Notification {
     updatedAt: string | null
 }
 
-export interface NotificationPageSort {
-    empty: boolean
-    sorted: boolean
-    unsorted: boolean
-}
-
-export interface NotificationPageable {
-    offset: number
-    sort: NotificationPageSort
-    pageNumber: number
-    pageSize: number
-    paged: boolean
-    unpaged: boolean
+export interface NotificationPageMetadata {
+    size: number
+    number: number
+    totalElements: number
+    totalPages: number
 }
 
 export interface NotificationPage {
     content: Notification[]
-    pageable: NotificationPageable
-    totalPages: number
-    totalElements: number
-    last: boolean
-    size: number
-    number: number
-    sort: NotificationPageSort
-    numberOfElements: number
-    first: boolean
-    empty: boolean
+    page: NotificationPageMetadata
 }
 
 export interface NotificationApiError {

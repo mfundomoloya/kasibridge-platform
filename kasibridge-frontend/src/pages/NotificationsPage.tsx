@@ -92,11 +92,11 @@ export function NotificationsPage() {
                 )
 
                 setTotalPages(
-                    notificationPage.totalPages
+                    notificationPage.page.totalPages
                 )
 
                 setTotalElements(
-                    notificationPage.totalElements
+                    notificationPage.page.totalElements
                 )
             } catch (error) {
                 if (!isActive) {
