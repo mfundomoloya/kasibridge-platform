@@ -95,76 +95,139 @@ public class NotificationOutboxServiceImpl implements  NotificationOutboxService
     public NotificationOutboxResponse getNotificationById(Long id) {
         return NotificationOutboxResponse.from(findNotification(id));
     }
-
     @Override
     @Transactional(readOnly = true)
-    public Page<NotificationOutboxResponse> getInAppNotifications(Pageable pageable) {
-
-        if(currentUserService.hasRole("ROLE_PLATFORM_ADMIN")){
-            return repository.findByChannelAndReadAtIsNotNull(NotificationOutbox.NotificationChannel.IN_APP, pageable)
-                    .map(NotificationOutboxResponse::from);
+    public Page<NotificationOutboxResponse>
+    getInAppNotifications(
+            Pageable pageable
+    ) {
+        if (
+                currentUserService.hasRole(
+                        "ROLE_PLATFORM_ADMIN"
+                )
+        ) {
+            return repository
+                    .findByChannel(
+                            NotificationOutbox
+                                    .NotificationChannel
+                                    .IN_APP,
+                            pageable
+                    )
+                    .map(
+                            NotificationOutboxResponse::from
+                    );
         }
 
-        Long currentUserId = currentUserService.getCurrentUserId();
+        Long currentUserId =
+                currentUserService.getCurrentUserId();
 
         log.info(
-                "Loading in-app notifications for scoped userId={}",
+                "Loading in-app notifications "
+                        + "for scoped userId={}",
                 currentUserId
         );
 
-        return repository.findByChannelAndRecipientUserId(
-                NotificationOutbox.NotificationChannel.IN_APP,
+        return repository
+                .findByChannelAndRecipientUserId(
+                        NotificationOutbox
+                                .NotificationChannel
+                                .IN_APP,
                         currentUserId,
                         pageable
                 )
-                .map(NotificationOutboxResponse::from);
+                .map(
+                        NotificationOutboxResponse::from
+                );
     }
 
     @Override
     @Transactional(readOnly = true)
-    public Page<NotificationOutboxResponse> getUnreadInAppNotifications(Pageable pageable) {
-
-        boolean isPlatformAdmin = currentUserService.hasRole("ROLE_PLATFORM_ADMIN");
-
-        if (currentUserService.hasRole("ROLE_PLATFORM_ADMIN")) {
+    public Page<NotificationOutboxResponse>
+    getUnreadInAppNotifications(
+            Pageable pageable
+    ) {
+        if (
+                currentUserService.hasRole(
+                        "ROLE_PLATFORM_ADMIN"
+                )
+        ) {
             return repository
-                    .findByChannelAndReadAtIsNotNull(
-                            NotificationOutbox.NotificationChannel.IN_APP,
+                    .findByChannelAndReadAtIsNull(
+                            NotificationOutbox
+                                    .NotificationChannel
+                                    .IN_APP,
                             pageable
                     )
-                    .map(NotificationOutboxResponse::from);
+                    .map(
+                            NotificationOutboxResponse::from
+                    );
         }
 
-        Long currentUserId = currentUserService.getCurrentUserId();
+        Long currentUserId =
+                currentUserService.getCurrentUserId();
 
-        log.info("Loading unread in-app notifications for scoped userId={}", currentUserId);
+        log.info(
+                "Loading unread in-app notifications "
+                        + "for scoped userId={}",
+                currentUserId
+        );
 
-        return repository.findByChannelAndRecipientUserIdAndReadAtIsNotNull(
-                NotificationOutbox.NotificationChannel.IN_APP,
+        return repository
+                .findByChannelAndRecipientUserIdAndReadAtIsNull(
+                        NotificationOutbox
+                                .NotificationChannel
+                                .IN_APP,
                         currentUserId,
                         pageable
                 )
-                .map(NotificationOutboxResponse::from);
+                .map(
+                        NotificationOutboxResponse::from
+                );
     }
 
     @Override
     @Transactional(readOnly = true)
-    public Page<NotificationOutboxResponse> getReadInAppNotifications(Pageable pageable) {
-
-        if (currentUserService.hasRole("ROLE_PLATFORM_ADMIN")) {
-            return repository.findByChannelAndReadAtIsNull(
-                            NotificationOutbox.NotificationChannel.IN_APP, pageable)
-                    .map(NotificationOutboxResponse::from);
+    public Page<NotificationOutboxResponse>
+    getReadInAppNotifications(
+            Pageable pageable
+    ) {
+        if (
+                currentUserService.hasRole(
+                        "ROLE_PLATFORM_ADMIN"
+                )
+        ) {
+            return repository
+                    .findByChannelAndReadAtIsNotNull(
+                            NotificationOutbox
+                                    .NotificationChannel
+                                    .IN_APP,
+                            pageable
+                    )
+                    .map(
+                            NotificationOutboxResponse::from
+                    );
         }
 
-        Long currentUserId = currentUserService.getCurrentUserId();
+        Long currentUserId =
+                currentUserService.getCurrentUserId();
 
-        return repository.findByChannelAndRecipientUserIdAndReadAtIsNotNull(
-                NotificationOutbox.NotificationChannel.IN_APP,
-                currentUserId,
-                pageable
+        log.info(
+                "Loading read in-app notifications "
+                        + "for scoped userId={}",
+                currentUserId
+        );
+
+        return repository
+                .findByChannelAndRecipientUserIdAndReadAtIsNotNull(
+                        NotificationOutbox
+                                .NotificationChannel
+                                .IN_APP,
+                        currentUserId,
+                        pageable
                 )
-                .map(NotificationOutboxResponse::from);
+                .map(
+                        NotificationOutboxResponse::from
+                );
     }
 
     @Override

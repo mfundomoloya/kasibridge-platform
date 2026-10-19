@@ -13,6 +13,14 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+
+import java.util.List;
+
+import static org.mockito.Mockito.never;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
@@ -576,6 +584,446 @@ class NotificationOutboxServiceImplTest {
                         .isAfter(
                                 afterFailure.plusSeconds(300)
                         )
+        );
+    }
+
+    @Test
+    void getInAppNotifications_shouldReturnAllNotificationsForCurrentTrader() {
+        Long currentUserId = 201L;
+
+        Pageable pageable =
+                PageRequest.of(
+                        0,
+                        10
+                );
+
+        NotificationOutbox notification =
+                createInAppNotification(
+                        10L,
+                        currentUserId,
+                        null
+                );
+
+        Page<NotificationOutbox> notificationPage =
+                new PageImpl<>(
+                        List.of(notification),
+                        pageable,
+                        1
+                );
+
+        when(currentUserService.hasRole(
+                "ROLE_PLATFORM_ADMIN"
+        )).thenReturn(false);
+
+        when(currentUserService.getCurrentUserId())
+                .thenReturn(currentUserId);
+
+        when(repository.findByChannelAndRecipientUserId(
+                NotificationOutbox.NotificationChannel.IN_APP,
+                currentUserId,
+                pageable
+        )).thenReturn(notificationPage);
+
+        Page<?> result =
+                outboxService.getInAppNotifications(
+                        pageable
+                );
+
+        assertEquals(
+                1,
+                result.getTotalElements()
+        );
+
+        verify(repository)
+                .findByChannelAndRecipientUserId(
+                        NotificationOutbox
+                                .NotificationChannel
+                                .IN_APP,
+                        currentUserId,
+                        pageable
+                );
+
+        verify(repository, never())
+                .findByChannelAndRecipientUserIdAndReadAtIsNull(
+                        any(),
+                        anyLong(),
+                        any()
+                );
+
+        verify(repository, never())
+                .findByChannelAndRecipientUserIdAndReadAtIsNotNull(
+                        any(),
+                        anyLong(),
+                        any()
+                );
+    }
+
+    @Test
+    void getUnreadInAppNotifications_shouldReturnOnlyUnreadForCurrentTrader() {
+        Long currentUserId = 202L;
+
+        Pageable pageable =
+                PageRequest.of(
+                        0,
+                        10
+                );
+
+        NotificationOutbox unreadNotification =
+                createInAppNotification(
+                        11L,
+                        currentUserId,
+                        null
+                );
+
+        Page<NotificationOutbox> notificationPage =
+                new PageImpl<>(
+                        List.of(unreadNotification),
+                        pageable,
+                        1
+                );
+
+        when(currentUserService.hasRole(
+                "ROLE_PLATFORM_ADMIN"
+        )).thenReturn(false);
+
+        when(currentUserService.getCurrentUserId())
+                .thenReturn(currentUserId);
+
+        when(repository
+                .findByChannelAndRecipientUserIdAndReadAtIsNull(
+                        NotificationOutbox
+                                .NotificationChannel
+                                .IN_APP,
+                        currentUserId,
+                        pageable
+                ))
+                .thenReturn(notificationPage);
+
+        Page<?> result =
+                outboxService
+                        .getUnreadInAppNotifications(
+                                pageable
+                        );
+
+        assertEquals(
+                1,
+                result.getTotalElements()
+        );
+
+        verify(repository)
+                .findByChannelAndRecipientUserIdAndReadAtIsNull(
+                        NotificationOutbox
+                                .NotificationChannel
+                                .IN_APP,
+                        currentUserId,
+                        pageable
+                );
+
+        verify(repository, never())
+                .findByChannelAndRecipientUserIdAndReadAtIsNotNull(
+                        any(),
+                        anyLong(),
+                        any()
+                );
+    }
+
+    @Test
+    void getReadInAppNotifications_shouldReturnOnlyReadForCurrentTrader() {
+        Long currentUserId = 203L;
+
+        Pageable pageable =
+                PageRequest.of(
+                        0,
+                        10
+                );
+
+        NotificationOutbox readNotification =
+                createInAppNotification(
+                        12L,
+                        currentUserId,
+                        LocalDateTime.now()
+                                .minusMinutes(5)
+                );
+
+        Page<NotificationOutbox> notificationPage =
+                new PageImpl<>(
+                        List.of(readNotification),
+                        pageable,
+                        1
+                );
+
+        when(currentUserService.hasRole(
+                "ROLE_PLATFORM_ADMIN"
+        )).thenReturn(false);
+
+        when(currentUserService.getCurrentUserId())
+                .thenReturn(currentUserId);
+
+        when(repository
+                .findByChannelAndRecipientUserIdAndReadAtIsNotNull(
+                        NotificationOutbox
+                                .NotificationChannel
+                                .IN_APP,
+                        currentUserId,
+                        pageable
+                ))
+                .thenReturn(notificationPage);
+
+        Page<?> result =
+                outboxService.getReadInAppNotifications(
+                        pageable
+                );
+
+        assertEquals(
+                1,
+                result.getTotalElements()
+        );
+
+        verify(repository)
+                .findByChannelAndRecipientUserIdAndReadAtIsNotNull(
+                        NotificationOutbox
+                                .NotificationChannel
+                                .IN_APP,
+                        currentUserId,
+                        pageable
+                );
+
+        verify(repository, never())
+                .findByChannelAndRecipientUserIdAndReadAtIsNull(
+                        any(),
+                        anyLong(),
+                        any()
+                );
+    }
+
+    private NotificationOutbox createInAppNotification(
+            Long id,
+            Long recipientUserId,
+            LocalDateTime readAt
+    ) {
+        LocalDateTime now =
+                LocalDateTime.now();
+
+        return NotificationOutbox.builder()
+                .id(id)
+                .notificationReference(
+                        "KB-NOTIF-IN-APP-" + id
+                )
+                .channel(
+                        NotificationOutbox
+                                .NotificationChannel
+                                .IN_APP
+                )
+                .templateType(
+                        NotificationOutbox
+                                .NotificationTemplateType
+                                .SUPPORT_TICKET_RESPONDED
+                )
+                .status(
+                        NotificationOutbox
+                                .NotificationStatus
+                                .SENT
+                )
+                .recipientUserId(recipientUserId)
+                .message(
+                        "In-app notification filter test."
+                )
+                .retryCount(1)
+                .readByUserId(
+                        readAt == null
+                                ? null
+                                : recipientUserId
+                )
+                .readAt(readAt)
+                .createdAt(
+                        now.minusMinutes(10)
+                )
+                .sentAt(
+                        now.minusMinutes(9)
+                )
+                .updatedAt(now)
+                .build();
+    }
+
+    @Test
+    void getInAppNotifications_shouldReturnAllNotificationsForPlatformAdmin() {
+        Pageable pageable =
+                PageRequest.of(0, 10);
+
+        NotificationOutbox notification =
+                createInAppNotification(
+                        13L,
+                        204L,
+                        null
+                );
+
+        Page<NotificationOutbox> notificationPage =
+                new PageImpl<>(
+                        List.of(notification),
+                        pageable,
+                        1
+                );
+
+        when(currentUserService.hasRole(
+                "ROLE_PLATFORM_ADMIN"
+        )).thenReturn(true);
+
+        when(repository.findByChannel(
+                NotificationOutbox.NotificationChannel.IN_APP,
+                pageable
+        )).thenReturn(notificationPage);
+
+        Page<?> result =
+                outboxService.getInAppNotifications(
+                        pageable
+                );
+
+        assertEquals(
+                1,
+                result.getTotalElements()
+        );
+
+        verify(repository).findByChannel(
+                NotificationOutbox.NotificationChannel.IN_APP,
+                pageable
+        );
+
+        verify(
+                currentUserService,
+                never()
+        ).getCurrentUserId();
+
+        verify(
+                repository,
+                never()
+        ).findByChannelAndReadAtIsNull(
+                any(),
+                any()
+        );
+
+        verify(
+                repository,
+                never()
+        ).findByChannelAndReadAtIsNotNull(
+                any(),
+                any()
+        );
+    }
+
+    @Test
+    void getUnreadInAppNotifications_shouldReturnOnlyUnreadForPlatformAdmin() {
+        Pageable pageable =
+                PageRequest.of(0, 10);
+
+        NotificationOutbox notification =
+                createInAppNotification(
+                        14L,
+                        205L,
+                        null
+                );
+
+        Page<NotificationOutbox> notificationPage =
+                new PageImpl<>(
+                        List.of(notification),
+                        pageable,
+                        1
+                );
+
+        when(currentUserService.hasRole(
+                "ROLE_PLATFORM_ADMIN"
+        )).thenReturn(true);
+
+        when(repository.findByChannelAndReadAtIsNull(
+                NotificationOutbox.NotificationChannel.IN_APP,
+                pageable
+        )).thenReturn(notificationPage);
+
+        Page<?> result =
+                outboxService.getUnreadInAppNotifications(
+                        pageable
+                );
+
+        assertEquals(
+                1,
+                result.getTotalElements()
+        );
+
+        verify(repository)
+                .findByChannelAndReadAtIsNull(
+                        NotificationOutbox.NotificationChannel.IN_APP,
+                        pageable
+                );
+
+        verify(
+                currentUserService,
+                never()
+        ).getCurrentUserId();
+
+        verify(
+                repository,
+                never()
+        ).findByChannelAndReadAtIsNotNull(
+                any(),
+                any()
+        );
+    }
+
+    @Test
+    void getReadInAppNotifications_shouldReturnOnlyReadForPlatformAdmin() {
+        Pageable pageable =
+                PageRequest.of(0, 10);
+
+        NotificationOutbox notification =
+                createInAppNotification(
+                        15L,
+                        206L,
+                        LocalDateTime.now()
+                                .minusMinutes(5)
+                );
+
+        Page<NotificationOutbox> notificationPage =
+                new PageImpl<>(
+                        List.of(notification),
+                        pageable,
+                        1
+                );
+
+        when(currentUserService.hasRole(
+                "ROLE_PLATFORM_ADMIN"
+        )).thenReturn(true);
+
+        when(repository.findByChannelAndReadAtIsNotNull(
+                NotificationOutbox.NotificationChannel.IN_APP,
+                pageable
+        )).thenReturn(notificationPage);
+
+        Page<?> result =
+                outboxService.getReadInAppNotifications(
+                        pageable
+                );
+
+        assertEquals(
+                1,
+                result.getTotalElements()
+        );
+
+        verify(repository)
+                .findByChannelAndReadAtIsNotNull(
+                        NotificationOutbox.NotificationChannel.IN_APP,
+                        pageable
+                );
+
+        verify(
+                currentUserService,
+                never()
+        ).getCurrentUserId();
+
+        verify(
+                repository,
+                never()
+        ).findByChannelAndReadAtIsNull(
+                any(),
+                any()
         );
     }
 }
