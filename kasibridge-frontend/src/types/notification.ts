@@ -6,6 +6,7 @@ export type NotificationChannel =
 
 export type NotificationStatus =
     | 'PENDING'
+    | 'PROCESSING'
     | 'SENT'
     | 'FAILED'
     | 'CANCELLED'
