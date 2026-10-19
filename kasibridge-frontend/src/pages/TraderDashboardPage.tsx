@@ -66,6 +66,49 @@ const initialStatistics: DashboardStatistics = {
     unreadNotifications: 0,
 }
 
+function getNotificationDestination(
+    notification: Notification
+): {
+    path: string
+    label: string
+} {
+    if (
+        notification.relatedTicketId !== null
+    ) {
+        return {
+            path:
+                '/support-tickets/'
+                + notification.relatedTicketId,
+            label: 'View support ticket',
+        }
+    }
+
+    if (
+        notification.relatedTenderId !== null
+    ) {
+        return {
+            path:
+                '/tenders/'
+                + notification.relatedTenderId,
+            label: 'View tender',
+        }
+    }
+
+    if (
+        notification.relatedBidId !== null
+    ) {
+        return {
+            path: '/my-bids',
+            label: 'View my bids',
+        }
+    }
+
+    return {
+        path: '/notifications',
+        label: 'View notification',
+    }
+}
+
 export function TraderDashboardPage() {
     const [statistics, setStatistics] =
         useState<DashboardStatistics>(
@@ -623,51 +666,59 @@ export function TraderDashboardPage() {
                             ) : (
                                 <div className="dashboard-list">
                                     {recentNotifications.map(
-                                        (notification) => (
-                                            <article
-                                                className={
-                                                    'dashboard-list-item '
-                                                    + 'dashboard-notification'
-                                                }
-                                                key={
+                                        (notification) => {
+                                            const destination =
+                                                getNotificationDestination(
                                                     notification
-                                                        .id
-                                                }
-                                            >
-                                                <div>
-                                                    <span
+                                                )
+
+                                            return (
+                                                <article
+                                                    className={
+                                                        'dashboard-list-item '
+                                                        + 'dashboard-notification'
+                                                    }
+                                                    key={notification.id}
+                                                >
+                                                    <div>
+                    <span className="eyebrow">
+                        {
+                            NOTIFICATION_TEMPLATE_LABELS[
+                                notification
+                                    .templateType
+                                ]
+                        }
+                    </span>
+
+                                                        <p>
+                                                            {notification.message}
+                                                        </p>
+
+                                                        <p className="field-help">
+                                                            {formatDateTime(
+                                                                notification.createdAt
+                                                            )}
+                                                        </p>
+                                                    </div>
+
+                                                    <Link
                                                         className={
-                                                            'eyebrow'
+                                                            'secondary-link-button'
                                                         }
-                                                    >
-                                                        {
-                                                            NOTIFICATION_TEMPLATE_LABELS[
-                                                                notification
-                                                                    .templateType
+                                                        to={destination.path}
+                                                        aria-label={
+                                                            destination.label
+                                                            + ': '
+                                                            + NOTIFICATION_TEMPLATE_LABELS[
+                                                                notification.templateType
                                                                 ]
                                                         }
-                                                    </span>
-
-                                                    <p>
-                                                        {
-                                                            notification
-                                                                .message
-                                                        }
-                                                    </p>
-
-                                                    <p
-                                                        className={
-                                                            'field-help'
-                                                        }
                                                     >
-                                                        {formatDateTime(
-                                                            notification
-                                                                .createdAt
-                                                        )}
-                                                    </p>
-                                                </div>
-                                            </article>
-                                        )
+                                                        {destination.label}
+                                                    </Link>
+                                                </article>
+                                            )
+                                        }
                                     )}
                                 </div>
                             )}
