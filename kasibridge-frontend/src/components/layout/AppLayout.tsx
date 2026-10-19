@@ -12,7 +12,7 @@ import {
 } from '../../api/notificationApi'
 
 import {
-    NOTIFICATION_READ_STATE_CHANGED,
+    subscribeToNotificationReadStateChanges,
 } from '../../utils/notificationEvents'
 
 import {
@@ -74,18 +74,14 @@ export function AppLayout({
 
         void loadUnreadCount()
 
-        window.addEventListener(
-            NOTIFICATION_READ_STATE_CHANGED,
-            handleNotificationChange
-        )
+        const unsubscribe =
+            subscribeToNotificationReadStateChanges(
+                handleNotificationChange
+            )
 
         return () => {
             isActive = false
-
-            window.removeEventListener(
-                NOTIFICATION_READ_STATE_CHANGED,
-                handleNotificationChange
-            )
+            unsubscribe()
         }
     }, [])
 
