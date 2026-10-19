@@ -25,6 +25,10 @@ import type {
     Notification,
 } from '../types/notification'
 
+import {
+    notifyNotificationReadStateChanged,
+} from '../utils/notificationEvents'
+
 const notificationFilters: Array<{
     label: string
     value: NotificationReadFilter
@@ -155,6 +159,8 @@ export function NotificationsPage() {
                 await markNotificationRead(
                     notification.id
                 )
+
+            notifyNotificationReadStateChanged()
 
             if (selectedFilter === 'unread') {
                 setNotifications(

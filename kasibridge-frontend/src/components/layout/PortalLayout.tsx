@@ -1,4 +1,6 @@
-import type { ReactNode } from 'react'
+import type {
+    ReactNode,
+} from 'react'
 
 import {
     NavLink,
@@ -9,12 +11,15 @@ import type {
     UserRole,
 } from '../../types/auth'
 
-import { useAuth } from '../../auth/useAuth'
+import {
+    useAuth,
+} from '../../auth/useAuth'
 
-interface NavigationItem {
+export interface NavigationItem {
     label: string
     path: string
     roles?: UserRole[]
+    badge?: number
 }
 
 interface PortalLayoutProps {
@@ -57,9 +62,9 @@ export function PortalLayout({
         <div className="application-shell">
             <aside className="sidebar">
                 <div className="brand">
-          <span className="brand-mark">
-            KB
-          </span>
+                    <span className="brand-mark">
+                        KB
+                    </span>
 
                     <div>
                         <strong>KasiBridge</strong>
@@ -70,27 +75,54 @@ export function PortalLayout({
 
                 <nav
                     className="navigation"
-                    aria-label={`${portalName} navigation`}
+                    aria-label={
+                        `${portalName} navigation`
+                    }
                 >
-                    {visibleNavigationItems.map((item) => (
-                        <NavLink
-                            key={item.path}
-                            to={item.path}
-                        >
-                            {item.label}
-                        </NavLink>
-                    ))}
+                    {visibleNavigationItems.map(
+                        (item) => (
+                            <NavLink
+                                key={item.path}
+                                to={item.path}
+                            >
+                                <span>
+                                    {item.label}
+                                </span>
+
+                                {item.badge !== undefined
+                                    && item.badge > 0 && (
+                                        <span
+                                            className={
+                                                'navigation-badge'
+                                            }
+                                            aria-label={
+                                                `${item.badge} unread`
+                                            }
+                                        >
+                                            {item.badge > 99
+                                                ? '99+'
+                                                : item.badge}
+                                        </span>
+                                    )}
+                            </NavLink>
+                        )
+                    )}
                 </nav>
             </aside>
 
             <div className="main-area">
                 <header className="topbar">
                     <div>
-                        <strong>{portalName}</strong>
+                        <strong>
+                            {portalName}
+                        </strong>
 
                         {user && (
-                            <small className="current-user">
-                                Signed in as {user.username}
+                            <small
+                                className="current-user"
+                            >
+                                Signed in as{' '}
+                                {user.username}
                             </small>
                         )}
                     </div>
