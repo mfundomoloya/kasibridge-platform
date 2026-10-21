@@ -17,6 +17,7 @@ import {
 interface NotificationCardProps {
     notification: Notification
     isMarkingRead?: boolean
+    isHighlighted?: boolean
     onMarkRead?: (
         notification: Notification
     ) => void
@@ -79,6 +80,7 @@ function getRelatedItemLabel(
 export function NotificationCard({
                                      notification,
                                      isMarkingRead = false,
+                                     isHighlighted = false,
                                      onMarkRead,
                                  }: NotificationCardProps) {
     const relatedItemLink =
@@ -91,6 +93,7 @@ export function NotificationCard({
 
     return (
         <article
+            id={`notification-${notification.id}`}
             className={
                 'content-card notification-card '
                 + (
@@ -98,6 +101,16 @@ export function NotificationCard({
                         ? 'notification-read'
                         : 'notification-unread'
                 )
+                + (
+                    isHighlighted
+                        ? ' notification-highlighted'
+                        : ''
+                )
+            }
+            aria-current={
+                isHighlighted
+                    ? 'true'
+                    : undefined
             }
         >
             <div className="notification-card-header">

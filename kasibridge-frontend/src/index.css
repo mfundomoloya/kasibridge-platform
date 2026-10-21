@@ -943,6 +943,35 @@ form .primary-button {
   gap: 20px;
 }
 
+.notification-card.notification-highlighted {
+  border-color: #15835c;
+  box-shadow:
+    0 0 0 3px rgba(21, 131, 92, 0.18),
+    0 14px 34px rgba(31, 57, 43, 0.12);
+  animation: notification-highlight-pulse 1.2s ease-out;
+}
+
+@keyframes notification-highlight-pulse {
+  0% {
+    box-shadow:
+      0 0 0 8px rgba(21, 131, 92, 0.28),
+      0 14px 34px rgba(31, 57, 43, 0.12);
+  }
+
+  100% {
+    box-shadow:
+      0 0 0 3px rgba(21, 131, 92, 0.18),
+      0 14px 34px rgba(31, 57, 43, 0.12);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .notification-card.notification-highlighted {
+    animation: none;
+    scroll-behavior: auto;
+  }
+}
+
 .notification-card.notification-unread {
   border-left: 5px solid #0b6b4a;
   background: #fbfffc;

@@ -1,7 +1,12 @@
 import {
     useEffect,
+    useRef,
     useState,
 } from 'react'
+
+import {
+    useSearchParams,
+} from 'react-router-dom'
 
 import {
     getInAppNotifications,
@@ -72,6 +77,29 @@ export function NotificationsPage() {
     const [errorMessage, setErrorMessage] =
         useState('')
 
+    const [searchParams] =
+        useSearchParams()
+
+    const selectedNotificationIdValue =
+        searchParams.get('notificationId')
+
+    const selectedNotificationId =
+        selectedNotificationIdValue !== null
+            ? Number(selectedNotificationIdValue)
+            : null
+
+    const validSelectedNotificationId =
+        selectedNotificationId !== null
+        && Number.isSafeInteger(
+            selectedNotificationId
+        )
+        && selectedNotificationId > 0
+            ? selectedNotificationId
+            : null
+
+    const lastScrolledNotificationId =
+        useRef<number | null>(null)
+
     useEffect(() => {
         let isActive = true
 
@@ -131,6 +159,58 @@ export function NotificationsPage() {
     }, [
         currentPage,
         selectedFilter,
+    ])
+
+    useEffect(() => {
+        if (
+            isLoading
+            || validSelectedNotificationId === null
+            || lastScrolledNotificationId.current
+                === validSelectedNotificationId
+        ) {
+            return
+        }
+
+        const selectedNotificationExists =
+            notifications.some(
+                (notification) =>
+                    notification.id
+                    === validSelectedNotificationId
+            )
+
+        if (!selectedNotificationExists) {
+            return
+        }
+
+        const animationFrame =
+            window.requestAnimationFrame(() => {
+                const notificationElement =
+                    document.getElementById(
+                        `notification-${validSelectedNotificationId}`
+                    )
+
+                if (!notificationElement) {
+                    return
+                }
+
+                notificationElement.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'center',
+                })
+
+                lastScrolledNotificationId.current =
+                    validSelectedNotificationId
+            })
+
+        return () => {
+            window.cancelAnimationFrame(
+                animationFrame
+            )
+        }
+    }, [
+        isLoading,
+        notifications,
+        validSelectedNotificationId,
     ])
 
     function handleFilterChange(
@@ -343,6 +423,10 @@ export function NotificationsPage() {
                                     }
                                     isMarkingRead={
                                         markingReadId
+                                        === notification.id
+                                    }
+                                    isHighlighted={
+                                        validSelectedNotificationId
                                         === notification.id
                                     }
                                     onMarkRead={

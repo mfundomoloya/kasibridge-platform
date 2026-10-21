@@ -109,7 +109,8 @@ function getNotificationDestination(
     }
 
     return {
-        path: '/notifications',
+        path: '/notifications?notificationId='
+                + notification.id,
         label: 'View notification',
     }
 }
