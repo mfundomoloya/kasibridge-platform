@@ -3,6 +3,7 @@ package com.kasibridge.procurement.service;
 import com.kasibridge.procurement.dto.TraderProfileClientResponse;
 import com.kasibridge.procurement.dto.WhatsAppTemplateContext;
 import com.kasibridge.procurement.entity.*;
+import com.kasibridge.procurement.repository.NotificationOutboxRepository;
 import com.kasibridge.procurement.repository.TenderCommitteeAssignmentRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,128 +22,122 @@ public class ProcurementNotificationServiceImpl implements ProcurementNotificati
     private final NotificationOutboxService notificationOutboxService;
     private final WhatsAppMessageTemplateService templateService;
     private final TenderCommitteeAssignmentRepository assignmentRepository;
+    private final NotificationOutboxRepository notificationOutboxRepository;
 
     @Override
     public void queueBidReceived(Bid bid, Tender tender) {
-        try {
-            TraderProfileClientResponse trader = loadTrader(bid);
+        TraderProfileClientResponse trader = loadTrader(bid);
 
-            WhatsAppTemplateContext context =
-            baseBidContext(bid, tender, trader);
+        WhatsAppTemplateContext context =
+                baseBidContext(
+                        bid,
+                        tender,
+                        trader
+                );
 
-            queueBidderNotification(
-                    NotificationOutbox.NotificationTemplateType.BID_RECEIVED,
-                    context,
-                    trader,
-                    bid,
-                    tender
-            );
-
-        } catch (Exception ex) {
-            log.error(
-                    "Unable to queue BID_RECEIVED notification for tenderId={} bidId={}",
-                    safeTenderId(tender),
-                    safeBidId(bid),
-                    ex
-            );
-        }
+        queueBidderNotification(
+                NotificationOutbox
+                        .NotificationTemplateType
+                        .BID_RECEIVED,
+                context,
+                trader,
+                bid,
+                tender
+        );
     }
 
     @Override
     public void queueCompliancePassed(Bid bid, Tender tender) {
 
-        try {
+        TraderProfileClientResponse trader = loadTrader(bid);
 
+        WhatsAppTemplateContext context =
+                baseBidContext(
+                        bid,
+                        tender,
+                        trader
+                );
 
-            TraderProfileClientResponse trader = loadTrader(bid);
-
-            WhatsAppTemplateContext context = baseBidContext(
-                    bid,
-                    tender,
-                    trader
-            );
-
-            queueBidderNotification(
-                    NotificationOutbox.NotificationTemplateType.BID_COMPLIANCE_PASSED,
-                    context,
-                    trader,
-                    bid,
-                    tender
-            );
-        } catch (Exception ex) {
-            log.error(
-                    "Unable to queue BID_COMPLIANCE_PASSED notification for tenderId={} bidId={}",
-                    safeTenderId(tender),
-                    safeBidId(bid),
-                    ex
-            );
-        }
-
+        queueBidderNotification(
+                NotificationOutbox
+                        .NotificationTemplateType
+                        .BID_COMPLIANCE_PASSED,
+                context,
+                trader,
+                bid,
+                tender
+        );
     }
 
     @Override
     public void queueComplianceFailed(Bid bid, Tender tender, String failureReason) {
-        try {
-            TraderProfileClientResponse trader = loadTrader(bid);
+        TraderProfileClientResponse trader =
+                loadTrader(bid);
 
-            WhatsAppTemplateContext context = WhatsAppTemplateContext.builder()
+        WhatsAppTemplateContext context =
+                WhatsAppTemplateContext.builder()
+                        .recipientName(
+                                trader.getFullName()
+                        )
+                        .tenderId(
+                                tender.getId()
+                        )
+                        .tenderReference(
+                                tender.getTenderReference()
+                        )
+                        .tenderTitle(
+                                tender.getTitle()
+                        )
+                        .bidId(
+                                bid.getId()
+                        )
+                        .bidReference(
+                                bid.getBidReference()
+                        )
+                        .bidderAlias(
+                                bid.getBidderAlias()
+                        )
+                        .bidAmount(
+                                bid.getPriceAmount()
+                        )
+                        .complianceFailureReason(
+                                failureReason
+                        )
+                        .build();
 
-                    .recipientName(trader.getFullName())
-                    .tenderId(tender.getId())
-                    .tenderReference(tender.getTenderReference())
-                    .tenderTitle(tender.getTitle())
-                    .bidId(bid.getId())
-                    .bidReference(bid.getBidReference())
-                    .bidderAlias(bid.getBidderAlias())
-                    .bidAmount(bid.getPriceAmount())
-                    .complianceFailureReason(failureReason)
-                    .build();
-
-            queueBidderNotification(
-                    NotificationOutbox.NotificationTemplateType.BID_COMPLIANCE_FAILED,
-                    context,
-                    trader,
-                    bid,
-                    tender
-            );
-        } catch (Exception ex) {
-            log.error(
-                    "Unable to queue BID_COMPLIANCE_FAILED notification for tenderId={} bidId={}",
-                    safeTenderId(tender),
-                    safeBidId(bid),
-                    ex
-            );
-        }
+        queueBidderNotification(
+                NotificationOutbox
+                        .NotificationTemplateType
+                        .BID_COMPLIANCE_FAILED,
+                context,
+                trader,
+                bid,
+                tender
+        );
     }
 
     @Override
     public void queueTenderAwarded(Bid bid, Tender tender) {
 
-        try {
+        TraderProfileClientResponse trader =
+                loadTrader(bid);
 
-            TraderProfileClientResponse trader = loadTrader(bid);
+        WhatsAppTemplateContext context =
+                baseBidContext(
+                        bid,
+                        tender,
+                        trader
+                );
 
-            WhatsAppTemplateContext context = baseBidContext(
-                    bid,
-                    tender,
-                    trader
-            );
-
-            queueBidderNotification(
-                    NotificationOutbox.NotificationTemplateType.TENDER_AWARDED,
-                    context,
-                    trader,
-                    bid,
-                    tender
-            );
-        } catch (Exception ex) {
-            log.error(
-                    "Unable to queue TENDER_AWARDED notification for tenderId={} bidId={}",
-                    safeTenderId(tender),
-                    safeBidId(bid),
-                    ex
-            );
-        }
+        queueBidderNotification(
+                NotificationOutbox
+                        .NotificationTemplateType
+                        .TENDER_AWARDED,
+                context,
+                trader,
+                bid,
+                tender
+        );
     }
 
     @Override
@@ -250,42 +245,29 @@ public class ProcurementNotificationServiceImpl implements ProcurementNotificati
     }
 
     @Override
-    public void queueBidWithdrawn(
-            Bid bid,
-            Tender tender
-    ) {
-        try {
-            TraderProfileClientResponse trader =
-                    loadTrader(bid);
+    public void queueBidWithdrawn(Bid bid, Tender tender) {
+        TraderProfileClientResponse trader =
+                loadTrader(bid);
 
-            WhatsAppTemplateContext context =
-                    baseBidContext(
-                            bid,
-                            tender,
-                            trader
-                    );
+        WhatsAppTemplateContext context =
+                baseBidContext(
+                        bid,
+                        tender,
+                        trader
+                );
 
-            queueBidderNotification(
-                    NotificationOutbox.NotificationTemplateType.BID_WITHDRAWN,
-                    context,
-                    trader,
-                    bid,
-                    tender
-            );
-
-        } catch (Exception exception) {
-            log.error(
-                    "Unable to queue BID_WITHDRAWN notification for tenderId={} bidId={}",
-                    safeTenderId(tender),
-                    safeBidId(bid),
-                    exception
-            );
-        }
+        queueBidderNotification(
+                NotificationOutbox
+                        .NotificationTemplateType
+                        .BID_WITHDRAWN,
+                context,
+                trader,
+                bid,
+                tender
+        );
     }
-    private void queueAdminFallbackAnomalyNotification(
-            ProcurementAnomaly anomaly,
-            String message
-    ) {
+
+    private void queueAdminFallbackAnomalyNotification(ProcurementAnomaly anomaly, String message) {
         notificationOutboxService.queueNotification(
                 NotificationOutbox.NotificationChannel.IN_APP,
                 NotificationOutbox.NotificationTemplateType
@@ -305,9 +287,7 @@ public class ProcurementNotificationServiceImpl implements ProcurementNotificati
     }
 
 
-    private TraderProfileClientResponse loadTrader(
-            Bid bid
-    ) {
+    private TraderProfileClientResponse loadTrader(Bid bid) {
         if (bid == null) {
             throw new IllegalArgumentException(
                     "Bid is required to load the trader profile."
@@ -353,6 +333,49 @@ public class ProcurementNotificationServiceImpl implements ProcurementNotificati
                                          TraderProfileClientResponse trader,
                                          Bid bid,
                                          Tender tender) {
+
+        if (bid == null || bid.getId() == null) {
+            throw new IllegalArgumentException(
+                    "A persisted bid is required "
+                            + "to queue a bidder notification."
+            );
+        }
+
+        if (
+                trader == null
+                        || trader.getUserId() == null
+        ) {
+            throw new IllegalStateException(
+                    "A trader user ID is required "
+                            + "to queue a bidder notification."
+            );
+        }
+
+        boolean alreadyQueued =
+                notificationOutboxRepository
+                        .existsByTemplateTypeAndRelatedBidIdAndRecipientUserId(
+                                templateType,
+                                bid.getId(),
+                                trader.getUserId()
+                        );
+
+        if (alreadyQueued) {
+            log.info(
+                    "Skipping duplicate procurement notification: "
+                            + "templateType={} tenderId={} "
+                            + "bidId={} recipientUserId={}",
+                    templateType,
+                    tender != null
+                            ? tender.getId()
+                            : null,
+                    bid.getId(),
+                    trader.getUserId()
+            );
+
+            return;
+        }
+
+
         String message = templateService.generateMessage(
                 templateType,
                 context

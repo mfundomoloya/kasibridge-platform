@@ -31,6 +31,7 @@ class NotificationOutboxUniqueConstraintIntegrationTest {
     private static final Long TICKET_ID = 401L;
     private static final Long TENDER_ID = 301L;
     private static final Long RECIPIENT_USER_ID = 91L;
+    private static final Long BID_ID = 501L;
 
     @Container
     static final PostgreSQLContainer<?> POSTGRES =
@@ -69,12 +70,27 @@ class NotificationOutboxUniqueConstraintIntegrationTest {
 
         registry.add(
                 "spring.jpa.hibernate.ddl-auto",
-                () -> "create-drop"
+                () -> "validate"
         );
 
         registry.add(
                 "spring.flyway.enabled",
-                () -> "false"
+                () -> "true"
+        );
+
+        registry.add(
+                "spring.flyway.locations",
+                () -> "classpath:db/migration"
+        );
+
+        registry.add(
+                "spring.flyway.validate-on-migrate",
+                () -> "true"
+        );
+
+        registry.add(
+                "spring.flyway.clean-disabled",
+                () -> "true"
         );
     }
 
@@ -171,6 +187,190 @@ class NotificationOutboxUniqueConstraintIntegrationTest {
                 repository.count()
         );
     }
+
+    @Test
+    void saveAndFlush_shouldAllowSameBidEventForDifferentRecipients() {
+        repository.saveAndFlush(
+                buildBidNotification(
+                        "KB-NOTIFY-BID-RECIPIENT-001",
+                        NotificationOutbox
+                                .NotificationTemplateType
+                                .BID_RECEIVED,
+                        BID_ID,
+                        RECIPIENT_USER_ID
+                )
+        );
+
+        repository.saveAndFlush(
+                buildBidNotification(
+                        "KB-NOTIFY-BID-RECIPIENT-002",
+                        NotificationOutbox
+                                .NotificationTemplateType
+                                .BID_RECEIVED,
+                        BID_ID,
+                        RECIPIENT_USER_ID + 1
+                )
+        );
+
+        assertEquals(
+                2L,
+                repository.count()
+        );
+    }
+
+    @Test
+    void saveAndFlush_shouldAllowDifferentClarificationTicketsForSameBidAndRecipient() {
+        NotificationOutbox firstClarification =
+                buildNotification(
+                        "KB-NOTIFY-CLARIFICATION-001",
+                        NotificationOutbox
+                                .NotificationTemplateType
+                                .OFFICIAL_CLARIFICATION_PUBLISHED
+                );
+
+        firstClarification.setRelatedBidId(
+                BID_ID
+        );
+
+        firstClarification.setRelatedTicketId(
+                TICKET_ID
+        );
+
+        repository.saveAndFlush(
+                firstClarification
+        );
+
+        NotificationOutbox secondClarification =
+                buildNotification(
+                        "KB-NOTIFY-CLARIFICATION-002",
+                        NotificationOutbox
+                                .NotificationTemplateType
+                                .OFFICIAL_CLARIFICATION_PUBLISHED
+                );
+
+        secondClarification.setRelatedBidId(
+                BID_ID
+        );
+
+        secondClarification.setRelatedTicketId(
+                TICKET_ID + 1
+        );
+
+        repository.saveAndFlush(
+                secondClarification
+        );
+
+        assertEquals(
+                2L,
+                repository.count()
+        );
+    }
+
+    @Test
+    void saveAndFlush_shouldRejectDuplicateBidEventForSameBidAndRecipient() {
+        repository.saveAndFlush(
+                buildBidNotification(
+                        "KB-NOTIFY-BID-001",
+                        NotificationOutbox
+                                .NotificationTemplateType
+                                .BID_RECEIVED,
+                        BID_ID,
+                        RECIPIENT_USER_ID
+                )
+        );
+
+        NotificationOutbox duplicate =
+                buildBidNotification(
+                        "KB-NOTIFY-BID-002",
+                        NotificationOutbox
+                                .NotificationTemplateType
+                                .BID_RECEIVED,
+                        BID_ID,
+                        RECIPIENT_USER_ID
+                );
+
+        assertThrows(
+                DataIntegrityViolationException.class,
+                () -> repository.saveAndFlush(
+                        duplicate
+                )
+        );
+    }
+
+    @Test
+    void saveAndFlush_shouldAllowDifferentBidEventTemplatesForSameBidAndRecipient() {
+        repository.saveAndFlush(
+                buildBidNotification(
+                        "KB-NOTIFY-BID-TEMPLATE-001",
+                        NotificationOutbox
+                                .NotificationTemplateType
+                                .BID_RECEIVED,
+                        BID_ID,
+                        RECIPIENT_USER_ID
+                )
+        );
+
+        repository.saveAndFlush(
+                buildBidNotification(
+                        "KB-NOTIFY-BID-TEMPLATE-002",
+                        NotificationOutbox
+                                .NotificationTemplateType
+                                .BID_COMPLIANCE_PASSED,
+                        BID_ID,
+                        RECIPIENT_USER_ID
+                )
+        );
+
+        assertEquals(
+                2L,
+                repository.count()
+        );
+    }
+
+    private NotificationOutbox buildBidNotification(
+            String notificationReference,
+            NotificationOutbox.NotificationTemplateType
+                    templateType,
+            Long bidId,
+            Long recipientUserId
+    ) {
+        return NotificationOutbox.builder()
+                .notificationReference(
+                        notificationReference
+                )
+                .channel(
+                        NotificationOutbox
+                                .NotificationChannel
+                                .WHATSAPP
+                )
+                .templateType(templateType)
+                .status(
+                        NotificationOutbox
+                                .NotificationStatus
+                                .PENDING
+                )
+                .recipientUserId(
+                        recipientUserId
+                )
+                .recipientPhone(
+                        "+27610000091"
+                )
+                .recipientEmail(
+                        "bid-notification-test@example.test"
+                )
+                .message(
+                        "Bid lifecycle notification test."
+                )
+                .relatedTenderId(
+                        TENDER_ID
+                )
+                .relatedBidId(
+                        bidId
+                )
+                .retryCount(0)
+                .build();
+    }
+
 
     private NotificationOutbox buildNotification(
             String notificationReference,
