@@ -1,4 +1,5 @@
 import {
+    useCallback,
     useEffect,
     useRef,
     useState,
@@ -39,6 +40,10 @@ import type {
 import type {
     TraderTender,
 } from '../types/tender'
+
+import {
+    subscribeToNotificationReadStateChanges,
+} from '../utils/notificationEvents'
 
 import {
     formatCurrency,
@@ -137,6 +142,78 @@ export function TraderDashboardPage() {
 
     const hasLoadedRef =
         useRef(false)
+
+    const notificationSyncRequestRef =
+        useRef(0)
+
+    const refreshNotificationSummary =
+        useCallback(async () => {
+            const requestId =
+                notificationSyncRequestRef.current + 1
+
+            notificationSyncRequestRef.current =
+                requestId
+
+            try {
+                const notificationPage =
+                    await getInAppNotifications({
+                        page: 0,
+                        size: 3,
+                        filter: 'unread',
+                    })
+
+                if (
+                    requestId
+                    !== notificationSyncRequestRef.current
+                ) {
+                    return
+                }
+
+                setRecentNotifications(
+                    notificationPage.content
+                )
+
+                setStatistics(
+                    (currentStatistics) => ({
+                        ...currentStatistics,
+                        unreadNotifications:
+                        notificationPage
+                            .page
+                            .totalElements,
+                    })
+                )
+
+                setLoadErrors(
+                    (currentErrors) => {
+                        const remainingErrors = {
+                            ...currentErrors,
+                        }
+
+                        delete remainingErrors.notifications
+
+                        return remainingErrors
+                    }
+                )
+            } catch {
+                if (
+                    requestId
+                    !== notificationSyncRequestRef.current
+                ) {
+                    return
+                }
+
+                setLoadErrors(
+                    (currentErrors) => ({
+                        ...currentErrors,
+                        notifications:
+                            'Notifications could not '
+                            + 'be synchronized.',
+                    })
+                )
+            }
+        }, [])
+
+
 
     useEffect(() => {
         let isActive = true
@@ -343,8 +420,21 @@ export function TraderDashboardPage() {
 
         return () => {
             isActive = false
+
+            notificationSyncRequestRef.current += 1
         }
     }, [refreshVersion])
+
+    useEffect(() => {
+        const unsubscribe =
+            subscribeToNotificationReadStateChanges(
+                () => {
+                    void refreshNotificationSummary()
+                }
+            )
+
+        return unsubscribe
+    }, [refreshNotificationSummary])
 
     function handleRefresh() {
         if (isLoading || isRefreshing) {
