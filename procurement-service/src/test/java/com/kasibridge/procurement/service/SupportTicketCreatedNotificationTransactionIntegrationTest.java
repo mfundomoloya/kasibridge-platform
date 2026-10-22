@@ -705,6 +705,12 @@ class SupportTicketCreatedNotificationTransactionIntegrationTest {
                 .buyerOrgId(
                         "MUNICIPALITY-SUPPORT-TEST"
                 )
+                .requiredBusinessType(
+                        "Road Rehabilitation and Maintenance"
+                )
+                .serviceArea(
+                        "Gauteng"
+                )
                 .createdByUserId(51L)
                 .status(
                         Tender.TenderStatus.PUBLISHED

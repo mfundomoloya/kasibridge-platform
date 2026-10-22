@@ -16,6 +16,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.math.BigDecimal;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -107,6 +108,12 @@ class ProcurementNotificationServiceImplTest {
                         )
                         .status(
                                 Tender.TenderStatus.PUBLISHED
+                        )
+                        .requiredBusinessType(
+                                "ICT Equipment Supply"
+                        )
+                        .serviceArea(
+                                "Gauteng"
                         )
                         .build();
 
@@ -842,6 +849,338 @@ class ProcurementNotificationServiceImplTest {
                         BID_ID,
                         null
                 );
+    }
+
+    @Test
+    void shouldQueueMatchingTenderPublishedNotification() {
+        tender.setRequiredBusinessType(
+                "ICT Equipment Supply"
+        );
+
+        tender.setServiceArea(
+                "Gauteng"
+        );
+
+        String expectedMessage =
+                "A matching tender was published.";
+
+        when(
+                traderProfileClient
+                        .findActiveMatchingProfilesAsSystem(
+                                "ICT Equipment Supply",
+                                "Gauteng"
+                        )
+        ).thenReturn(
+                List.of(trader)
+        );
+
+        when(
+                notificationOutboxRepository
+                        .existsByTemplateTypeAndRelatedTenderIdAndRecipientUserId(
+                                NotificationOutbox
+                                        .NotificationTemplateType
+                                        .MATCHING_TENDER_PUBLISHED,
+                                TENDER_ID,
+                                USER_ID
+                        )
+        ).thenReturn(false);
+
+        when(
+                templateService.generateMessage(
+                        eq(
+                                NotificationOutbox
+                                        .NotificationTemplateType
+                                        .MATCHING_TENDER_PUBLISHED
+                        ),
+                        any(
+                                WhatsAppTemplateContext.class
+                        )
+                )
+        ).thenReturn(expectedMessage);
+
+        notificationService
+                .queueMatchingTenderPublished(
+                        tender
+                );
+
+        ArgumentCaptor<WhatsAppTemplateContext>
+                contextCaptor =
+                ArgumentCaptor.forClass(
+                        WhatsAppTemplateContext.class
+                );
+
+        verify(templateService)
+                .generateMessage(
+                        eq(
+                                NotificationOutbox
+                                        .NotificationTemplateType
+                                        .MATCHING_TENDER_PUBLISHED
+                        ),
+                        contextCaptor.capture()
+                );
+
+        WhatsAppTemplateContext context =
+                contextCaptor.getValue();
+
+        assertEquals(
+                "Sifiso Magagula",
+                context.getRecipientName()
+        );
+
+        assertEquals(
+                TENDER_ID,
+                context.getTenderId()
+        );
+
+        assertEquals(
+                "KB-TENDER-436FC79F",
+                context.getTenderReference()
+        );
+
+        assertEquals(
+                "Supply of ICT Equipment "
+                        + "for Municipal Offices",
+                context.getTenderTitle()
+        );
+
+        verify(notificationOutboxService)
+                .queueNotification(
+                        NotificationOutbox
+                                .NotificationChannel
+                                .WHATSAPP,
+                        NotificationOutbox
+                                .NotificationTemplateType
+                                .MATCHING_TENDER_PUBLISHED,
+                        USER_ID,
+                        "+27610000001",
+                        "biddera@kasibridge.test",
+                        expectedMessage,
+                        TENDER_ID,
+                        null,
+                        null
+                );
+    }
+
+    @Test
+    void shouldDeduplicateMatchingTradersByUserId() {
+        tender.setRequiredBusinessType(
+                "ICT Equipment Supply"
+        );
+
+        tender.setServiceArea(
+                "Gauteng"
+        );
+
+        TraderProfileClientResponse duplicateTrader =
+                new TraderProfileClientResponse();
+
+        duplicateTrader.setId(99L);
+        duplicateTrader.setUserId(USER_ID);
+        duplicateTrader.setFullName(
+                "Duplicate Profile"
+        );
+        duplicateTrader.setPhoneNumber(
+                "+27610000099"
+        );
+        duplicateTrader.setEmail(
+                "duplicate@kasibridge.test"
+        );
+
+        when(
+                traderProfileClient
+                        .findActiveMatchingProfilesAsSystem(
+                                "ICT Equipment Supply",
+                                "Gauteng"
+                        )
+        ).thenReturn(
+                List.of(
+                        trader,
+                        duplicateTrader
+                )
+        );
+
+        when(
+                notificationOutboxRepository
+                        .existsByTemplateTypeAndRelatedTenderIdAndRecipientUserId(
+                                NotificationOutbox
+                                        .NotificationTemplateType
+                                        .MATCHING_TENDER_PUBLISHED,
+                                TENDER_ID,
+                                USER_ID
+                        )
+        ).thenReturn(false);
+
+        when(
+                templateService.generateMessage(
+                        eq(
+                                NotificationOutbox
+                                        .NotificationTemplateType
+                                        .MATCHING_TENDER_PUBLISHED
+                        ),
+                        any(
+                                WhatsAppTemplateContext.class
+                        )
+                )
+        ).thenReturn(
+                "A matching tender was published."
+        );
+
+        notificationService
+                .queueMatchingTenderPublished(
+                        tender
+                );
+
+        verify(
+                notificationOutboxService
+        ).queueNotification(
+                NotificationOutbox
+                        .NotificationChannel
+                        .WHATSAPP,
+                NotificationOutbox
+                        .NotificationTemplateType
+                        .MATCHING_TENDER_PUBLISHED,
+                USER_ID,
+                "+27610000001",
+                "biddera@kasibridge.test",
+                "A matching tender was published.",
+                TENDER_ID,
+                null,
+                null
+        );
+    }
+
+    @Test
+    void shouldSkipAlreadyQueuedMatchingTenderNotification() {
+        tender.setRequiredBusinessType(
+                "ICT Equipment Supply"
+        );
+
+        tender.setServiceArea(
+                "Gauteng"
+        );
+
+        when(
+                traderProfileClient
+                        .findActiveMatchingProfilesAsSystem(
+                                "ICT Equipment Supply",
+                                "Gauteng"
+                        )
+        ).thenReturn(
+                List.of(trader)
+        );
+
+        when(
+                notificationOutboxRepository
+                        .existsByTemplateTypeAndRelatedTenderIdAndRecipientUserId(
+                                NotificationOutbox
+                                        .NotificationTemplateType
+                                        .MATCHING_TENDER_PUBLISHED,
+                                TENDER_ID,
+                                USER_ID
+                        )
+        ).thenReturn(true);
+
+        notificationService
+                .queueMatchingTenderPublished(
+                        tender
+                );
+
+        verify(
+                templateService,
+                never()
+        ).generateMessage(
+                any(),
+                any()
+        );
+
+        verifyNoOutboxNotificationQueued();
+    }
+
+    @Test
+    void shouldSkipMatchingTraderWithoutUsablePhoneNumber() {
+        tender.setRequiredBusinessType(
+                "ICT Equipment Supply"
+        );
+
+        tender.setServiceArea(
+                "Gauteng"
+        );
+
+        trader.setPhoneNumber("   ");
+
+        when(
+                traderProfileClient
+                        .findActiveMatchingProfilesAsSystem(
+                                "ICT Equipment Supply",
+                                "Gauteng"
+                        )
+        ).thenReturn(
+                List.of(trader)
+        );
+
+        notificationService
+                .queueMatchingTenderPublished(
+                        tender
+                );
+
+        verify(
+                notificationOutboxRepository,
+                never()
+        ).existsByTemplateTypeAndRelatedTenderIdAndRecipientUserId(
+                any(),
+                any(),
+                any()
+        );
+
+        verify(
+                templateService,
+                never()
+        ).generateMessage(
+                any(),
+                any()
+        );
+
+        verifyNoOutboxNotificationQueued();
+    }
+
+    @Test
+    void shouldPropagateMatchingTraderLookupFailure() {
+        tender.setRequiredBusinessType(
+                "ICT Equipment Supply"
+        );
+
+        tender.setServiceArea(
+                "Gauteng"
+        );
+
+        when(
+                traderProfileClient
+                        .findActiveMatchingProfilesAsSystem(
+                                "ICT Equipment Supply",
+                                "Gauteng"
+                        )
+        ).thenThrow(
+                new IllegalStateException(
+                        "Matching trader lookup failed"
+                )
+        );
+
+        IllegalStateException exception =
+                assertThrows(
+                        IllegalStateException.class,
+                        () ->
+                                notificationService
+                                        .queueMatchingTenderPublished(
+                                                tender
+                                        )
+                );
+
+        assertEquals(
+                "Matching trader lookup failed",
+                exception.getMessage()
+        );
+
+        verifyNoOutboxNotificationQueued();
     }
 
     private void verifyNoOutboxNotificationQueued() {

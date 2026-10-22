@@ -327,6 +327,157 @@ class NotificationOutboxUniqueConstraintIntegrationTest {
         );
     }
 
+    @Test
+    void saveAndFlush_shouldRejectDuplicateMatchingTenderNotification() {
+        repository.saveAndFlush(
+                buildMatchingTenderNotification(
+                        "KB-NOTIFY-MATCH-001",
+                        TENDER_ID,
+                        RECIPIENT_USER_ID
+                )
+        );
+
+        NotificationOutbox duplicate =
+                buildMatchingTenderNotification(
+                        "KB-NOTIFY-MATCH-002",
+                        TENDER_ID,
+                        RECIPIENT_USER_ID
+                );
+
+        assertThrows(
+                DataIntegrityViolationException.class,
+                () -> repository.saveAndFlush(
+                        duplicate
+                )
+        );
+    }
+
+    @Test
+    void saveAndFlush_shouldAllowMatchingTenderNotificationForDifferentRecipient() {
+        repository.saveAndFlush(
+                buildMatchingTenderNotification(
+                        "KB-NOTIFY-MATCH-RECIPIENT-001",
+                        TENDER_ID,
+                        RECIPIENT_USER_ID
+                )
+        );
+
+        repository.saveAndFlush(
+                buildMatchingTenderNotification(
+                        "KB-NOTIFY-MATCH-RECIPIENT-002",
+                        TENDER_ID,
+                        RECIPIENT_USER_ID + 1
+                )
+        );
+
+        assertEquals(
+                2L,
+                repository.count()
+        );
+    }
+
+    @Test
+    void saveAndFlush_shouldAllowDifferentTenderTemplateForSameTenderAndRecipient() {
+        repository.saveAndFlush(
+                buildMatchingTenderNotification(
+                        "KB-NOTIFY-MATCH-TEMPLATE-001",
+                        TENDER_ID,
+                        RECIPIENT_USER_ID
+                )
+        );
+
+        NotificationOutbox awardedNotification =
+                NotificationOutbox.builder()
+                        .notificationReference(
+                                "KB-NOTIFY-MATCH-TEMPLATE-002"
+                        )
+                        .channel(
+                                NotificationOutbox
+                                        .NotificationChannel
+                                        .WHATSAPP
+                        )
+                        .templateType(
+                                NotificationOutbox
+                                        .NotificationTemplateType
+                                        .TENDER_AWARDED
+                        )
+                        .status(
+                                NotificationOutbox
+                                        .NotificationStatus
+                                        .PENDING
+                        )
+                        .recipientUserId(
+                                RECIPIENT_USER_ID
+                        )
+                        .recipientPhone(
+                                "+27610000091"
+                        )
+                        .recipientEmail(
+                                "notification-test@example.test"
+                        )
+                        .message(
+                                "Tender outcome notification."
+                        )
+                        .relatedTenderId(
+                                TENDER_ID
+                        )
+                        .retryCount(0)
+                        .build();
+
+        repository.saveAndFlush(
+                awardedNotification
+        );
+
+        assertEquals(
+                2L,
+                repository.count()
+        );
+    }
+
+    private NotificationOutbox
+    buildMatchingTenderNotification(
+            String notificationReference,
+            Long tenderId,
+            Long recipientUserId
+    ) {
+        return NotificationOutbox.builder()
+                .notificationReference(
+                        notificationReference
+                )
+                .channel(
+                        NotificationOutbox
+                                .NotificationChannel
+                                .WHATSAPP
+                )
+                .templateType(
+                        NotificationOutbox
+                                .NotificationTemplateType
+                                .MATCHING_TENDER_PUBLISHED
+                )
+                .status(
+                        NotificationOutbox
+                                .NotificationStatus
+                                .PENDING
+                )
+                .recipientUserId(
+                        recipientUserId
+                )
+                .recipientPhone(
+                        "+27610000091"
+                )
+                .recipientEmail(
+                        "notification-test@example.test"
+                )
+                .message(
+                        "A matching tender was published."
+                )
+                .relatedTenderId(
+                        tenderId
+                )
+                .retryCount(0)
+                .build();
+    }
+
     private NotificationOutbox buildBidNotification(
             String notificationReference,
             NotificationOutbox.NotificationTemplateType

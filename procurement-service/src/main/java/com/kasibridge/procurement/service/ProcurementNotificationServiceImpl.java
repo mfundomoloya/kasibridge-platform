@@ -267,6 +267,141 @@ public class ProcurementNotificationServiceImpl implements ProcurementNotificati
         );
     }
 
+    @Override
+    public void queueMatchingTenderPublished(
+            Tender tender
+    ) {
+        if (
+                tender == null
+                        || tender.getId() == null
+        ) {
+            throw new IllegalArgumentException(
+                    "A persisted tender is required "
+                            + "to queue matching-trader "
+                            + "notifications."
+            );
+        }
+
+        List<TraderProfileClientResponse> matchingTraders =
+                traderProfileClient
+                        .findActiveMatchingProfilesAsSystem(
+                                tender.getRequiredBusinessType(),
+                                tender.getServiceArea()
+                        );
+
+        Set<Long> processedUserIds =
+                new HashSet<>();
+
+        for (
+                TraderProfileClientResponse trader
+                : matchingTraders
+        ) {
+            if (
+                    trader == null
+                            || trader.getUserId() == null
+                            || trader.getPhoneNumber() == null
+                            || trader.getPhoneNumber()
+                            .isBlank()
+            ) {
+                log.warn(
+                        "Skipping unusable matching trader "
+                                + "for tenderId={}",
+                        tender.getId()
+                );
+
+                continue;
+            }
+
+            if (
+                    !processedUserIds.add(
+                            trader.getUserId()
+                    )
+            ) {
+                log.info(
+                        "Skipping duplicate matching trader "
+                                + "result: tenderId={} userId={}",
+                        tender.getId(),
+                        trader.getUserId()
+                );
+
+                continue;
+            }
+
+            boolean alreadyQueued =
+                    notificationOutboxRepository
+                            .existsByTemplateTypeAndRelatedTenderIdAndRecipientUserId(
+                                    NotificationOutbox
+                                            .NotificationTemplateType
+                                            .MATCHING_TENDER_PUBLISHED,
+                                    tender.getId(),
+                                    trader.getUserId()
+                            );
+
+            if (alreadyQueued) {
+                log.info(
+                        "Skipping duplicate matching-tender "
+                                + "notification: tenderId={} "
+                                + "recipientUserId={}",
+                        tender.getId(),
+                        trader.getUserId()
+                );
+
+                continue;
+            }
+
+            WhatsAppTemplateContext context =
+                    WhatsAppTemplateContext.builder()
+                            .recipientName(
+                                    trader.getFullName()
+                            )
+                            .tenderId(
+                                    tender.getId()
+                            )
+                            .tenderReference(
+                                    tender.getTenderReference()
+                            )
+                            .tenderTitle(
+                                    tender.getTitle()
+                            )
+                            .build();
+
+            String message =
+                    templateService.generateMessage(
+                            NotificationOutbox
+                                    .NotificationTemplateType
+                                    .MATCHING_TENDER_PUBLISHED,
+                            context
+                    );
+
+            notificationOutboxService
+                    .queueNotification(
+                            NotificationOutbox
+                                    .NotificationChannel
+                                    .WHATSAPP,
+                            NotificationOutbox
+                                    .NotificationTemplateType
+                                    .MATCHING_TENDER_PUBLISHED,
+                            trader.getUserId(),
+                            trader.getPhoneNumber(),
+                            trader.getEmail(),
+                            message,
+                            tender.getId(),
+                            null,
+                            null
+                    );
+        }
+
+        log.info(
+                "Matching tender notifications queued: "
+                        + "tenderId={} businessType={} "
+                        + "serviceArea={} recipients={}",
+                tender.getId(),
+                tender.getRequiredBusinessType(),
+                tender.getServiceArea(),
+                processedUserIds.size()
+        );
+    }
+
     private void queueAdminFallbackAnomalyNotification(ProcurementAnomaly anomaly, String message) {
         notificationOutboxService.queueNotification(
                 NotificationOutbox.NotificationChannel.IN_APP,

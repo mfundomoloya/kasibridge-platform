@@ -245,4 +245,10 @@ public interface NotificationOutboxRepository
             Long relatedBidId,
             Long recipientUserId
     );
+
+    boolean existsByTemplateTypeAndRelatedTenderIdAndRecipientUserId(
+            NotificationOutbox.NotificationTemplateType templateType,
+            Long relatedTenderId,
+            Long recipientUserId
+    );
 }
