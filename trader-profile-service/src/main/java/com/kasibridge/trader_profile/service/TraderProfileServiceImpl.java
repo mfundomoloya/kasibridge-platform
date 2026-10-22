@@ -212,6 +212,75 @@ public class TraderProfileServiceImpl implements TraderProfileService{
 
     @Override
     @Transactional(readOnly = true)
+    public List<TraderProfileResponse> findActiveMatchingProfiles(String businessType, String tradingArea) {
+        if (
+                businessType == null
+                        || businessType.isBlank()
+        ) {
+            throw new IllegalArgumentException(
+                    "Business type is required "
+                            + "for trader matching."
+            );
+        }
+
+        if (
+                tradingArea == null
+                        || tradingArea.isBlank()
+        ) {
+            throw new IllegalArgumentException(
+                    "Trading area is required "
+                            + "for trader matching."
+            );
+        }
+
+        String normalizedBusinessType =
+                businessType.trim();
+
+        String normalizedTradingArea =
+                tradingArea.trim();
+
+        log.info(
+                "Finding active matching traders: "
+                        + "businessType={} tradingArea={}",
+                normalizedBusinessType,
+                normalizedTradingArea
+        );
+
+        List<TraderProfileResponse> matches =
+                repository
+                        .findByBusinessTypeIgnoreCaseAndTradingAreaIgnoreCaseAndStatus(
+                                normalizedBusinessType,
+                                normalizedTradingArea,
+                                TraderProfile.ProfileStatus.ACTIVE
+                        )
+                        .stream()
+                        .filter(profile ->
+                                profile.getUserId() != null
+                        )
+                        .filter(profile ->
+                                profile.getPhoneNumber() != null
+                                        && !profile
+                                        .getPhoneNumber()
+                                        .isBlank()
+                        )
+                        .map(
+                                TraderProfileResponse::from
+                        )
+                        .toList();
+
+        log.info(
+                "Active matching traders found: "
+                        + "businessType={} tradingArea={} count={}",
+                normalizedBusinessType,
+                normalizedTradingArea,
+                matches.size()
+        );
+
+        return matches;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<TraderProfileResponse> getProfilesByChannel(TraderProfile.OnboardingChannel channel) {
         log.info("Fetching all trader profiles onboarded by via: {}", channel);
 

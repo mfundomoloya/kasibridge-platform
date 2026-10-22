@@ -69,10 +69,10 @@ class EvaluationServiceImplTest {
         evaluationTender = Tender.builder()
                 .id(TENDER_ID)
                 .tenderReference("KB-TENDER-436FC79F")
-                .title(
-                        "Supply of ICT Equipment for Municipal Offices"
-                )
+                .title("Supply of ICT Equipment for Municipal Offices")
                 .status(Tender.TenderStatus.EVALUATION)
+                .requiredBusinessType("Road Rehabilitation and Maintenance")
+                .serviceArea("Gauteng")
                 .build();
     }
 

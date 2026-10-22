@@ -6,8 +6,7 @@ import com.kasibridge.procurement.exception.NotificationOutboxException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.*;
 
 class WhatsAppMessageTemplateServiceImplTest {
 
@@ -247,6 +246,91 @@ class WhatsAppMessageTemplateServiceImplTest {
 
         assertEquals(
                 "WhatsApp template context is required.",
+                exception.getMessage()
+        );
+    }
+
+    @Test
+    void generateMessage_shouldBuildMatchingTenderPublishedMessage() {
+        WhatsAppTemplateContext context =
+                WhatsAppTemplateContext.builder()
+                        .recipientName(
+                                "Sifiso Magagula"
+                        )
+                        .tenderId(7L)
+                        .tenderReference(
+                                "KB-TENDER-436FC79F"
+                        )
+                        .tenderTitle(
+                                "Road Rehabilitation "
+                                        + "and Maintenance"
+                        )
+                        .build();
+
+        String message =
+                templateService.generateMessage(
+                        NotificationOutbox
+                                .NotificationTemplateType
+                                .MATCHING_TENDER_PUBLISHED,
+                        context
+                );
+
+        assertTrue(
+                message.contains(
+                        "Sifiso Magagula"
+                )
+        );
+
+        assertTrue(
+                message.contains(
+                        "KB-TENDER-436FC79F"
+                )
+        );
+
+        assertTrue(
+                message.contains(
+                        "Road Rehabilitation "
+                                + "and Maintenance"
+                )
+        );
+
+        assertTrue(
+                message.contains(
+                        "matching your business profile"
+                )
+        );
+    }
+
+    @Test
+    void generateMessage_shouldRejectMatchingTenderWithoutReference() {
+        WhatsAppTemplateContext context =
+                WhatsAppTemplateContext.builder()
+                        .recipientName(
+                                "Sifiso Magagula"
+                        )
+                        .tenderId(7L)
+                        .tenderTitle(
+                                "Road Rehabilitation "
+                                        + "and Maintenance"
+                        )
+                        .build();
+
+        NotificationOutboxException exception =
+                assertThrows(
+                        NotificationOutboxException.class,
+                        () ->
+                                templateService
+                                        .generateMessage(
+                                                NotificationOutbox
+                                                        .NotificationTemplateType
+                                                        .MATCHING_TENDER_PUBLISHED,
+                                                context
+                                        )
+                );
+
+        assertEquals(
+                "Tender reference is required for "
+                        + "MATCHING_TENDER_PUBLISHED.",
                 exception.getMessage()
         );
     }

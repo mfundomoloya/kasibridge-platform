@@ -18,6 +18,8 @@ public class TenderResponse {
     private String evaluationCriteria;
     private BigDecimal budgetAmount;
     private String buyerOrgId;
+    private String requiredBusinessType;
+    private String serviceArea;
     private Long createdByUserId;
     private Tender.TenderStatus status;
     private String specificationHash;
@@ -35,6 +37,8 @@ public class TenderResponse {
                 .evaluationCriteria(tender.getEvaluationCriteria())
                 .budgetAmount(tender.getBudgetAmount())
                 .buyerOrgId(tender.getBuyerOrgId())
+                .requiredBusinessType(tender.getRequiredBusinessType())
+                .serviceArea(tender.getServiceArea())
                 .createdByUserId(tender.getCreatedByUserId())
                 .status(tender.getStatus())
                 .specificationHash(tender.getSpecificationHash())

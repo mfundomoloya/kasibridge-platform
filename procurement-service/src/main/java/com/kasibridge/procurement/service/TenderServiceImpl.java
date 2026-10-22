@@ -29,6 +29,7 @@ public class TenderServiceImpl implements TenderService {
     private final SpecificationHashService hashService;
     private final ProcurementAuditService auditService;
     private final BidEvaluationScoreRepository scoreRepository;
+    private final ProcurementNotificationService procurementNotificationService;
 
     @Override
     @Transactional
@@ -42,6 +43,8 @@ public class TenderServiceImpl implements TenderService {
                 .evaluationCriteria(request.getEvaluationCriteria())
                 .budgetAmount(request.getBudgetAmount())
                 .buyerOrgId(request.getBuyerOrgId())
+                .requiredBusinessType(request.getRequiredBusinessType().trim())
+                .serviceArea(request.getServiceArea().trim())
                 .createdByUserId(request.getCreatedByUserId())
                 .status(Tender.TenderStatus.DRAFT)
                 .build();
@@ -112,6 +115,8 @@ public class TenderServiceImpl implements TenderService {
                 "Tender published with specification hash",
                 "Specification hash: " + saved.getSpecificationHash()
         );
+
+        procurementNotificationService.queueMatchingTenderPublished(saved);
 
         log.info("Tender id={} published with specificationHash={}", saved.getId(), hash);
 
@@ -300,5 +305,7 @@ public class TenderServiceImpl implements TenderService {
                 .substring(0, 8)
                 .toUpperCase();
     }
+
+
 
 }

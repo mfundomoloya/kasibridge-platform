@@ -42,6 +42,9 @@ public class WhatsAppMessageTemplateServiceImpl implements WhatsAppMessageTempla
             case BID_COMPLIANCE_FAILED ->
                     buildBidComplianceFailed(context);
 
+            case MATCHING_TENDER_PUBLISHED ->
+                    buildMatchingTenderPublished(context);
+
             case BID_WITHDRAWN ->
                     buildBidWithdrawn(context);
 
@@ -183,6 +186,42 @@ public class WhatsAppMessageTemplateServiceImpl implements WhatsAppMessageTempla
                 + " Log in to KasiBridge to review the result and available support options.";
     }
 
+    private String buildMatchingTenderPublished(WhatsAppTemplateContext context) {
+        requireValue(
+                context.getTenderId(),
+                "Tender ID is required for "
+                        + "MATCHING_TENDER_PUBLISHED."
+        );
+
+        requireValue(
+                context.getTenderReference(),
+                "Tender reference is required for "
+                        + "MATCHING_TENDER_PUBLISHED."
+        );
+
+        requireValue(
+                context.getTenderTitle(),
+                "Tender title is required for "
+                        + "MATCHING_TENDER_PUBLISHED."
+        );
+
+        String recipientName =
+                greetingName(
+                        context.getRecipientName()
+                );
+
+        return "Hi "
+                + recipientName
+                + ", a new tender matching your "
+                + "business profile has been published: "
+                + context.getTenderReference()
+                + " - "
+                + context.getTenderTitle()
+                + ". Log in to KasiBridge to review "
+                + "the opportunity and submission requirements.";
+    }
+
+
     private String buildBidWithdrawn(WhatsAppTemplateContext context) {
         requireValue(
                 context.getBidReference(),
@@ -249,6 +288,7 @@ public class WhatsAppMessageTemplateServiceImpl implements WhatsAppMessageTempla
 
         return "the tender";
     }
+
 
     private String greetingName(String value) {
         return hasText(value)

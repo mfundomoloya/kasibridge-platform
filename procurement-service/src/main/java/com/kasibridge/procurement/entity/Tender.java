@@ -13,7 +13,10 @@ import java.time.LocalDateTime;
         indexes = {
                 @Index(name = "idx_tender_reference", columnList = "tender_reference"),
                 @Index(name = "idx_tender_status", columnList = "status"),
-                @Index(name = "idx_tender_buyer_org", columnList = "buyer_org_id")
+                @Index(name = "idx_tender_buyer_org", columnList = "buyer_org_id"),
+                @Index(name = "idx_tender_required_business_type", columnList = "required_business_type"),
+                @Index(name = "idx_tender_service_area", columnList = "service_area"),
+                @Index(name = "idx_tender_matching_criteria", columnList = "status, required_business_type, service_area")
         }
 )
 @Getter
@@ -44,6 +47,12 @@ public class Tender {
 
     @Column(name = "buyer_org_id", nullable = false, length = 100)
     private String buyerOrgId;
+
+    @Column(name = "required_business_type", nullable = false, length = 150)
+    private String requiredBusinessType;
+
+    @Column(name = "service_area", nullable = false, length = 150)
+    private String serviceArea;
 
     @Column(name = "created_by_user_id", nullable = false)
     private Long createdByUserId;

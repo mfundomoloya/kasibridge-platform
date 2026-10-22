@@ -26,6 +26,12 @@ public interface TraderProfileRepository extends JpaRepository<TraderProfile, Lo
     // Find by onboarding channel (WEB vs WHATSAPP)
     List<TraderProfile> findByOnboardingChannel(TraderProfile.OnboardingChannel channel);
 
+    List<TraderProfile> findByBusinessTypeIgnoreCaseAndTradingAreaIgnoreCaseAndStatus(
+            String businessType,
+            String tradingArea,
+            TraderProfile.ProfileStatus status
+    );
+
     // Check if phone already registered
     boolean existsByPhoneNumber(String phoneNumber);
 

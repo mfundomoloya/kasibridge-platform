@@ -31,6 +31,8 @@ public interface TraderProfileService {
     // Get all profiles by status
     List<TraderProfileResponse> getProfilesByStatus(TraderProfile.ProfileStatus status);
 
+    List<TraderProfileResponse> findActiveMatchingProfiles(String businessType, String tradingArea);
+
     // Get all profiles by onboarding channel
     List<TraderProfileResponse> getProfilesByChannel(TraderProfile.OnboardingChannel channel);
 

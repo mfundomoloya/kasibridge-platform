@@ -6,6 +6,7 @@ import com.kasibridge.procurement.exception.SupportTicketException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -15,6 +16,9 @@ import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
+import org.springframework.web.util.UriComponentsBuilder;
+
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -174,6 +178,152 @@ public class TradeProfileClientImpl implements TraderProfileClient {
                 traderProfileId,
                 true
         );
+    }
+
+    @Override
+    public List<TraderProfileClientResponse> findActiveMatchingProfilesAsSystem(String businessType, String tradingArea) {
+        return findActiveMatchingProfilesAsSystem(
+                businessType,
+                tradingArea,
+                true
+        );
+    }
+
+    private List<TraderProfileClientResponse>
+    findActiveMatchingProfilesAsSystem(
+            String businessType,
+            String tradingArea,
+            boolean retryOnUnauthorized
+    ) {
+        if (
+                businessType == null
+                        || businessType.isBlank()
+        ) {
+            throw new IllegalArgumentException(
+                    "Business type is required "
+                            + "for internal trader matching."
+            );
+        }
+
+        if (
+                tradingArea == null
+                        || tradingArea.isBlank()
+        ) {
+            throw new IllegalArgumentException(
+                    "Trading area is required "
+                            + "for internal trader matching."
+            );
+        }
+
+        String url =
+                UriComponentsBuilder
+                        .fromUriString(
+                                traderProfileBaseUrl
+                                        + "/api/v1/traders/"
+                                        + "internal/matches"
+                        )
+                        .queryParam(
+                                "businessType",
+                                businessType.trim()
+                        )
+                        .queryParam(
+                                "tradingArea",
+                                tradingArea.trim()
+                        )
+                        .build()
+                        .encode()
+                        .toUriString();
+
+        try {
+            String systemToken =
+                    systemAccessTokenProvider
+                            .getAccessToken();
+
+            HttpHeaders headers =
+                    new HttpHeaders();
+
+            headers.setBearerAuth(
+                    systemToken
+            );
+
+            HttpEntity<Void> entity =
+                    new HttpEntity<>(
+                            headers
+                    );
+
+            ResponseEntity<
+                    List<TraderProfileClientResponse>
+                    > response =
+                    restTemplate.exchange(
+                            url,
+                            HttpMethod.GET,
+                            entity,
+                            new ParameterizedTypeReference<>() {
+                            }
+                    );
+
+            List<TraderProfileClientResponse> body =
+                    response.getBody();
+
+            return body == null
+                    ? List.of()
+                    : List.copyOf(body);
+
+        } catch (
+                HttpClientErrorException.Unauthorized
+                        exception
+        ) {
+            if (retryOnUnauthorized) {
+                log.warn(
+                        "Internal matching-trader token "
+                                + "was rejected. Refreshing "
+                                + "the token and retrying."
+                );
+
+                systemAccessTokenProvider
+                        .invalidateToken();
+
+                return findActiveMatchingProfilesAsSystem(
+                        businessType,
+                        tradingArea,
+                        false
+                );
+            }
+
+            throw new SupportTicketException(
+                    "Unable to authenticate internal "
+                            + "trader matching lookup."
+            );
+
+        } catch (
+                HttpClientErrorException.Forbidden
+                        exception
+        ) {
+            throw new SupportTicketException(
+                    "The procurement service is not "
+                            + "authorised to search "
+                            + "matching trader profiles."
+            );
+
+        } catch (SupportTicketException exception) {
+            throw exception;
+
+        } catch (Exception exception) {
+            log.error(
+                    "Internal matching-trader lookup "
+                            + "failed: businessType={} "
+                            + "tradingArea={} url={}",
+                    businessType,
+                    tradingArea,
+                    url,
+                    exception
+            );
+
+            throw new SupportTicketException(
+                    "Unable to load matching "
+                            + "trader profiles."
+            );
+        }
     }
 
     private String extractBearerToken() {

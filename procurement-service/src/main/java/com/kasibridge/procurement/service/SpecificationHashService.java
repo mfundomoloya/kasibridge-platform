@@ -10,13 +10,21 @@ import java.security.MessageDigest;
 public class SpecificationHashService {
 
     public String generateHash(Tender tender) {
-        String source = String.join("|",
-                safe(tender.getTitle()),
-                safe(tender.getDescription()),
-                safe(tender.getEvaluationCriteria()),
-                tender.getBudgetAmount() != null ? tender.getBudgetAmount().toPlainString() : "",
-                safe(tender.getBuyerOrgId())
-        );
+        String source =
+                String.join(
+                        "|",
+                        safe(tender.getTitle()),
+                        safe(tender.getDescription()),
+                        safe(tender.getEvaluationCriteria()),
+                        tender.getBudgetAmount() != null
+                                ? tender
+                                .getBudgetAmount()
+                                .toPlainString()
+                                : "",
+                        safe(tender.getBuyerOrgId()),
+                        safe(tender.getRequiredBusinessType()),
+                        safe(tender.getServiceArea())
+                );
 
         return sha256(source);
     }

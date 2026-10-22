@@ -29,14 +29,10 @@ public class TraderProfileController {
 
     // api/v1/traders
     @PostMapping
-    public ResponseEntity<TraderProfileResponse>
-    createProfile(
-            @AuthenticationPrincipal
-            KasiBridgeUserPrincipal principal,
-
-            @Valid
-            @RequestBody
-            CreateTraderRequest request
+    public ResponseEntity<TraderProfileResponse> createProfile(@AuthenticationPrincipal KasiBridgeUserPrincipal principal,
+                                                               @Valid
+                                                               @RequestBody
+                                                               CreateTraderRequest request
     ) {
         request.setUserId(
                 principal.userId()
@@ -57,11 +53,7 @@ public class TraderProfileController {
     }
 
     @GetMapping("/me")
-    public ResponseEntity<TraderProfileResponse>
-    getMyProfile(
-            @AuthenticationPrincipal
-            KasiBridgeUserPrincipal principal
-    ) {
+    public ResponseEntity<TraderProfileResponse> getMyProfile(@AuthenticationPrincipal KasiBridgeUserPrincipal principal) {
         log.info(
                 "GET /api/v1/traders/me - "
                         + "fetching authenticated trader profile"
@@ -75,14 +67,10 @@ public class TraderProfileController {
     }
 
     @PutMapping("/me")
-    public ResponseEntity<TraderProfileResponse>
-    updateMyProfile(
-            @AuthenticationPrincipal
-            KasiBridgeUserPrincipal principal,
-
-            @Valid
-            @RequestBody
-            UpdateTraderRequest request
+    public ResponseEntity<TraderProfileResponse> updateMyProfile(@AuthenticationPrincipal KasiBridgeUserPrincipal principal,
+                                                                 @Valid
+                                                                 @RequestBody
+                                                                 UpdateTraderRequest request
     ) {
         TraderProfileResponse currentProfile =
                 service.getProfileByUserId(
@@ -187,6 +175,28 @@ public class TraderProfileController {
         log.info("PATCH /api/v1/traders/{}/link-user/{} - linking trader profile to auth user", id, userId);
 
         return ResponseEntity.ok(service.linkUser(id, userId));
+    }
+
+    @GetMapping("/internal/matches")
+    public ResponseEntity<List<TraderProfileResponse>> getInternalMatchingProfiles(@RequestParam("businessType")
+                                                                                       String businessType,
+
+                                                                                   @RequestParam("tradingArea")
+                                                                                   String tradingArea
+    ) {
+        log.info(
+                "GET /api/v1/traders/internal/matches "
+                        + "- businessType={} tradingArea={}",
+                businessType,
+                tradingArea
+        );
+
+        return ResponseEntity.ok(
+                service.findActiveMatchingProfiles(
+                        businessType,
+                        tradingArea
+                )
+        );
     }
 
     @GetMapping("/internal/{traderId}")

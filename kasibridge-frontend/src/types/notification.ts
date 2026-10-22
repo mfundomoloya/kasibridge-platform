@@ -19,6 +19,7 @@ export type NotificationTemplateType =
     | 'BID_RECEIVED'
     | 'BID_COMPLIANCE_PASSED'
     | 'BID_COMPLIANCE_FAILED'
+    | 'MATCHING_TENDER_PUBLISHED'
     | 'TENDER_AWARDED'
     | 'PROCUREMENT_ANOMALY_DETECTED'
     | 'BID_WITHDRAWN'
@@ -81,6 +82,8 @@ export const NOTIFICATION_TEMPLATE_LABELS:
         'Bid compliance passed',
     BID_COMPLIANCE_FAILED:
         'Bid compliance failed',
+    MATCHING_TENDER_PUBLISHED:
+        'Matching tender published',
     TENDER_AWARDED:
         'Tender awarded',
     PROCUREMENT_ANOMALY_DETECTED:

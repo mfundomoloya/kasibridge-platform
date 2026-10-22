@@ -101,16 +101,12 @@ class BidServiceImplTest {
         publishedTender =
                 Tender.builder()
                         .id(TENDER_ID)
-                        .tenderReference(
-                                "KB-TENDER-436FC79F"
+                        .tenderReference("KB-TENDER-436FC79F")
+                        .title("Supply of ICT Equipment for Municipal Offices"
                         )
-                        .title(
-                                "Supply of ICT Equipment "
-                                        + "for Municipal Offices"
-                        )
-                        .status(
-                                Tender.TenderStatus.PUBLISHED
-                        )
+                        .requiredBusinessType("Road Rehabilitation and Maintenance")
+                        .serviceArea("Gauteng")
+                        .status(Tender.TenderStatus.PUBLISHED)
                         .build();
 
         compliantBid =

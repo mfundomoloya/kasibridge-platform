@@ -35,4 +35,8 @@ public interface ProcurementNotificationService {
             Bid bid,
             Tender tender
     );
+
+    void queueMatchingTenderPublished(
+            Tender tender
+    );
 }
