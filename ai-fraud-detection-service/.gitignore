@@ -29,5 +29,29 @@ build/
 !**/src/main/**/build/
 !**/src/test/**/build/
 
+
+# Python ML environment
+ml/.venv/
+ml/**/__pycache__/
+ml/**/*.pyc
+ml/.ipynb_checkpoints/
+
+# Downloaded Kaggle data
+!ml/data/raw/
+ml/data/raw/*
+!ml/data/raw/.gitkeep
+
+# Generated processed datasets
+ml/data/processed/*.csv
+!ml/data/processed/.gitkeep
+
+# Generated model artifacts
+ml/artifacts/*
+!ml/artifacts/.gitkeep
+
+# Local inspection outputs
+ml/data/dataset_file_listing.txt
+ml/data/dataset_inspection.txt
+
 ### VS Code ###
 .vscode/
