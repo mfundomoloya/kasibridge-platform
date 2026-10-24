@@ -3,6 +3,7 @@ package com.kasibridge.fraud.controller;
 import com.kasibridge.fraud.dto.*;
 import com.kasibridge.fraud.entity.FraudAlert;
 import com.kasibridge.fraud.service.FraudDetectionService;
+import com.kasibridge.fraud.service.InvoiceFraudPredictionService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -32,9 +33,12 @@ import java.util.List;
 public class FraudController {
 
     private final FraudDetectionService service;
+    private final InvoiceFraudPredictionService invoiceFraudPredictionService;
 
-    public FraudController(FraudDetectionService service) {
+    public FraudController(FraudDetectionService service,
+                           InvoiceFraudPredictionService invoiceFraudPredictionService) {
         this.service = service;
+        this.invoiceFraudPredictionService = invoiceFraudPredictionService;
     }
 
     @Operation(
@@ -55,6 +59,32 @@ public class FraudController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
+    @Operation(
+            summary =
+                    "Predict procurement invoice fraud risk",
+            description =
+                    "Calls the validated supervised-learning "
+                            + "model and returns a procurement "
+                            + "invoice risk classification."
+    )
+    @Tag(name = "Fraud Analysis")
+    @PostMapping("/invoices/predict")
+    public ResponseEntity<
+            InvoiceFraudPredictionResponse
+            > predictInvoiceFraud(
+            @Valid
+            @RequestBody
+            InvoiceFraudPredictionRequest request
+    ) {
+        log.info(
+                "POST /api/v1/fraud/invoices/predict"
+        );
+
+        return ResponseEntity.ok(
+                invoiceFraudPredictionService
+                        .predict(request)
+        );
+    }
 
     @Operation(summary = "Get all fraud alerts (paginated)")
     @Tag(name = "Alert Queries")

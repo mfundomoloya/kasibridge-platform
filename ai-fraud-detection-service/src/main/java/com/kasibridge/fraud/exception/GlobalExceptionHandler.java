@@ -7,9 +7,12 @@ import org.springframework.web.ErrorResponse;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import com.kasibridge.fraud.exception.MlInferenceException;
+import org.springframework.http.HttpStatus;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 @RestControllerAdvice
@@ -38,6 +41,43 @@ public class GlobalExceptionHandler extends RuntimeException {
         );
         response.setFieldErrors(fieldErrors);
         return ResponseEntity.badRequest().body(response);
+    }
+
+    @ExceptionHandler(
+            MlInferenceException.class
+    )
+    public ResponseEntity<
+            Map<String, Object>
+            > handleMlInferenceException(
+            MlInferenceException exception
+    ) {
+        Map<String, Object> response =
+                new LinkedHashMap<>();
+
+        response.put(
+                "status",
+                HttpStatus.SERVICE_UNAVAILABLE
+                        .value()
+        );
+
+        response.put(
+                "error",
+                "ML inference unavailable"
+        );
+
+        response.put(
+                "message",
+                exception.getMessage()
+        );
+
+        response.put(
+                "timestamp",
+                LocalDateTime.now()
+        );
+
+        return ResponseEntity
+                .status(HttpStatus.SERVICE_UNAVAILABLE)
+                .body(response);
     }
 
     @ExceptionHandler(Exception.class)
