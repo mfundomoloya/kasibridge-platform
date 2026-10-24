@@ -7,3 +7,8 @@ imbalanced-learn
 matplotlib
 seaborn
 joblib
+fastapi
+uvicorn[standard]
+pydantic
+pytest
+httpx
