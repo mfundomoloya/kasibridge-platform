@@ -53,5 +53,23 @@ ml/artifacts/*
 ml/data/dataset_file_listing.txt
 ml/data/dataset_inspection.txt
 
+ml/data/dataset_discovery_state.json
+ml/data/dataset_discovery_error.txt
+ml/data/dataset_target_inspection.txt
+
+ml/artifacts/*.joblib
+ml/artifacts/*.pkl
+ml/artifacts/*.onnx
+
+# Generated ML artifacts
+!ml/artifacts/model_metrics.csv
+!ml/artifacts/model_comparison_presentation.csv
+!ml/artifacts/model_metadata.json
+!ml/artifacts/feature_schema.json
+!ml/artifacts/best_model.sha256
+!ml/artifacts/training_environment.txt
+!ml/artifacts/saved_model_validation.txt
+
+
 ### VS Code ###
 .vscode/

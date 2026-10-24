@@ -1,0 +1,37 @@
+Saved model validation
+========================================================================
+Model: Random Forest
+Experiment: Hybrid full-signal
+Rows: 30,000
+
+              precision    recall  f1-score   support
+
+  LEGITIMATE     0.9810    0.9948    0.9878     23245
+   HIGH_RISK     0.9810    0.9337    0.9568      6755
+
+    accuracy                         0.9810     30000
+   macro avg     0.9810    0.9642    0.9723     30000
+weighted avg     0.9810    0.9810    0.9808     30000
+
+Confusion matrix:
+[[23123   122]
+ [  448  6307]]
+
+Precision: 0.981023
+Recall: 0.933679
+F1: 0.956766
+ROC-AUC: 0.963593
+Average Precision: 0.943507
+
+Example predictions:
+ invoice_id  invoice_amount supplier_country  is_fraud  prediction  risk_probability
+INV_0148643        20346.26               ML         1           1          0.974236
+INV_0205388         2599.13               TR         0           0          0.040904
+INV_0105834        13255.16               TJ         0           0          0.058162
+INV_0096745         2299.01               LR         0           0          0.131629
+INV_0293814        11155.22               LK         1           0          0.052723
+INV_0075833         8823.37               AF         0           0          0.085954
+INV_0199404         4733.42               IQ         1           0          0.047552
+INV_0293513          732.57               IT         0           0          0.159882
+INV_0241922        11480.96               DO         0           0          0.033105
+INV_0258730         4385.76               MV         0           0          0.050536

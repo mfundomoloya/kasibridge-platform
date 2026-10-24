@@ -1,0 +1,15 @@
+experiment,model,accuracy,precision,recall,f1,roc_auc,false_positive_rate,training_seconds
+Hybrid full-signal,Random Forest,0.9799,0.9786,0.9312,0.9543,0.9615,0.0059,5.5823
+Hybrid full-signal,Logistic Regression,0.9659,0.9381,0.9087,0.9232,0.9619,0.0175,6.7616
+Hybrid full-signal,Gradient Boosting,0.9788,0.9737,0.9312,0.952,0.9622,0.0073,3.0646
+Hybrid full-signal,Support Vector Machine,0.9696,0.9561,0.907,0.9309,0.9609,0.0121,0.8039
+Hybrid full-signal,Decision Tree,0.9768,0.9637,0.9324,0.9478,0.964,0.0102,1.2931
+Leakage-safe behavioural,Gradient Boosting,0.9543,0.903,0.8937,0.8983,0.9553,0.028,2.7553
+Hybrid full-signal,K-Nearest Neighbours,0.9433,0.9745,0.7688,0.8595,0.95,0.0059,0.2246
+Hybrid full-signal,Gaussian Naive Bayes,0.9595,0.9147,0.9052,0.9099,0.9539,0.0246,0.2911
+Leakage-safe behavioural,Random Forest,0.9257,0.9214,0.7336,0.8168,0.939,0.0183,3.7531
+Leakage-safe behavioural,Decision Tree,0.9157,0.7995,0.8364,0.8176,0.9215,0.0611,0.7006
+Leakage-safe behavioural,Logistic Regression,0.5859,0.2926,0.5889,0.391,0.6188,0.415,8.2319
+Leakage-safe behavioural,K-Nearest Neighbours,0.7687,0.452,0.1155,0.184,0.6015,0.0408,0.1686
+Leakage-safe behavioural,Support Vector Machine,0.5792,0.2891,0.5924,0.3886,0.6162,0.4247,0.7249
+Leakage-safe behavioural,Gaussian Naive Bayes,0.7428,0.3309,0.1364,0.1932,0.6338,0.0804,0.2175

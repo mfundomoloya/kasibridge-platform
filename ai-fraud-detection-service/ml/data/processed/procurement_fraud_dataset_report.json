@@ -1,0 +1,43 @@
+{
+  "rows": 300000,
+  "columns": 39,
+  "positive_label_count": 66410,
+  "negative_label_count": 233590,
+  "fraud_rate": 0.22136666666666666,
+  "non_none_fraud_type_count": 62964,
+  "positive_label_with_none_type": 4723,
+  "negative_label_with_fraud_type": 1277,
+  "split_distribution": {
+    "test": 60000,
+    "train": 210000,
+    "val": 30000
+  },
+  "label_by_split": [
+    {
+      "split": "test",
+      "rows": 60000,
+      "fraud_count": 13510,
+      "fraud_rate": 0.22516666666666665
+    },
+    {
+      "split": "train",
+      "rows": 210000,
+      "fraud_count": 46127,
+      "fraud_rate": 0.21965238095238096
+    },
+    {
+      "split": "val",
+      "rows": 30000,
+      "fraud_count": 6773,
+      "fraud_rate": 0.22576666666666667
+    }
+  ],
+  "fraud_type_distribution": {
+    "NONE": 237036,
+    "SPLIT": 42346,
+    "GHOST_SUPPLIER": 12588,
+    "INFLATED": 5581,
+    "DOC_TAMPER": 2379,
+    "DUPLICATE": 70
+  }
+}

@@ -1,0 +1,40 @@
+{
+  "numeric_features": [
+    "invoice_amount",
+    "submission_hour",
+    "supplier_invoice_count_30d",
+    "supplier_avg_amount_90d",
+    "invoice_amount_zscore",
+    "supplier_age_days",
+    "avg_invoice_amount",
+    "annual_budget",
+    "ocr_total_extracted",
+    "invoice_month",
+    "invoice_day_of_week",
+    "invoice_day_of_month",
+    "invoice_is_weekend",
+    "has_invoice_image",
+    "has_ocr_result",
+    "ocr_amount_difference",
+    "ocr_amount_difference_abs",
+    "ocr_amount_difference_ratio",
+    "duplicate_invoice_flag",
+    "split_invoice_flag",
+    "late_night_submission_flag",
+    "supplier_risk_score",
+    "blacklisted_flag",
+    "image_tamper_flag"
+  ],
+  "categorical_features": [
+    "payment_terms",
+    "invoice_type",
+    "supplier_country",
+    "region"
+  ],
+  "target": "is_fraud",
+  "excluded_label_fields": [
+    "fraud_type",
+    "fraud_tags",
+    "explanations"
+  ]
+}
