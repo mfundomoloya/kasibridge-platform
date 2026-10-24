@@ -85,6 +85,14 @@ import {
 } from './pages/TicketAiAssessmentsPage'
 
 import {
+    KasiBridgeShowcasePage,
+} from './pages/KasiBridgeShowcasePage'
+
+import {
+    KasiBridgePrototypePage,
+} from './pages/KasiBridgePrototypePage'
+
+import {
     UnauthorizedPage,
 } from './pages/UnauthorizedPage'
 
@@ -100,6 +108,22 @@ function App() {
                     />
                 }
             />
+
+
+            <Route
+                path="/showcase"
+                element={
+                        <KasiBridgeShowcasePage />
+                }
+            />
+
+            <Route
+                path="/prototype"
+                element={
+                    <KasiBridgePrototypePage />
+                }
+            />
+
 
             <Route
                 path="/login"

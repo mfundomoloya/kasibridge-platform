@@ -87,6 +87,15 @@ export function AppLayout({
 
     const traderNavigation:
         NavigationItem[] = [
+
+        {
+            label: 'Showcase',
+            path: '/showcase',
+        },
+        {
+            label: 'Dashboard',
+            path: '/dashboard',
+        },
         {
             label: 'Dashboard',
             path: '/dashboard',

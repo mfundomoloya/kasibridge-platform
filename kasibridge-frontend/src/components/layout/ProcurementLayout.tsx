@@ -22,6 +22,15 @@ interface ProcurementNavigationItem {
 
 const procurementNavigation:
     ProcurementNavigationItem[] = [
+
+    {
+        label: 'Showcase',
+        path: '/showcase',
+    },
+    {
+        label: 'Procurement overview',
+        path: '/procurement',
+    },
     {
         label: 'Procurement overview',
         path: '/procurement',
