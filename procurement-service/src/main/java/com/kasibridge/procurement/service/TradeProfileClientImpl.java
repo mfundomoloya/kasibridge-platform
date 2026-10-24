@@ -18,7 +18,9 @@ import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import java.net.URI;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -189,8 +191,7 @@ public class TradeProfileClientImpl implements TraderProfileClient {
         );
     }
 
-    private List<TraderProfileClientResponse>
-    findActiveMatchingProfilesAsSystem(
+    private List<TraderProfileClientResponse> findActiveMatchingProfilesAsSystem(
             String businessType,
             String tradingArea,
             boolean retryOnUnauthorized
@@ -215,7 +216,7 @@ public class TradeProfileClientImpl implements TraderProfileClient {
             );
         }
 
-        String url =
+        URI uri =
                 UriComponentsBuilder
                         .fromUriString(
                                 traderProfileBaseUrl
@@ -232,7 +233,7 @@ public class TradeProfileClientImpl implements TraderProfileClient {
                         )
                         .build()
                         .encode()
-                        .toUriString();
+                        .toUri();
 
         try {
             String systemToken =
@@ -255,7 +256,7 @@ public class TradeProfileClientImpl implements TraderProfileClient {
                     List<TraderProfileClientResponse>
                     > response =
                     restTemplate.exchange(
-                            url,
+                            uri,
                             HttpMethod.GET,
                             entity,
                             new ParameterizedTypeReference<>() {
@@ -295,8 +296,7 @@ public class TradeProfileClientImpl implements TraderProfileClient {
                             + "trader matching lookup."
             );
 
-        } catch (
-                HttpClientErrorException.Forbidden
+        } catch (HttpClientErrorException.Forbidden
                         exception
         ) {
             throw new SupportTicketException(
@@ -312,10 +312,10 @@ public class TradeProfileClientImpl implements TraderProfileClient {
             log.error(
                     "Internal matching-trader lookup "
                             + "failed: businessType={} "
-                            + "tradingArea={} url={}",
+                            + "tradingArea={} uri={}",
                     businessType,
                     tradingArea,
-                    url,
+                    uri,
                     exception
             );
 

@@ -497,24 +497,29 @@ class TenderPublicationNotificationTransactionIntegrationTest {
                 )
         ).when(
                 notificationOutboxService
-        ).queueNotification(
+        ).queueMatchingTenderNotification(
                 eq(
-                        NotificationOutbox
-                                .NotificationChannel
-                                .WHATSAPP
+                        firstTrader.getUserId()
                 ),
                 eq(
-                        NotificationOutbox
-                                .NotificationTemplateType
-                                .MATCHING_TENDER_PUBLISHED
+                        firstTrader.getPhoneNumber()
                 ),
-                eq(firstTrader.getUserId()),
-                eq(firstTrader.getPhoneNumber()),
-                eq(firstTrader.getEmail()),
+                eq(
+                        firstTrader.getEmail()
+                ),
                 any(String.class),
-                eq(draftTender.getId()),
-                nullable(Long.class),
-                nullable(Long.class)
+                eq(
+                        draftTender.getId()
+                ),
+                eq(
+                        firstTrader.getFullName()
+                ),
+                eq(
+                        draftTender.getTenderReference()
+                ),
+                eq(
+                        draftTender.getTitle()
+                )
         );
 
         long auditCountBefore =
@@ -590,7 +595,6 @@ class TenderPublicationNotificationTransactionIntegrationTest {
                 survivingPublicationAudits
         );
     }
-
     @Test
     void publishTender_shouldRemainPublishedAndScheduleRetryWhenWhatsAppFails() {
         ReflectionTestUtils.setField(

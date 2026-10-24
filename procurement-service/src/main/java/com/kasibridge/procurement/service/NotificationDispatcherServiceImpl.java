@@ -12,6 +12,9 @@ import org.springframework.beans.factory.annotation.Value;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
+import com.kasibridge.procurement.dto.WhatsAppDeliveryCommand;
+import com.kasibridge.procurement.dto.TraderProfileClientResponse;
+import com.kasibridge.procurement.entity.Tender;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -198,8 +201,8 @@ public class NotificationDispatcherServiceImpl implements NotificationDispatcher
 
         WhatsAppDeliveryResult result =
                 whatsAppProvider.sendMessage(
-                        notification.getRecipientPhone(),
-                        notification.getMessage()
+                        buildWhatsAppDeliveryCommand(
+                                notification)
                 );
 
         if (result == null) {
@@ -244,6 +247,40 @@ public class NotificationDispatcherServiceImpl implements NotificationDispatcher
 
         return false;
     }
+
+    private WhatsAppDeliveryCommand
+    buildWhatsAppDeliveryCommand(
+            NotificationOutbox notification
+    ) {
+        return WhatsAppDeliveryCommand.builder()
+                .notificationId(
+                        notification.getId()
+                )
+                .templateType(
+                        notification.getTemplateType()
+                )
+                .recipientPhone(
+                        notification.getRecipientPhone()
+                )
+                .renderedMessage(
+                        notification.getMessage()
+                )
+                .recipientName(
+                        notification
+                                .getTemplateRecipientName()
+                )
+                .tenderReference(
+                        notification
+                                .getTemplateTenderReference()
+                )
+                .tenderTitle(
+                        notification
+                                .getTemplateTenderTitle()
+                )
+                .build();
+    }
+
+
     private void markDispatchFailed(
             Long notificationId,
             String failureReason

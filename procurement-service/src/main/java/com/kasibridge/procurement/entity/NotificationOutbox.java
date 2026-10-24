@@ -70,6 +70,15 @@ public class NotificationOutbox {
     @Column(name = "message", nullable = false, length = 3000)
     private String message;
 
+    @Column(name = "template_recipient_name", length = 150)
+    private String templateRecipientName;
+
+    @Column(name = "template_tender_reference", length = 40)
+    private String templateTenderReference;
+
+    @Column(name = "template_tender_title", length = 150)
+    private String templateTenderTitle;
+
     @Column(name = "related_tender_id")
     private Long relatedTenderId;
 

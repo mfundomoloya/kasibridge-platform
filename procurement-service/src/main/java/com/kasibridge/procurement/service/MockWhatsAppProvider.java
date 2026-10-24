@@ -1,5 +1,6 @@
 package com.kasibridge.procurement.service;
 
+import com.kasibridge.procurement.dto.WhatsAppDeliveryCommand;
 import com.kasibridge.procurement.dto.WhatsAppDeliveryResult;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
@@ -28,7 +29,7 @@ public class MockWhatsAppProvider implements WhatsAppProvider{
     private boolean forceFailure;
 
     @Override
-    public WhatsAppDeliveryResult sendMessage(String recipientPhone, String message) {
+    public WhatsAppDeliveryResult sendMessage(WhatsAppDeliveryCommand command) {
 
         if(!enabled) {
             return WhatsAppDeliveryResult.failure(
@@ -40,19 +41,19 @@ public class MockWhatsAppProvider implements WhatsAppProvider{
                     "Mock WhatsApp provider failure was force by configuration");
         }
 
-        if(recipientPhone == null || recipientPhone.isBlank()) {
+        if(command.getRecipientPhone() == null || command.getRecipientPhone().isBlank()) {
             return WhatsAppDeliveryResult.failure(
                     "Recipient phone number is missing."
             );
         }
 
-        if(!isValidPhoneNumber(recipientPhone)){
+        if(!isValidPhoneNumber(command.getRecipientPhone())){
             return WhatsAppDeliveryResult.failure(
                     "Recipient phone number is invalid."
             );
         }
 
-        if(message==null || message.isBlank()) {
+        if(command.getRenderedMessage()==null || command.getRenderedMessage().isBlank()) {
             return WhatsAppDeliveryResult.failure(
                     "WhatsApp message is empty."
             );
@@ -62,8 +63,8 @@ public class MockWhatsAppProvider implements WhatsAppProvider{
 
         log.info("MOCK WHATSAPP SENT: providerMessageId={} recipientPhone={} message={}",
                 providerMessageId,
-                maskPhoneNumber(recipientPhone),
-                message);
+                maskPhoneNumber(command.getRecipientPhone()),
+                command.getRenderedMessage());
 
         return WhatsAppDeliveryResult.success(providerMessageId);
     }

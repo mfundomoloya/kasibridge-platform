@@ -438,6 +438,155 @@ public class NotificationOutboxServiceImpl implements  NotificationOutboxService
         return NotificationOutboxResponse.from(saved);
     }
 
+    @Override
+    @Transactional
+    public NotificationOutboxResponse
+    queueMatchingTenderNotification(
+            Long recipientUserId,
+            String recipientPhone,
+            String recipientEmail,
+            String message,
+            Long relatedTenderId,
+            String recipientName,
+            String tenderReference,
+            String tenderTitle
+    ) {
+        if (recipientUserId == null) {
+            throw new NotificationOutboxException(
+                    "Recipient user ID is required "
+                            + "for a matching-tender notification."
+            );
+        }
+
+        if (
+                recipientPhone == null
+                        || recipientPhone.isBlank()
+        ) {
+            throw new NotificationOutboxException(
+                    "Recipient phone number is required "
+                            + "for a matching-tender notification."
+            );
+        }
+
+        if (
+                message == null
+                        || message.isBlank()
+        ) {
+            throw new NotificationOutboxException(
+                    "Notification message is required."
+            );
+        }
+
+        if (relatedTenderId == null) {
+            throw new NotificationOutboxException(
+                    "Related tender ID is required "
+                            + "for a matching-tender notification."
+            );
+        }
+
+        if (
+                recipientName == null
+                        || recipientName.isBlank()
+        ) {
+            throw new NotificationOutboxException(
+                    "Recipient name is required for "
+                            + "MATCHING_TENDER_PUBLISHED."
+            );
+        }
+
+        if (
+                tenderReference == null
+                        || tenderReference.isBlank()
+        ) {
+            throw new NotificationOutboxException(
+                    "Tender reference is required for "
+                            + "MATCHING_TENDER_PUBLISHED."
+            );
+        }
+
+        if (
+                tenderTitle == null
+                        || tenderTitle.isBlank()
+        ) {
+            throw new NotificationOutboxException(
+                    "Tender title is required for "
+                            + "MATCHING_TENDER_PUBLISHED."
+            );
+        }
+
+        NotificationOutbox notification =
+                NotificationOutbox.builder()
+                        .notificationReference(
+                                generateNotificationReference()
+                        )
+                        .channel(
+                                NotificationOutbox
+                                        .NotificationChannel
+                                        .WHATSAPP
+                        )
+                        .templateType(
+                                NotificationOutbox
+                                        .NotificationTemplateType
+                                        .MATCHING_TENDER_PUBLISHED
+                        )
+                        .status(
+                                NotificationOutbox
+                                        .NotificationStatus
+                                        .PENDING
+                        )
+                        .recipientUserId(
+                                recipientUserId
+                        )
+                        .recipientPhone(
+                                recipientPhone.trim()
+                        )
+                        .recipientEmail(
+                                recipientEmail == null
+                                        || recipientEmail.isBlank()
+                                        ? null
+                                        : recipientEmail.trim()
+                        )
+                        .message(
+                                message.trim()
+                        )
+                        .relatedTenderId(
+                                relatedTenderId
+                        )
+                        .relatedBidId(null)
+                        .relatedTicketId(null)
+                        .templateRecipientName(
+                                recipientName.trim()
+                        )
+                        .templateTenderReference(
+                                tenderReference.trim()
+                        )
+                        .templateTenderTitle(
+                                tenderTitle.trim()
+                        )
+                        .retryCount(0)
+                        .build();
+
+        NotificationOutbox saved =
+                repository.saveAndFlush(
+                        notification
+                );
+
+        log.info(
+                "Matching-tender notification queued: "
+                        + "notificationId={} tenderId={} "
+                        + "recipientUserId={} templateType={}",
+                saved.getId(),
+                saved.getRelatedTenderId(),
+                saved.getRecipientUserId(),
+                saved.getTemplateType()
+        );
+
+        return NotificationOutboxResponse.from(
+                saved
+        );
+    }
+
+
 
     private NotificationOutbox findNotification(Long id) {
         return repository.findById(id)

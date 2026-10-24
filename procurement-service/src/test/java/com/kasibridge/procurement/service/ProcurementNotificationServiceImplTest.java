@@ -23,9 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class ProcurementNotificationServiceImplTest {
@@ -944,20 +942,16 @@ class ProcurementNotificationServiceImplTest {
         );
 
         verify(notificationOutboxService)
-                .queueNotification(
-                        NotificationOutbox
-                                .NotificationChannel
-                                .WHATSAPP,
-                        NotificationOutbox
-                                .NotificationTemplateType
-                                .MATCHING_TENDER_PUBLISHED,
+                .queueMatchingTenderNotification(
                         USER_ID,
                         "+27610000001",
                         "biddera@kasibridge.test",
                         expectedMessage,
                         TENDER_ID,
-                        null,
-                        null
+                        "Sifiso Magagula",
+                        "KB-TENDER-436FC79F",
+                        "Supply of ICT Equipment "
+                                + "for Municipal Offices"
                 );
     }
 
@@ -1031,24 +1025,45 @@ class ProcurementNotificationServiceImplTest {
                 );
 
         verify(
-                notificationOutboxService
-        ).queueNotification(
-                NotificationOutbox
-                        .NotificationChannel
-                        .WHATSAPP,
-                NotificationOutbox
-                        .NotificationTemplateType
-                        .MATCHING_TENDER_PUBLISHED,
+                notificationOutboxService,
+                times(1)
+        ).queueMatchingTenderNotification(
                 USER_ID,
                 "+27610000001",
                 "biddera@kasibridge.test",
                 "A matching tender was published.",
                 TENDER_ID,
-                null,
-                null
+                "Sifiso Magagula",
+                "KB-TENDER-436FC79F",
+                "Supply of ICT Equipment "
+                        + "for Municipal Offices"
+        );
+
+        verify(
+                templateService,
+                times(1)
+        ).generateMessage(
+                eq(
+                        NotificationOutbox
+                                .NotificationTemplateType
+                                .MATCHING_TENDER_PUBLISHED
+                ),
+                any(
+                        WhatsAppTemplateContext.class
+                )
+        );
+
+        verify(
+                notificationOutboxRepository,
+                times(1)
+        ).existsByTemplateTypeAndRelatedTenderIdAndRecipientUserId(
+                NotificationOutbox
+                        .NotificationTemplateType
+                        .MATCHING_TENDER_PUBLISHED,
+                TENDER_ID,
+                USER_ID
         );
     }
-
     @Test
     void shouldSkipAlreadyQueuedMatchingTenderNotification() {
         tender.setRequiredBusinessType(

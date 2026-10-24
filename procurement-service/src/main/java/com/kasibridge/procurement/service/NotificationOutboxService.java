@@ -47,4 +47,15 @@ public interface NotificationOutboxService {
     NotificationOutboxResponse markSent(Long id, String providerMessageId);
 
     NotificationOutboxResponse markDeliveryFailed(Long id, String failureReason);
+
+    NotificationOutboxResponse queueMatchingTenderNotification(
+            Long recipientUserId,
+            String recipientPhone,
+            String recipientEmail,
+            String message,
+            Long relatedTenderId,
+            String recipientName,
+            String tenderReference,
+            String tenderTitle
+    );
 }

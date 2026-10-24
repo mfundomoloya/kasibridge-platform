@@ -373,22 +373,18 @@ public class ProcurementNotificationServiceImpl implements ProcurementNotificati
                             context
                     );
 
+
             notificationOutboxService
-                    .queueNotification(
-                            NotificationOutbox
-                                    .NotificationChannel
-                                    .WHATSAPP,
-                            NotificationOutbox
-                                    .NotificationTemplateType
-                                    .MATCHING_TENDER_PUBLISHED,
+                    .queueMatchingTenderNotification(
                             trader.getUserId(),
                             trader.getPhoneNumber(),
                             trader.getEmail(),
                             message,
                             tender.getId(),
-                            null,
-                            null
-                    );
+                            trader.getFullName(),
+                            tender.getTenderReference(),
+                            tender.getTitle()
+            );
         }
 
         log.info(

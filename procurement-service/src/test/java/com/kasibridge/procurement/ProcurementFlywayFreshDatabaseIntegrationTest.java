@@ -169,7 +169,7 @@ class ProcurementFlywayFreshDatabaseIntegrationTest {
                 flyway.info().applied();
 
         assertEquals(
-                6,
+                7,
                 appliedMigrations.length
         );
 

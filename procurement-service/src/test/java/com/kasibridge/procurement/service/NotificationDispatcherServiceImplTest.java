@@ -3,32 +3,29 @@ package com.kasibridge.procurement.service;
 import com.kasibridge.procurement.dto.MarkNotificationFailedRequest;
 import com.kasibridge.procurement.dto.NotificationDispatchResponse;
 import com.kasibridge.procurement.dto.NotificationOutboxResponse;
+import com.kasibridge.procurement.dto.WhatsAppDeliveryCommand;
 import com.kasibridge.procurement.dto.WhatsAppDeliveryResult;
 import com.kasibridge.procurement.entity.NotificationOutbox;
 import com.kasibridge.procurement.exception.NotificationOutboxException;
 import com.kasibridge.procurement.repository.NotificationOutboxRepository;
-
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
 import java.util.Optional;
-import static org.mockito.ArgumentMatchers.anyInt;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -47,10 +44,12 @@ class NotificationDispatcherServiceImplTest {
     private WhatsAppProvider whatsAppProvider;
 
     @Mock
-    private NotificationDispatchClaimService claimService;
+    private NotificationDispatchClaimService
+            claimService;
 
     @InjectMocks
-    private NotificationDispatcherServiceImpl dispatcherService;
+    private NotificationDispatcherServiceImpl
+            dispatcherService;
 
     @BeforeEach
     void setUp() {
@@ -84,154 +83,39 @@ class NotificationDispatcherServiceImplTest {
         NotificationOutbox notification =
                 createNotification(
                         1L,
-                        NotificationOutbox.NotificationStatus.PENDING,
+                        NotificationOutbox
+                                .NotificationStatus
+                                .PENDING,
                         0,
                         "+27610000001",
                         "Your support ticket was created."
                 );
 
-        when(claimService.claimPendingBatch(
-                eq(NotificationOutbox.NotificationChannel.WHATSAPP),
-                eq(3),
-                eq(20),
-                eq("test-worker"),
-                eq(300)
-        ))
-                .thenReturn(List.of(notification));
+        when(
+                claimService.claimPendingBatch(
+                        eq(
+                                NotificationOutbox
+                                        .NotificationChannel
+                                        .WHATSAPP
+                        ),
+                        eq(3),
+                        eq(20),
+                        eq("test-worker"),
+                        eq(300)
+                )
+        ).thenReturn(
+                List.of(notification)
+        );
 
-        when(whatsAppProvider.sendMessage(
-                "+27610000001",
-                "Your support ticket was created."
-        )).thenReturn(
+        when(
+                whatsAppProvider.sendMessage(
+                        any(
+                                WhatsAppDeliveryCommand.class
+                        )
+                )
+        ).thenReturn(
                 WhatsAppDeliveryResult.success(
                         "wamid.TEST001"
-                )
-        );
-
-        NotificationDispatchResponse response = dispatcherService.dispatchPending();
-
-        assertNotNull(response);
-
-        verify(claimService).claimPendingBatch(
-                NotificationOutbox.NotificationChannel.WHATSAPP,
-                3,
-                20,
-                "test-worker",
-                300
-        );
-
-        verify(claimService, never()).claimRetryBatch(
-                any(NotificationOutbox.NotificationChannel.class),
-                anyInt(),
-                anyInt(),
-                any(String.class),
-                anyInt()
-        );
-
-
-        verify(whatsAppProvider).sendMessage(
-                "+27610000001",
-                "Your support ticket was created."
-        );
-
-        verify(outboxService).markSent(
-                1L,
-                "wamid.TEST001"
-        );
-
-        verify(outboxService, never()).markFailed(
-                eq(1L),
-                any(MarkNotificationFailedRequest.class)
-        );
-    }
-
-    @Test
-    void retryFailed_shouldDispatchEligibleFailedNotification() {
-        NotificationOutbox notification =
-                createNotification(
-                        2L,
-                        NotificationOutbox.NotificationStatus.FAILED,
-                        1,
-                        "+27610000002",
-                        "Retry notification."
-                );
-
-        when(claimService.claimRetryBatch(
-                eq(NotificationOutbox.NotificationChannel.WHATSAPP),
-                eq(3),
-                eq(20),
-                eq("test-worker"),
-                eq(300)
-        ))
-                .thenReturn(List.of(notification));
-
-        when(whatsAppProvider.sendMessage(
-                "+27610000002",
-                "Retry notification."
-        )).thenReturn(
-                WhatsAppDeliveryResult.success(
-                        "wamid.RETRY001"
-                )
-        );
-
-        NotificationDispatchResponse response = dispatcherService.retryFailed();
-
-        assertNotNull(response);
-
-        verify(claimService).claimRetryBatch(
-                NotificationOutbox.NotificationChannel.WHATSAPP,
-                3,
-                20,
-                "test-worker",
-                300
-        );
-
-        verify(claimService, never()).claimPendingBatch(
-                any(NotificationOutbox.NotificationChannel.class),
-                anyInt(),
-                anyInt(),
-                any(String.class),
-                anyInt()
-        );
-
-        verify(whatsAppProvider).sendMessage(
-                "+27610000002",
-                "Retry notification."
-        );
-
-        verify(outboxService).markSent(
-                2L,
-                "wamid.RETRY001"
-        );
-    }
-
-    @Test
-    void dispatchPending_shouldMarkProviderRejectionAsFailed() {
-        NotificationOutbox notification =
-                createNotification(
-                        3L,
-                        NotificationOutbox.NotificationStatus.PENDING,
-                        0,
-                        "+27610000003",
-                        "Provider rejection test."
-                );
-
-
-        when(claimService.claimPendingBatch(
-                eq(NotificationOutbox.NotificationChannel.WHATSAPP),
-                eq(3),
-                eq(20),
-                eq("test-worker"),
-                eq(300)
-        ))
-                .thenReturn(List.of(notification));
-
-        when(whatsAppProvider.sendMessage(
-                "+27610000003",
-                "Provider rejection test."
-        )).thenReturn(
-                WhatsAppDeliveryResult.failure(
-                        "WhatsApp provider rejected the message."
                 )
         );
 
@@ -240,22 +124,261 @@ class NotificationDispatcherServiceImplTest {
 
         assertNotNull(response);
 
-        ArgumentCaptor<MarkNotificationFailedRequest> requestCaptor =
+        verify(claimService)
+                .claimPendingBatch(
+                        NotificationOutbox
+                                .NotificationChannel
+                                .WHATSAPP,
+                        3,
+                        20,
+                        "test-worker",
+                        300
+                );
+
+        verify(
+                claimService,
+                never()
+        ).claimRetryBatch(
+                any(
+                        NotificationOutbox
+                                .NotificationChannel.class
+                ),
+                anyInt(),
+                anyInt(),
+                any(String.class),
+                anyInt()
+        );
+
+        ArgumentCaptor<WhatsAppDeliveryCommand>
+                commandCaptor =
+                ArgumentCaptor.forClass(
+                        WhatsAppDeliveryCommand.class
+                );
+
+        verify(whatsAppProvider)
+                .sendMessage(
+                        commandCaptor.capture()
+                );
+
+        WhatsAppDeliveryCommand command =
+                commandCaptor.getValue();
+
+        assertEquals(
+                1L,
+                command.getNotificationId()
+        );
+
+        assertEquals(
+                NotificationOutbox
+                        .NotificationTemplateType
+                        .SUPPORT_TICKET_CREATED,
+                command.getTemplateType()
+        );
+
+        assertEquals(
+                "+27610000001",
+                command.getRecipientPhone()
+        );
+
+        assertEquals(
+                "Your support ticket was created.",
+                command.getRenderedMessage()
+        );
+
+        verify(outboxService)
+                .markSent(
+                        1L,
+                        "wamid.TEST001"
+                );
+
+        verify(
+                outboxService,
+                never()
+        ).markFailed(
+                eq(1L),
+                any(
+                        MarkNotificationFailedRequest.class
+                )
+        );
+    }
+
+    @Test
+    void retryFailed_shouldDispatchEligibleFailedNotification() {
+        NotificationOutbox notification =
+                createNotification(
+                        2L,
+                        NotificationOutbox
+                                .NotificationStatus
+                                .FAILED,
+                        1,
+                        "+27610000002",
+                        "Retry notification."
+                );
+
+        when(
+                claimService.claimRetryBatch(
+                        eq(
+                                NotificationOutbox
+                                        .NotificationChannel
+                                        .WHATSAPP
+                        ),
+                        eq(3),
+                        eq(20),
+                        eq("test-worker"),
+                        eq(300)
+                )
+        ).thenReturn(
+                List.of(notification)
+        );
+
+        when(
+                whatsAppProvider.sendMessage(
+                        any(
+                                WhatsAppDeliveryCommand.class
+                        )
+                )
+        ).thenReturn(
+                WhatsAppDeliveryResult.success(
+                        "wamid.RETRY001"
+                )
+        );
+
+        NotificationDispatchResponse response =
+                dispatcherService.retryFailed();
+
+        assertNotNull(response);
+
+        verify(claimService)
+                .claimRetryBatch(
+                        NotificationOutbox
+                                .NotificationChannel
+                                .WHATSAPP,
+                        3,
+                        20,
+                        "test-worker",
+                        300
+                );
+
+        verify(
+                claimService,
+                never()
+        ).claimPendingBatch(
+                any(
+                        NotificationOutbox
+                                .NotificationChannel.class
+                ),
+                anyInt(),
+                anyInt(),
+                any(String.class),
+                anyInt()
+        );
+
+        ArgumentCaptor<WhatsAppDeliveryCommand>
+                commandCaptor =
+                ArgumentCaptor.forClass(
+                        WhatsAppDeliveryCommand.class
+                );
+
+        verify(whatsAppProvider)
+                .sendMessage(
+                        commandCaptor.capture()
+                );
+
+        WhatsAppDeliveryCommand command =
+                commandCaptor.getValue();
+
+        assertEquals(
+                2L,
+                command.getNotificationId()
+        );
+
+        assertEquals(
+                "+27610000002",
+                command.getRecipientPhone()
+        );
+
+        assertEquals(
+                "Retry notification.",
+                command.getRenderedMessage()
+        );
+
+        verify(outboxService)
+                .markSent(
+                        2L,
+                        "wamid.RETRY001"
+                );
+    }
+
+    @Test
+    void dispatchPending_shouldMarkProviderRejectionAsFailed() {
+        NotificationOutbox notification =
+                createNotification(
+                        3L,
+                        NotificationOutbox
+                                .NotificationStatus
+                                .PENDING,
+                        0,
+                        "+27610000003",
+                        "Provider rejection test."
+                );
+
+        when(
+                claimService.claimPendingBatch(
+                        eq(
+                                NotificationOutbox
+                                        .NotificationChannel
+                                        .WHATSAPP
+                        ),
+                        eq(3),
+                        eq(20),
+                        eq("test-worker"),
+                        eq(300)
+                )
+        ).thenReturn(
+                List.of(notification)
+        );
+
+        when(
+                whatsAppProvider.sendMessage(
+                        any(
+                                WhatsAppDeliveryCommand.class
+                        )
+                )
+        ).thenReturn(
+                WhatsAppDeliveryResult.failure(
+                        "WhatsApp provider rejected "
+                                + "the message."
+                )
+        );
+
+        NotificationDispatchResponse response =
+                dispatcherService.dispatchPending();
+
+        assertNotNull(response);
+
+        ArgumentCaptor<MarkNotificationFailedRequest>
+                requestCaptor =
                 ArgumentCaptor.forClass(
                         MarkNotificationFailedRequest.class
                 );
 
-        verify(outboxService).markFailed(
-                eq(3L),
-                requestCaptor.capture()
-        );
+        verify(outboxService)
+                .markFailed(
+                        eq(3L),
+                        requestCaptor.capture()
+                );
 
         assertEquals(
                 "WhatsApp provider rejected the message.",
-                requestCaptor.getValue().getFailureReason()
+                requestCaptor
+                        .getValue()
+                        .getFailureReason()
         );
 
-        verify(outboxService, never()).markSent(
+        verify(
+                outboxService,
+                never()
+        ).markSent(
                 eq(3L),
                 any(String.class)
         );
@@ -266,47 +389,57 @@ class NotificationDispatcherServiceImplTest {
         NotificationOutbox notification =
                 createNotification(
                         4L,
-                        NotificationOutbox.NotificationStatus.PENDING,
+                        NotificationOutbox
+                                .NotificationStatus
+                                .PENDING,
                         0,
                         null,
-                        "Notification without a phone number."
+                        "Notification without "
+                                + "a phone number."
                 );
 
-
-
-        when(claimService.claimPendingBatch(
-                eq(NotificationOutbox.NotificationChannel.WHATSAPP),
-                eq(3),
-                eq(20),
-                eq("test-worker"),
-                eq(300)
-        ))
-                .thenReturn(List.of(notification));
+        when(
+                claimService.claimPendingBatch(
+                        eq(
+                                NotificationOutbox
+                                        .NotificationChannel
+                                        .WHATSAPP
+                        ),
+                        eq(3),
+                        eq(20),
+                        eq("test-worker"),
+                        eq(300)
+                )
+        ).thenReturn(
+                List.of(notification)
+        );
 
         NotificationDispatchResponse response =
                 dispatcherService.dispatchPending();
 
         assertNotNull(response);
 
-        ArgumentCaptor<MarkNotificationFailedRequest> requestCaptor =
+        ArgumentCaptor<MarkNotificationFailedRequest>
+                requestCaptor =
                 ArgumentCaptor.forClass(
                         MarkNotificationFailedRequest.class
                 );
 
-        verify(outboxService).markFailed(
-                eq(4L),
-                requestCaptor.capture()
-        );
+        verify(outboxService)
+                .markFailed(
+                        eq(4L),
+                        requestCaptor.capture()
+                );
 
         assertEquals(
-                "WhatsApp recipient phone number is missing.",
-                requestCaptor.getValue().getFailureReason()
+                "WhatsApp recipient phone number "
+                        + "is missing.",
+                requestCaptor
+                        .getValue()
+                        .getFailureReason()
         );
 
-        verify(whatsAppProvider, never()).sendMessage(
-                any(String.class),
-                any(String.class)
-        );
+        verifyProviderWasNotCalled();
     }
 
     @Test
@@ -314,65 +447,67 @@ class NotificationDispatcherServiceImplTest {
         NotificationOutbox notification =
                 createNotification(
                         5L,
-                        NotificationOutbox.NotificationStatus.PENDING,
+                        NotificationOutbox
+                                .NotificationStatus
+                                .PENDING,
                         0,
                         "+27610000005",
                         null
                 );
 
-
-        when(claimService.claimPendingBatch(
-                eq(NotificationOutbox.NotificationChannel.WHATSAPP),
-                eq(3),
-                eq(20),
-                eq("test-worker"),
-                eq(300)
-        ))
-                .thenReturn(List.of(notification));
+        when(
+                claimService.claimPendingBatch(
+                        eq(
+                                NotificationOutbox
+                                        .NotificationChannel
+                                        .WHATSAPP
+                        ),
+                        eq(3),
+                        eq(20),
+                        eq("test-worker"),
+                        eq(300)
+                )
+        ).thenReturn(
+                List.of(notification)
+        );
 
         NotificationDispatchResponse response =
                 dispatcherService.dispatchPending();
 
         assertNotNull(response);
 
-        ArgumentCaptor<MarkNotificationFailedRequest> requestCaptor =
+        ArgumentCaptor<MarkNotificationFailedRequest>
+                requestCaptor =
                 ArgumentCaptor.forClass(
                         MarkNotificationFailedRequest.class
                 );
 
-        verify(outboxService).markFailed(
-                eq(5L),
-                requestCaptor.capture()
-        );
+        verify(outboxService)
+                .markFailed(
+                        eq(5L),
+                        requestCaptor.capture()
+                );
 
         assertEquals(
                 "Notification message is missing.",
-                requestCaptor.getValue().getFailureReason()
+                requestCaptor
+                        .getValue()
+                        .getFailureReason()
         );
 
-        verify(whatsAppProvider, never()).sendMessage(
-                any(String.class),
-                any(String.class)
-        );
+        verifyProviderWasNotCalled();
     }
 
     @Test
     void dispatchOne_shouldRejectAlreadySentNotification() {
-        NotificationOutbox notification =
-                createNotification(
-                        6L,
-                        NotificationOutbox.NotificationStatus.SENT,
-                        0,
-                        "+27610000006",
-                        "Already sent."
-                );
-
-        when(claimService.claimOne(
-                eq(6L),
-                eq(3),
-                eq("test-worker"),
-                eq(300)
-        )).thenThrow(
+        when(
+                claimService.claimOne(
+                        eq(6L),
+                        eq(3),
+                        eq("test-worker"),
+                        eq(300)
+                )
+        ).thenThrow(
                 new NotificationOutboxException(
                         "Notification has already been sent."
                 )
@@ -381,7 +516,9 @@ class NotificationDispatcherServiceImplTest {
         NotificationOutboxException exception =
                 assertThrows(
                         NotificationOutboxException.class,
-                        () -> dispatcherService.dispatchOne(6L)
+                        () ->
+                                dispatcherService
+                                        .dispatchOne(6L)
                 );
 
         assertEquals(
@@ -389,88 +526,73 @@ class NotificationDispatcherServiceImplTest {
                 exception.getMessage()
         );
 
-        verify(whatsAppProvider, never()).sendMessage(
-                any(String.class),
-                any(String.class)
-        );
+        verifyProviderWasNotCalled();
     }
 
     @Test
     void dispatchOne_shouldRejectCancelledNotification() {
-        NotificationOutbox notification =
-                createNotification(
-                        7L,
-                        NotificationOutbox.NotificationStatus.CANCELLED,
-                        0,
-                        "+27610000007",
-                        "Cancelled notification."
-                );
-
-        when(claimService.claimOne(
-                eq(7L),
-                eq(3),
-                eq("test-worker"),
-                eq(300)
-        )).thenThrow(
+        when(
+                claimService.claimOne(
+                        eq(7L),
+                        eq(3),
+                        eq("test-worker"),
+                        eq(300)
+                )
+        ).thenThrow(
                 new NotificationOutboxException(
-                        "Cancelled notification cannot be dispatched."
+                        "Cancelled notification "
+                                + "cannot be dispatched."
                 )
         );
 
         NotificationOutboxException exception =
                 assertThrows(
                         NotificationOutboxException.class,
-                        () -> dispatcherService.dispatchOne(7L)
+                        () ->
+                                dispatcherService
+                                        .dispatchOne(7L)
                 );
 
         assertEquals(
-                "Cancelled notification cannot be dispatched.",
+                "Cancelled notification "
+                        + "cannot be dispatched.",
                 exception.getMessage()
         );
 
-        verify(whatsAppProvider, never()).sendMessage(
-                any(String.class),
-                any(String.class)
-        );
+        verifyProviderWasNotCalled();
     }
 
     @Test
     void dispatchOne_shouldRejectNotificationAtMaximumRetries() {
-        NotificationOutbox notification =
-                createNotification(
-                        8L,
-                        NotificationOutbox.NotificationStatus.FAILED,
-                        3,
-                        "+27610000008",
-                        "Maximum retry notification."
-                );
-
-        when(claimService.claimOne(
-                eq(8L),
-                eq(3),
-                eq("test-worker"),
-                eq(300)
-        )).thenThrow(
+        when(
+                claimService.claimOne(
+                        eq(8L),
+                        eq(3),
+                        eq("test-worker"),
+                        eq(300)
+                )
+        ).thenThrow(
                 new NotificationOutboxException(
-                        "Notification has reached the maximum retry limit."
+                        "Notification has reached "
+                                + "the maximum retry limit."
                 )
         );
 
         NotificationOutboxException exception =
                 assertThrows(
                         NotificationOutboxException.class,
-                        () -> dispatcherService.dispatchOne(8L)
+                        () ->
+                                dispatcherService
+                                        .dispatchOne(8L)
                 );
 
         assertEquals(
-                "Notification has reached the maximum retry limit.",
+                "Notification has reached "
+                        + "the maximum retry limit.",
                 exception.getMessage()
         );
 
-        verify(whatsAppProvider, never()).sendMessage(
-                any(String.class),
-                any(String.class)
-        );
+        verifyProviderWasNotCalled();
     }
 
     @Test
@@ -478,7 +600,9 @@ class NotificationDispatcherServiceImplTest {
         NotificationOutbox notification =
                 createNotification(
                         9L,
-                        NotificationOutbox.NotificationStatus.PROCESSING,
+                        NotificationOutbox
+                                .NotificationStatus
+                                .PROCESSING,
                         1,
                         "+27610000009",
                         "Single dispatch notification."
@@ -489,41 +613,86 @@ class NotificationDispatcherServiceImplTest {
                         NotificationOutboxResponse.class
                 );
 
-        when(claimService.claimOne(
-                eq(9L),
-                eq(3),
-                eq("test-worker"),
-                eq(300)
-        )).thenReturn(
+        when(
+                claimService.claimOne(
+                        eq(9L),
+                        eq(3),
+                        eq("test-worker"),
+                        eq(300)
+                )
+        ).thenReturn(
                 Optional.of(notification)
         );
 
-        when(whatsAppProvider.sendMessage(
-                "+27610000009",
-                "Single dispatch notification."
-        )).thenReturn(
+        when(
+                whatsAppProvider.sendMessage(
+                        any(
+                                WhatsAppDeliveryCommand.class
+                        )
+                )
+        ).thenReturn(
                 WhatsAppDeliveryResult.success(
                         "wamid.SINGLE001"
                 )
         );
 
-        when(outboxService.getNotificationById(9L))
-                .thenReturn(expectedResponse);
+        when(
+                outboxService.getNotificationById(
+                        9L
+                )
+        ).thenReturn(
+                expectedResponse
+        );
 
         NotificationOutboxResponse actualResponse =
-                dispatcherService.dispatchOne(9L);
+                dispatcherService.dispatchOne(
+                        9L
+                );
 
         assertEquals(
                 expectedResponse,
                 actualResponse
         );
 
-        verify(outboxService).markSent(
+        ArgumentCaptor<WhatsAppDeliveryCommand>
+                commandCaptor =
+                ArgumentCaptor.forClass(
+                        WhatsAppDeliveryCommand.class
+                );
+
+        verify(whatsAppProvider)
+                .sendMessage(
+                        commandCaptor.capture()
+                );
+
+        WhatsAppDeliveryCommand command =
+                commandCaptor.getValue();
+
+        assertEquals(
                 9L,
-                "wamid.SINGLE001"
+                command.getNotificationId()
         );
 
-        verify(outboxService).getNotificationById(9L);
+        assertEquals(
+                "+27610000009",
+                command.getRecipientPhone()
+        );
+
+        assertEquals(
+                "Single dispatch notification.",
+                command.getRenderedMessage()
+        );
+
+        verify(outboxService)
+                .markSent(
+                        9L,
+                        "wamid.SINGLE001"
+                );
+
+        verify(outboxService)
+                .getNotificationById(
+                        9L
+                );
     }
 
     @Test
@@ -531,7 +700,9 @@ class NotificationDispatcherServiceImplTest {
         NotificationOutbox firstNotification =
                 createNotification(
                         10L,
-                        NotificationOutbox.NotificationStatus.PENDING,
+                        NotificationOutbox
+                                .NotificationStatus
+                                .PENDING,
                         0,
                         "+27610000010",
                         "First notification."
@@ -540,41 +711,114 @@ class NotificationDispatcherServiceImplTest {
         NotificationOutbox secondNotification =
                 createNotification(
                         11L,
-                        NotificationOutbox.NotificationStatus.PENDING,
+                        NotificationOutbox
+                                .NotificationStatus
+                                .PENDING,
                         0,
                         "+27610000011",
                         "Second notification."
                 );
 
-        when(claimService.claimPendingBatch(
-                eq(NotificationOutbox.NotificationChannel.WHATSAPP),
-                eq(3),
-                eq(20),
-                eq("test-worker"),
-                eq(300)
-        ))
-                .thenReturn(
-                        List.of(
-                                firstNotification,
-                                secondNotification
-                        )
-                );
-
-        when(whatsAppProvider.sendMessage(
-                "+27610000010",
-                "First notification."
-        )).thenThrow(
-                new IllegalStateException(
-                        "Provider connection failed."
+        when(
+                claimService.claimPendingBatch(
+                        eq(
+                                NotificationOutbox
+                                        .NotificationChannel
+                                        .WHATSAPP
+                        ),
+                        eq(3),
+                        eq(20),
+                        eq("test-worker"),
+                        eq(300)
+                )
+        ).thenReturn(
+                List.of(
+                        firstNotification,
+                        secondNotification
                 )
         );
 
-        when(whatsAppProvider.sendMessage(
-                "+27610000011",
-                "Second notification."
-        )).thenReturn(
-                WhatsAppDeliveryResult.success(
+        when(
+                whatsAppProvider.sendMessage(
+                        any(
+                                WhatsAppDeliveryCommand.class
+                        )
+                )
+        )
+                .thenThrow(
+                        new IllegalStateException(
+                                "Provider connection failed."
+                        )
+                )
+                .thenReturn(
+                        WhatsAppDeliveryResult.success(
+                                "wamid.SECOND001"
+                        )
+                );
+
+        NotificationDispatchResponse response =
+                dispatcherService.dispatchPending();
+
+        assertNotNull(response);
+
+        ArgumentCaptor<MarkNotificationFailedRequest>
+                requestCaptor =
+                ArgumentCaptor.forClass(
+                        MarkNotificationFailedRequest.class
+                );
+
+        verify(outboxService)
+                .markFailed(
+                        eq(10L),
+                        requestCaptor.capture()
+                );
+
+        assertTrue(
+                requestCaptor
+                        .getValue()
+                        .getFailureReason()
+                        .contains(
+                                "Provider connection failed"
+                        )
+        );
+
+        verify(outboxService)
+                .markSent(
+                        11L,
                         "wamid.SECOND001"
+                );
+    }
+
+    @Test
+    void dispatchPending_shouldPassMatchingTenderSnapshotsToProvider() {
+        NotificationOutbox notification =
+                createMatchingTenderNotification();
+
+        when(
+                claimService.claimPendingBatch(
+                        eq(
+                                NotificationOutbox
+                                        .NotificationChannel
+                                        .WHATSAPP
+                        ),
+                        eq(3),
+                        eq(20),
+                        eq("test-worker"),
+                        eq(300)
+                )
+        ).thenReturn(
+                List.of(notification)
+        );
+
+        when(
+                whatsAppProvider.sendMessage(
+                        any(
+                                WhatsAppDeliveryCommand.class
+                        )
+                )
+        ).thenReturn(
+                WhatsAppDeliveryResult.success(
+                        "wamid.MATCH001"
                 )
         );
 
@@ -583,26 +827,62 @@ class NotificationDispatcherServiceImplTest {
 
         assertNotNull(response);
 
-        ArgumentCaptor<MarkNotificationFailedRequest> requestCaptor =
+        ArgumentCaptor<WhatsAppDeliveryCommand>
+                commandCaptor =
                 ArgumentCaptor.forClass(
-                        MarkNotificationFailedRequest.class
+                        WhatsAppDeliveryCommand.class
                 );
 
-        verify(outboxService).markFailed(
-                eq(10L),
-                requestCaptor.capture()
+        verify(whatsAppProvider)
+                .sendMessage(
+                        commandCaptor.capture()
+                );
+
+        WhatsAppDeliveryCommand command =
+                commandCaptor.getValue();
+
+        assertEquals(
+                12L,
+                command.getNotificationId()
         );
 
-        assertTrue(
-                requestCaptor.getValue()
-                        .getFailureReason()
-                        .contains("Provider connection failed")
+        assertEquals(
+                NotificationOutbox
+                        .NotificationTemplateType
+                        .MATCHING_TENDER_PUBLISHED,
+                command.getTemplateType()
         );
 
-        verify(outboxService).markSent(
-                11L,
-                "wamid.SECOND001"
+        assertEquals(
+                "+27610000012",
+                command.getRecipientPhone()
         );
+
+        assertEquals(
+                "Matching tender notification.",
+                command.getRenderedMessage()
+        );
+
+        assertEquals(
+                "Sifiso Magagula",
+                command.getRecipientName()
+        );
+
+        assertEquals(
+                "KB-TENDER-436FC79F",
+                command.getTenderReference()
+        );
+
+        assertEquals(
+                "Road Rehabilitation and Maintenance",
+                command.getTenderTitle()
+        );
+
+        verify(outboxService)
+                .markSent(
+                        12L,
+                        "wamid.MATCH001"
+                );
     }
 
     private NotificationOutbox createNotification(
@@ -618,10 +898,13 @@ class NotificationDispatcherServiceImplTest {
                         "KB-NOTIF-" + id
                 )
                 .channel(
-                        NotificationOutbox.NotificationChannel.WHATSAPP
+                        NotificationOutbox
+                                .NotificationChannel
+                                .WHATSAPP
                 )
                 .templateType(
-                        NotificationOutbox.NotificationTemplateType
+                        NotificationOutbox
+                                .NotificationTemplateType
                                 .SUPPORT_TICKET_CREATED
                 )
                 .status(status)
@@ -630,5 +913,59 @@ class NotificationDispatcherServiceImplTest {
                 .message(message)
                 .retryCount(retryCount)
                 .build();
+    }
+
+    private NotificationOutbox
+    createMatchingTenderNotification() {
+        return NotificationOutbox.builder()
+                .id(12L)
+                .notificationReference(
+                        "KB-NOTIF-12"
+                )
+                .channel(
+                        NotificationOutbox
+                                .NotificationChannel
+                                .WHATSAPP
+                )
+                .templateType(
+                        NotificationOutbox
+                                .NotificationTemplateType
+                                .MATCHING_TENDER_PUBLISHED
+                )
+                .status(
+                        NotificationOutbox
+                                .NotificationStatus
+                                .PENDING
+                )
+                .recipientUserId(8L)
+                .recipientPhone(
+                        "+27610000012"
+                )
+                .message(
+                        "Matching tender notification."
+                )
+                .relatedTenderId(7L)
+                .templateRecipientName(
+                        "Sifiso Magagula"
+                )
+                .templateTenderReference(
+                        "KB-TENDER-436FC79F"
+                )
+                .templateTenderTitle(
+                        "Road Rehabilitation and Maintenance"
+                )
+                .retryCount(0)
+                .build();
+    }
+
+    private void verifyProviderWasNotCalled() {
+        verify(
+                whatsAppProvider,
+                never()
+        ).sendMessage(
+                any(
+                        WhatsAppDeliveryCommand.class
+                )
+        );
     }
 }
