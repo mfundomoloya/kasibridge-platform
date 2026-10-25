@@ -2,6 +2,7 @@ package com.kasibridge.fraud.controller;
 
 import com.kasibridge.fraud.dto.*;
 import com.kasibridge.fraud.entity.FraudAlert;
+import com.kasibridge.fraud.service.FraudAssessmentService;
 import com.kasibridge.fraud.service.FraudDetectionService;
 import com.kasibridge.fraud.service.InvoiceFraudPredictionService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -34,11 +35,14 @@ public class FraudController {
 
     private final FraudDetectionService service;
     private final InvoiceFraudPredictionService invoiceFraudPredictionService;
+    private final FraudAssessmentService fraudAssessmentService;
 
     public FraudController(FraudDetectionService service,
-                           InvoiceFraudPredictionService invoiceFraudPredictionService) {
+                           InvoiceFraudPredictionService invoiceFraudPredictionService,
+                           FraudAssessmentService fraudAssessmentService) {
         this.service = service;
         this.invoiceFraudPredictionService = invoiceFraudPredictionService;
+        this.fraudAssessmentService = fraudAssessmentService;
     }
 
     @Operation(
@@ -83,6 +87,44 @@ public class FraudController {
         return ResponseEntity.ok(
                 invoiceFraudPredictionService
                         .predict(request)
+        );
+    }
+
+    @Operation(summary = "Assess and persist procurement invoice risk",
+            description =
+                    "Runs the supervised procurement fraud "
+                            + "model and persists immutable "
+                            + "assessment evidence. Repeated "
+                            + "requests with the same invoice "
+                            + "reference, model version, and "
+                            + "feature snapshot return the "
+                            + "existing assessment."
+    )
+    @Tag(name = "Fraud Analysis")
+    @PostMapping("/invoices/assess")
+    public ResponseEntity<FraudAssessmentResponse> assessInvoiceFraud(@Valid @RequestBody InvoiceFraudPredictionRequest request) {
+
+        log.info(
+                "POST /api/v1/fraud/invoices/assess "
+                        + "- invoiceReference={}",
+                request.getInvoiceReference()
+        );
+
+        FraudAssessmentResult result =
+                fraudAssessmentService.assess(
+                        request
+                );
+
+        if (result.created()) {
+            return ResponseEntity
+                    .status(HttpStatus.CREATED)
+                    .body(
+                            result.assessment()
+                    );
+        }
+
+        return ResponseEntity.ok(
+                result.assessment()
         );
     }
 

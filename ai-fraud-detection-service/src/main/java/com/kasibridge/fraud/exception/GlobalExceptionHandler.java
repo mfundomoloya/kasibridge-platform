@@ -46,11 +46,7 @@ public class GlobalExceptionHandler extends RuntimeException {
     @ExceptionHandler(
             MlInferenceException.class
     )
-    public ResponseEntity<
-            Map<String, Object>
-            > handleMlInferenceException(
-            MlInferenceException exception
-    ) {
+    public ResponseEntity<Map<String, Object>> handleMlInferenceException(MlInferenceException exception) {
         Map<String, Object> response =
                 new LinkedHashMap<>();
 
@@ -80,6 +76,35 @@ public class GlobalExceptionHandler extends RuntimeException {
                 .body(response);
     }
 
+    @ExceptionHandler(FraudAssessmentNotFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleFraudAssessmentNotFound(FraudAssessmentNotFoundException exception) {
+        return buildErrorResponse(
+                HttpStatus.NOT_FOUND,
+                "Fraud assessment not found",
+                exception.getMessage()
+        );
+    }
+
+    @ExceptionHandler(
+            FraudAssessmentConflictException.class
+    )
+    public ResponseEntity<Map<String, Object>> handleFraudAssessmentConflict(FraudAssessmentConflictException exception) {
+        return buildErrorResponse(
+                HttpStatus.CONFLICT,
+                "Fraud assessment conflict",
+                exception.getMessage()
+        );
+    }
+
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<Map<String, Object>> handleIllegalState(IllegalStateException exception) {
+        return buildErrorResponse(
+                HttpStatus.CONFLICT,
+                "Invalid assessment state",
+                exception.getMessage()
+        );
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGeneral(Exception ex) {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -101,5 +126,34 @@ public class GlobalExceptionHandler extends RuntimeException {
             r.timestamp = LocalDateTime.now();
             return r;
         }
+    }
+
+    private ResponseEntity<Map<String, Object>> buildErrorResponse(HttpStatus status, String error, String message) {
+
+        Map<String, Object> response = new LinkedHashMap<>();
+
+        response.put(
+                "status",
+                status.value()
+        );
+
+        response.put(
+                "error",
+                error
+        );
+
+        response.put(
+                "message",
+                message
+        );
+
+        response.put(
+                "timestamp",
+                LocalDateTime.now()
+        );
+
+        return ResponseEntity
+                .status(status)
+                .body(response);
     }
 }

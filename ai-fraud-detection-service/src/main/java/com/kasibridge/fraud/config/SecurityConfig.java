@@ -42,7 +42,9 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/fraud/analyze")
                         .hasAnyRole("SYSTEM", "PLATFORM_ADMIN")
 
-                        .requestMatchers("/api/v1/fraud/invoices/predict")
+                        .requestMatchers(
+                                "/api/v1/fraud/invoices/predict",
+                                "/api/v1/fraud/invoices/assess")
                         .hasAnyRole("SYSTEM", "ANALYST", "PLATFORM_ADMIN")
 
                         //escalation is platform admin only
