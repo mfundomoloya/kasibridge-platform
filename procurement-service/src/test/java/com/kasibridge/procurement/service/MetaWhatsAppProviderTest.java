@@ -1,5 +1,7 @@
 package com.kasibridge.procurement.service;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kasibridge.procurement.dto.WhatsAppDeliveryCommand;
 import com.kasibridge.procurement.dto.WhatsAppDeliveryResult;
 import com.kasibridge.procurement.entity.NotificationOutbox;
@@ -7,8 +9,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
+import org.springframework.mock.http.client.MockClientHttpRequest;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.client.MockRestServiceServer;
+import org.springframework.test.web.client.RequestMatcher;
 import org.springframework.web.client.RestTemplate;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -37,6 +41,8 @@ class MetaWhatsAppProviderTest {
 
     private MetaWhatsAppProvider provider;
 
+    private ObjectMapper objectMapper;
+
     @BeforeEach
     void setUp() {
         restTemplate =
@@ -51,6 +57,9 @@ class MetaWhatsAppProviderTest {
                 new MetaWhatsAppProvider(
                         restTemplate
                 );
+
+        objectMapper =
+                new ObjectMapper();
 
         ReflectionTestUtils.setField(
                 provider,
@@ -139,7 +148,7 @@ class MetaWhatsAppProviderTest {
                                 )
                 )
                 .andExpect(
-                        content().json(
+                        jsonBodyEquals(
                                 """
                                 {
                                   "messaging_product": "whatsapp",
@@ -172,8 +181,7 @@ class MetaWhatsAppProviderTest {
                                     ]
                                   }
                                 }
-                                """,
-                                true
+                                """
                         )
                 )
                 .andRespond(
@@ -263,7 +271,7 @@ class MetaWhatsAppProviderTest {
                                 )
                 )
                 .andExpect(
-                        content().json(
+                        jsonBodyEquals(
                                 """
                                 {
                                   "messaging_product": "whatsapp",
@@ -275,8 +283,7 @@ class MetaWhatsAppProviderTest {
                                     "body": "Your support ticket was created."
                                   }
                                 }
-                                """,
-                                true
+                                """
                         )
                 )
                 .andRespond(
@@ -494,5 +501,57 @@ class MetaWhatsAppProviderTest {
         );
 
         mockServer.verify();
+    }
+
+    private RequestMatcher jsonBodyEquals(
+            String expectedJson
+    ) {
+        return request -> {
+            if (
+                    !(request
+                            instanceof MockClientHttpRequest
+                            mockRequest)
+            ) {
+                throw new AssertionError(
+                        "Expected MockClientHttpRequest "
+                                + "but received "
+                                + request
+                                .getClass()
+                                .getName()
+                );
+            }
+
+            String actualBody =
+                    mockRequest
+                            .getBodyAsString();
+
+            assertNotNull(
+                    actualBody
+            );
+
+            assertFalse(
+                    actualBody.isBlank(),
+                    "Expected a non-empty JSON "
+                            + "request body."
+            );
+
+            JsonNode expectedNode =
+                    objectMapper.readTree(
+                            expectedJson
+                    );
+
+            JsonNode actualNode =
+                    objectMapper.readTree(
+                            actualBody
+                    );
+
+            assertEquals(
+                    expectedNode,
+                    actualNode,
+                    "The WhatsApp request JSON "
+                            + "did not match the "
+                            + "expected payload."
+            );
+        };
     }
 }
