@@ -5,6 +5,7 @@ import com.kasibridge.security.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -47,6 +48,25 @@ public class SecurityConfig {
                                 "/api/v1/fraud/invoices/assess")
                         .hasAnyRole("SYSTEM", "ANALYST", "PLATFORM_ADMIN")
 
+                        .requestMatchers(HttpMethod.GET, "/api/v1/fraud/assessments/*"
+                        )
+                        .hasAnyRole("ANALYST", "PLATFORM_ADMIN"
+                        )
+
+                        .requestMatchers(HttpMethod.POST,
+                                "/api/v1/fraud/assessments/*/confirm",
+                                "/api/v1/fraud/assessments/*/false-positive"
+                        )
+                        .hasAnyRole("ANALYST", "PLATFORM_ADMIN"
+                        )
+
+
+                        .requestMatchers(HttpMethod.POST,
+                                "/api/v1/fraud/assessments/*/escalate"
+                        )
+                        .hasRole("PLATFORM_ADMIN"
+                        )
+
                         //escalation is platform admin only
                         .requestMatchers("/api/v1/fraud/alerts/*/escalate")
                         .hasAnyRole("PLATFORM_ADMIN")
@@ -56,6 +76,8 @@ public class SecurityConfig {
                                 "/api/v1/fraud/alerts/*/review",
                                 "/api/v1/fraud/alerts/*/dismiss")
                         .hasAnyRole("ANALYST","PLATFORM_ADMIN")
+
+
 
                         //fraud read/search/dashboard endpoints
                         .requestMatchers("/api/v1/fraud/**")

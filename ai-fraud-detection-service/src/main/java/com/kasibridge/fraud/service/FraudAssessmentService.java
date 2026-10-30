@@ -2,13 +2,11 @@ package com.kasibridge.fraud.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.kasibridge.fraud.dto.FraudAssessmentResponse;
-import com.kasibridge.fraud.dto.FraudAssessmentResult;
-import com.kasibridge.fraud.dto.InvoiceFraudPredictionRequest;
-import com.kasibridge.fraud.dto.InvoiceFraudPredictionResponse;
+import com.kasibridge.fraud.dto.*;
 import com.kasibridge.fraud.entity.FraudAssessment;
 import com.kasibridge.fraud.exception.FraudAssessmentConflictException;
 import com.kasibridge.fraud.exception.FraudAssessmentNotFoundException;
+import com.kasibridge.fraud.exception.FraudAssessmentVersionConflictException;
 import com.kasibridge.fraud.repository.FraudAssessmentRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -122,6 +120,192 @@ public class FraudAssessmentService {
         return FraudAssessmentResponse.from(
                 assessment
         );
+    }
+
+    @Transactional
+    public FraudAssessmentResponse confirmFraud(
+            String assessmentReference,
+            FraudAssessmentReviewRequest request,
+            String reviewer
+    ) {
+        return applyReviewDecision(
+                assessmentReference,
+                request,
+                reviewer,
+                ReviewDecision.CONFIRM_FRAUD
+        );
+    }
+
+    @Transactional
+    public FraudAssessmentResponse markFalsePositive(
+            String assessmentReference,
+            FraudAssessmentReviewRequest request,
+            String reviewer
+    ) {
+        return applyReviewDecision(
+                assessmentReference,
+                request,
+                reviewer,
+                ReviewDecision.MARK_FALSE_POSITIVE
+        );
+    }
+
+    @Transactional
+    public FraudAssessmentResponse escalate(
+            String assessmentReference,
+            FraudAssessmentReviewRequest request,
+            String reviewer
+    ) {
+        return applyReviewDecision(
+                assessmentReference,
+                request,
+                reviewer,
+                ReviewDecision.ESCALATE
+        );
+    }
+
+    private FraudAssessmentResponse applyReviewDecision(
+            String assessmentReference,
+            FraudAssessmentReviewRequest request,
+            String reviewer,
+            ReviewDecision decision
+    ) {
+        String normalizedReference =
+                requireText(
+                        assessmentReference,
+                        "Assessment reference"
+                );
+
+        String normalizedReviewer =
+                requireText(
+                        reviewer,
+                        "Reviewer"
+                );
+
+        if (request == null) {
+            throw new IllegalArgumentException(
+                    "Fraud assessment review "
+                            + "request is required."
+            );
+        }
+
+        if (request.expectedVersion() == null) {
+            throw new IllegalArgumentException(
+                    "Expected assessment version "
+                            + "is required."
+            );
+        }
+
+        if (request.expectedVersion() < 0) {
+            throw new IllegalArgumentException(
+                    "Expected assessment version "
+                            + "cannot be negative."
+            );
+        }
+
+        String reviewNotes =
+                requireText(
+                        request.reviewNotes(),
+                        "Review notes"
+                );
+
+        FraudAssessment assessment =
+                assessmentRepository
+                        .findByAssessmentReference(
+                                normalizedReference
+                        )
+                        .orElseThrow(
+                                () ->
+                                        new FraudAssessmentNotFoundException(
+                                                "Fraud assessment "
+                                                        + "not found: "
+                                                        + normalizedReference
+                                        )
+                        );
+
+        verifyExpectedVersion(
+                assessment,
+                request.expectedVersion()
+        );
+
+        switch (decision) {
+            case CONFIRM_FRAUD ->
+                    assessment.confirmFraud(
+                            normalizedReviewer,
+                            reviewNotes
+                    );
+
+            case MARK_FALSE_POSITIVE ->
+                    assessment.markFalsePositive(
+                            normalizedReviewer,
+                            reviewNotes
+                    );
+
+            case ESCALATE ->
+                    assessment.escalate(
+                            normalizedReviewer,
+                            reviewNotes
+                    );
+        }
+
+        /*
+         * saveAndFlush forces the SQL update to occur
+         * within this method. This ensures optimistic
+         * locking errors are raised before the API
+         * response is created.
+         */
+        FraudAssessment savedAssessment =
+                assessmentRepository
+                        .saveAndFlush(
+                                assessment
+                        );
+
+        log.info(
+                "Fraud assessment review completed: "
+                        + "assessmentReference={} "
+                        + "decision={} "
+                        + "reviewStatus={} "
+                        + "reviewer={} "
+                        + "version={}",
+                savedAssessment
+                        .getAssessmentReference(),
+                decision,
+                savedAssessment
+                        .getReviewStatus(),
+                normalizedReviewer,
+                savedAssessment.getVersion()
+        );
+
+        return FraudAssessmentResponse.from(
+                savedAssessment
+        );
+    }
+
+    private void verifyExpectedVersion(FraudAssessment assessment, Long expectedVersion) {
+
+        Long actualVersion = assessment.getVersion();
+
+        /*
+         * A newly constructed, non-persisted entity can
+         * have a null version. Persisted assessments
+         * should normally have version 0 or greater.
+         */
+        if (actualVersion == null) {
+            throw new IllegalStateException(
+                    "Fraud assessment "
+                            + assessment
+                            .getAssessmentReference()
+                            + " has no persistence version."
+            );
+        }
+
+        if (!actualVersion.equals(expectedVersion)) {
+            throw new FraudAssessmentVersionConflictException(
+                    assessment.getAssessmentReference(),
+                    expectedVersion,
+                    actualVersion
+            );
+        }
     }
 
     private FraudAssessmentResult mapExistingAssessment(FraudAssessment existing, String submittedSnapshotSha256) {
@@ -341,18 +525,13 @@ public class FraudAssessmentService {
                 );
     }
 
-    private LocalDateTime resolveAssessedAt(
-            LocalDateTime assessedAt
-    ) {
+    private LocalDateTime resolveAssessedAt(LocalDateTime assessedAt) {
         return assessedAt != null
                 ? assessedAt
                 : LocalDateTime.now();
     }
 
-    private BigDecimal requireProbability(
-            BigDecimal probability,
-            String fieldName
-    ) {
+    private BigDecimal requireProbability(BigDecimal probability, String fieldName) {
         if (probability == null) {
             throw new IllegalArgumentException(
                     fieldName + " is required."
@@ -424,5 +603,11 @@ public class FraudAssessmentService {
         }
 
         return value.trim();
+    }
+
+    private enum ReviewDecision {
+        CONFIRM_FRAUD,
+        MARK_FALSE_POSITIVE,
+        ESCALATE
     }
 }

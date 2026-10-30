@@ -5,6 +5,7 @@ import com.kasibridge.fraud.entity.FraudAlert;
 import com.kasibridge.fraud.service.FraudAssessmentService;
 import com.kasibridge.fraud.service.FraudDetectionService;
 import com.kasibridge.fraud.service.InvoiceFraudPredictionService;
+import com.kasibridge.security.KasiBridgeUserPrincipal;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -19,6 +20,7 @@ import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.core.Authentication;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -73,12 +75,8 @@ public class FraudController {
     )
     @Tag(name = "Fraud Analysis")
     @PostMapping("/invoices/predict")
-    public ResponseEntity<
-            InvoiceFraudPredictionResponse
-            > predictInvoiceFraud(
-            @Valid
-            @RequestBody
-            InvoiceFraudPredictionRequest request
+    public ResponseEntity<InvoiceFraudPredictionResponse> predictInvoiceFraud(@Valid
+                                                                                  @RequestBody InvoiceFraudPredictionRequest request
     ) {
         log.info(
                 "POST /api/v1/fraud/invoices/predict"
@@ -125,6 +123,145 @@ public class FraudController {
 
         return ResponseEntity.ok(
                 result.assessment()
+        );
+    }
+
+    @Operation(summary = "Retrieve a procurement fraud assessment",
+            description =
+                    "Returns a persisted procurement invoice "
+                            + "fraud assessment by its public "
+                            + "assessment reference. The full "
+                            + "feature snapshot is excluded "
+                            + "from the standard response."
+    )
+    @Tag(name = "Fraud Assessment Review")
+    @GetMapping("/assessments/{assessmentReference}")
+    public ResponseEntity<FraudAssessmentResponse> getFraudAssessment(@PathVariable String assessmentReference) {
+        log.info(
+                "GET /api/v1/fraud/assessments/{}",
+                assessmentReference
+        );
+
+        return ResponseEntity.ok(
+                fraudAssessmentService
+                        .getByAssessmentReference(
+                                assessmentReference
+                        )
+        );
+    }
+
+    @Operation(summary = "Confirm a high-risk assessment as fraud",
+            description =
+                    "Records an authorised analyst decision "
+                            + "that a pending or escalated "
+                            + "assessment was confirmed as "
+                            + "fraud. The reviewer identity is "
+                            + "derived from the authenticated "
+                            + "JWT principal."
+    )
+    @Tag(name = "Fraud Assessment Review")
+    @PostMapping("/assessments/{assessmentReference}/confirm")
+    public ResponseEntity<FraudAssessmentResponse> confirmAssessmentFraud(@PathVariable String assessmentReference,
+                                                                          @Valid
+                                                                          @RequestBody
+                                                                          FraudAssessmentReviewRequest request,
+                                                                          Authentication authentication
+    ) {
+        String reviewer =
+                requireAuthenticatedReviewer(
+                        authentication
+                );
+
+        log.info(
+                "POST /api/v1/fraud/assessments/"
+                        + "{}/confirm - reviewer={}",
+                assessmentReference,
+                reviewer
+        );
+
+        return ResponseEntity.ok(
+                fraudAssessmentService
+                        .confirmFraud(
+                                assessmentReference,
+                                request,
+                                reviewer
+                        )
+        );
+    }
+
+    @Operation(summary = "Mark a fraud assessment as false positive",
+            description =
+                    "Records an authorised analyst decision "
+                            + "that a pending or escalated "
+                            + "assessment is a false positive. "
+                            + "The reviewer identity is derived "
+                            + "from the authenticated JWT "
+                            + "principal."
+    )
+    @Tag(name = "Fraud Assessment Review")
+    @PostMapping("/assessments/{assessmentReference}/false-positive")
+    public ResponseEntity<FraudAssessmentResponse> markAssessmentFalsePositive(@PathVariable String assessmentReference,
+                                                                               @Valid
+                                                                               @RequestBody
+                                                                               FraudAssessmentReviewRequest request,
+                                                                               Authentication authentication
+    ) {
+        String reviewer =
+                requireAuthenticatedReviewer(
+                        authentication
+                );
+
+        log.info(
+                "POST /api/v1/fraud/assessments/"
+                        + "{}/false-positive - reviewer={}",
+                assessmentReference,
+                reviewer
+        );
+
+        return ResponseEntity.ok(
+                fraudAssessmentService
+                        .markFalsePositive(
+                                assessmentReference,
+                                request,
+                                reviewer
+                        )
+        );
+    }
+
+    @Operation(summary = "Escalate a fraud assessment",
+            description =
+                    "Escalates a pending or automatically "
+                            + "cleared assessment for senior "
+                            + "investigation. The reviewer "
+                            + "identity is derived from the "
+                            + "authenticated JWT principal."
+    )
+    @Tag(name = "Fraud Assessment Review")
+    @PostMapping("/assessments/{assessmentReference}/escalate")
+    public ResponseEntity<FraudAssessmentResponse> escalateAssessment(@PathVariable String assessmentReference,
+                                                                      @Valid
+                                                                      @RequestBody
+                                                                      FraudAssessmentReviewRequest request, Authentication authentication
+    ) {
+        String reviewer =
+                requireAuthenticatedReviewer(
+                        authentication
+                );
+
+        log.info(
+                "POST /api/v1/fraud/assessments/"
+                        + "{}/escalate - reviewer={}",
+                assessmentReference,
+                reviewer
+        );
+
+        return ResponseEntity.ok(
+                fraudAssessmentService
+                        .escalate(
+                                assessmentReference,
+                                request,
+                                reviewer
+                        )
         );
     }
 
@@ -291,5 +428,59 @@ public class FraudController {
         log.info("GET /api/v1/fraud/alerts/search - criteria: {}", criteria);
 
         return ResponseEntity.ok(service.searchAlerts(criteria, pageable).map(FraudAlertMapper::toResponse));
+    }
+
+    private String requireAuthenticatedReviewer(
+            Authentication authentication
+    ) {
+        if (
+                authentication == null
+                        || !authentication.isAuthenticated()
+        ) {
+            throw new IllegalArgumentException(
+                    "An authenticated reviewer "
+                            + "is required."
+            );
+        }
+
+        Object principal = authentication.getPrincipal();
+
+        if (
+                principal
+                        instanceof KasiBridgeUserPrincipal
+                        kasiBridgePrincipal
+        ) {
+            String username =
+                    kasiBridgePrincipal.username();
+
+            if (
+                    username == null
+                            || username.isBlank()
+            ) {
+                throw new IllegalArgumentException(
+                        "The authenticated reviewer "
+                                + "has no username."
+                );
+            }
+
+            return username.trim();
+        }
+
+        String reviewer =
+                authentication.getName();
+
+        if (
+                reviewer == null
+                        || reviewer.isBlank()
+                        || "anonymousUser"
+                        .equalsIgnoreCase(reviewer)
+        ) {
+            throw new IllegalArgumentException(
+                    "An authenticated reviewer "
+                            + "is required."
+            );
+        }
+
+        return reviewer.trim();
     }
 }

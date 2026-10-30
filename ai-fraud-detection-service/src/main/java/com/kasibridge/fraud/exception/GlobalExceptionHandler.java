@@ -9,6 +9,8 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import com.kasibridge.fraud.exception.MlInferenceException;
 import org.springframework.http.HttpStatus;
+import org.springframework.dao.OptimisticLockingFailureException;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
@@ -102,6 +104,34 @@ public class GlobalExceptionHandler extends RuntimeException {
                 HttpStatus.CONFLICT,
                 "Invalid assessment state",
                 exception.getMessage()
+        );
+    }
+
+    @ExceptionHandler(FraudAssessmentVersionConflictException.class)
+    public ResponseEntity<Map<String, Object>> handleFraudAssessmentVersionConflict(
+            FraudAssessmentVersionConflictException exception
+    ) {
+        return buildErrorResponse(
+                HttpStatus.CONFLICT,
+                "Fraud assessment version conflict",
+                exception.getMessage()
+        );
+    }
+
+    @ExceptionHandler(
+            OptimisticLockingFailureException.class
+    )
+    public ResponseEntity<Map<String, Object>>
+    handleOptimisticLockingFailure(
+            OptimisticLockingFailureException exception
+    ) {
+        return buildErrorResponse(
+                HttpStatus.CONFLICT,
+                "Fraud assessment version conflict",
+                "The fraud assessment was modified by "
+                        + "another request. Refresh the "
+                        + "assessment before submitting "
+                        + "another review decision."
         );
     }
 
