@@ -17,6 +17,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.kasibridge.fraud.dto.FraudAssessmentDashboardResponse;
+import com.kasibridge.fraud.repository.FraudAssessmentDashboardProjection;
+
 
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
@@ -27,6 +30,7 @@ import java.util.HexFormat;
 import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
+import java.time.Duration;
 
 @Service
 @RequiredArgsConstructor
@@ -213,6 +217,83 @@ public class FraudAssessmentService {
                 );
     }
 
+    @Transactional(readOnly = true)
+    public FraudAssessmentDashboardResponse
+    getAssessmentDashboard() {
+        FraudAssessmentDashboardProjection summary =
+                assessmentRepository
+                        .getDashboardSummary();
+
+        LocalDateTime generatedAt =
+                LocalDateTime.now();
+
+        LocalDateTime oldestPendingAssessedAt =
+                summary != null
+                        ? summary
+                        .getOldestPendingAssessedAt()
+                        : null;
+
+        Long oldestPendingAgeHours =
+                calculateOldestPendingAgeHours(
+                        oldestPendingAssessedAt,
+                        generatedAt
+                );
+
+        return new FraudAssessmentDashboardResponse(
+                safeCount(
+                        summary != null
+                                ? summary.getTotalAssessments()
+                                : null
+                ),
+                safeCount(
+                        summary != null
+                                ? summary.getPendingReview()
+                                : null
+                ),
+                safeCount(
+                        summary != null
+                                ? summary.getEscalated()
+                                : null
+                ),
+                safeCount(
+                        summary != null
+                                ? summary.getConfirmedFraud()
+                                : null
+                ),
+                safeCount(
+                        summary != null
+                                ? summary.getFalsePositive()
+                                : null
+                ),
+                safeCount(
+                        summary != null
+                                ? summary.getAutoCleared()
+                                : null
+                ),
+                safeCount(
+                        summary != null
+                                ? summary.getCriticalRisk()
+                                : null
+                ),
+                safeCount(
+                        summary != null
+                                ? summary.getHighRisk()
+                                : null
+                ),
+                safeCount(
+                        summary != null
+                                ? summary
+                                .getOpenHighOrCriticalRisk()
+                                : null
+                ),
+                oldestPendingAssessedAt,
+                oldestPendingAgeHours,
+                summary != null
+                        ? summary.getLatestAssessedAt()
+                        : null,
+                generatedAt
+        );
+    }
 
     @Transactional
     public FraudAssessmentResponse confirmFraud(
@@ -784,6 +865,47 @@ public class FraudAssessmentService {
         }
 
         return requestedSort;
+    }
+
+    private long safeCount(Long value) {
+        if (value == null) {
+            return 0L;
+        }
+
+        if (value < 0) {
+            throw new IllegalStateException(
+                    "Dashboard aggregate count "
+                            + "cannot be negative."
+            );
+        }
+
+        return value;
+    }
+
+    private Long calculateOldestPendingAgeHours(LocalDateTime oldestPendingAssessedAt, LocalDateTime generatedAt) {
+        if (oldestPendingAssessedAt == null) {
+            return null;
+        }
+
+        if (
+                oldestPendingAssessedAt
+                        .isAfter(generatedAt)
+        ) {
+            log.warn(
+                    "Oldest pending assessment timestamp "
+                            + "{} is after dashboard "
+                            + "generation time {}.",
+                    oldestPendingAssessedAt,
+                    generatedAt
+            );
+
+            return 0L;
+        }
+
+        return Duration.between(
+                oldestPendingAssessedAt,
+                generatedAt
+        ).toHours();
     }
 
     private enum ReviewDecision {

@@ -86,6 +86,7 @@ public class FraudController {
         );
     }
 
+
     @Operation(summary = "Assess and persist procurement invoice risk",
             description =
                     "Runs the supervised procurement fraud "
@@ -121,6 +122,27 @@ public class FraudController {
 
         return ResponseEntity.ok(
                 result.assessment()
+        );
+    }
+
+    @Operation(summary = "Retrieve fraud assessment dashboard metrics",
+            description =
+                    "Returns aggregate procurement fraud "
+                            + "assessment metrics for the analyst "
+                            + "dashboard, including review-status "
+                            + "counts, risk counts, open high-risk "
+                            + "work, and pending-assessment age."
+    )
+    @Tag(name = "Fraud Assessment Review")
+    @GetMapping("/assessments/dashboard")
+    public ResponseEntity<FraudAssessmentDashboardResponse> getFraudAssessmentDashboard() {
+        log.debug(
+                "GET /api/v1/fraud/assessments/dashboard"
+        );
+
+        return ResponseEntity.ok(
+                fraudAssessmentService
+                        .getAssessmentDashboard()
         );
     }
 
