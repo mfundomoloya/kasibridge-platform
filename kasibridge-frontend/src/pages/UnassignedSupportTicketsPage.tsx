@@ -17,14 +17,20 @@ import {
     ProcurementLayout,
 } from '../components/layout/ProcurementLayout'
 
-import {
-    ProcurementTicketCard,
-} from '../components/support/ProcurementTicketCard'
-
 import type {
     SupportTicket,
 } from '../types/supportTicket'
 
+import {
+    SUPPORT_TICKET_STATUS_LABELS,
+    SUPPORT_TICKET_TYPE_LABELS,
+} from '../types/supportTicket'
+
+import type {
+    SupportTicketStatus,
+} from '../types/supportTicket'
+
+import './UnassignedSupportTicketsPage.css'
 interface AssignmentFormState {
     assignedToUserId: string
     assignmentReason: string
@@ -35,6 +41,8 @@ const initialAssignmentForm:
     assignedToUserId: '',
     assignmentReason: '',
 }
+
+type TicketFilter = 'ALL' | SupportTicketStatus
 
 export function UnassignedSupportTicketsPage() {
     const [tickets, setTickets] =
@@ -68,6 +76,9 @@ export function UnassignedSupportTicketsPage() {
 
     const [assignmentError, setAssignmentError] =
         useState('')
+
+    const [activeFilter, setActiveFilter] =
+        useState<TicketFilter>('ALL')
 
     useEffect(() => {
         let isActive = true
@@ -118,6 +129,7 @@ export function UnassignedSupportTicketsPage() {
                         apiError.message
                     )
                 }
+
             } finally {
                 if (isActive) {
                     setIsLoading(false)
@@ -262,6 +274,15 @@ export function UnassignedSupportTicketsPage() {
         )
     }
 
+    function formatDate(value: string): string {
+        return new Intl.DateTimeFormat(
+            'en-ZA',
+            {
+                dateStyle: 'medium',
+            }
+        ).format(new Date(value))
+    }
+
     function goToNextPage() {
         setCurrentPage((page) =>
             Math.min(
@@ -271,44 +292,91 @@ export function UnassignedSupportTicketsPage() {
         )
     }
 
+    const filteredTickets =
+        activeFilter === 'ALL'
+            ? tickets
+            : tickets.filter(
+                (ticket) =>
+                    ticket.status === activeFilter
+            )
+
+    const filterOptions:
+        Array<{
+            value: TicketFilter
+            label: string
+        }> = [
+        {
+            value: 'ALL',
+            label: 'All',
+        },
+        {
+            value: 'OPEN',
+            label: SUPPORT_TICKET_STATUS_LABELS.OPEN,
+        },
+        {
+            value: 'RESPONDED',
+            label: SUPPORT_TICKET_STATUS_LABELS.RESPONDED,
+        },
+        {
+            value: 'CLOSED',
+            label: SUPPORT_TICKET_STATUS_LABELS.CLOSED,
+        },
+    ]
+
     return (
         <ProcurementLayout>
-            <section className="page-header">
-                <span className="eyebrow">
-                    Platform administration
-                </span>
+            <section className="unassigned-page-heading">
+                <div className="unassigned-page-heading-copy">
+                    <span className="eyebrow">
+                        Platform administration
+                    </span>
 
-                <h1>Unassigned support tickets</h1>
+                    <h1>Unassigned support tickets</h1>
 
-                <p>
-                    Assign queued support tickets to
-                    authorised staff members and record
-                    the reason for each assignment.
-                </p>
+                    <p>
+                        Assign queued support tickets to
+                        authorised staff members and record
+                        the reason for each assignment.
+                    </p>
+                </div>
             </section>
 
             <section
-                className="procurement-queue-toolbar"
+                className="unassigned-summary-grid"
                 aria-label={
-                    'Unassigned ticket summary'
+                    'Queue summary'
                 }
             >
-                <div>
-                    <strong>
-                        Assignment queue
+                <div className="unassigned-summary-card is-primary">
+                    <span>Awaiting assignment</span>
+                    <strong
+                        className="unassigned-summary-count"
+                        aria-label={
+                            isLoading
+                                ? 'Loading awaiting assignment count'
+                                : `${totalElements} awaiting assignment`
+                        }
+                    >
+                        {isLoading ? '—' : totalElements}
                     </strong>
-
-                    <p className="field-help">
-                        Oldest tickets are shown first.
-                    </p>
                 </div>
-
-                <span className="notification-count">
-                    {totalElements}{' '}
-                    {totalElements === 1
-                        ? 'unassigned ticket'
-                        : 'unassigned tickets'}
-                </span>
+                {(['OPEN', 'RESPONDED', 'CLOSED'] as const).map(
+                    (status) => (
+                        <div
+                            className="unassigned-summary-card"
+                            key={status}
+                        >
+                            <span>
+                                {SUPPORT_TICKET_STATUS_LABELS[status]}
+                            </span>
+                            <strong>
+                                {tickets.filter(
+                                    (ticket) => ticket.status === status
+                                ).length}
+                            </strong>
+                        </div>
+                    )
+                )}
             </section>
 
             {errorMessage && (
@@ -350,16 +418,124 @@ export function UnassignedSupportTicketsPage() {
                             'Unassigned support tickets'
                         }
                     >
-                        {tickets.map((ticket) => (
+                        <div
+                            className="unassigned-filter-bar"
+                            role="group"
+                            aria-label="Filter tickets by status"
+                        >
+                            {filterOptions.map((filter) => {
+                                const count =
+                                    filter.value === 'ALL'
+                                        ? totalElements
+                                        : tickets.filter(
+                                            (ticket) =>
+                                                ticket.status
+                                                === filter.value
+                                        ).length
+
+                                return (
+                                    <button
+                                        className={
+                                            activeFilter
+                                            === filter.value
+                                                ? 'is-active'
+                                                : undefined
+                                        }
+                                        type="button"
+                                        aria-pressed={
+                                            activeFilter
+                                            === filter.value
+                                        }
+                                        onClick={() =>
+                                            setActiveFilter(
+                                                filter.value
+                                            )
+                                        }
+                                        key={filter.value}
+                                    >
+                                        {filter.label}
+                                        <span>{count}</span>
+                                    </button>
+                                )
+                            })}
+                        </div>
+
+                        <div className="unassigned-ticket-list">
+                        {filteredTickets.length === 0 ? (
+                            <p className="unassigned-filter-empty">
+                                No tickets match this status filter.
+                            </p>
+                        ) : filteredTickets.map((ticket) => (
                             <div
                                 className={
                                     'unassigned-ticket-item'
+                                    + (
+                                        selectedTicket?.id === ticket.id
+                                            ? ' is-selected'
+                                            : ''
+                                    )
                                 }
                                 key={ticket.id}
                             >
-                                <ProcurementTicketCard
-                                    ticket={ticket}
-                                />
+                                <button
+                                    className={
+                                        'unassigned-ticket-summary'
+                                    }
+                                    type="button"
+                                    onClick={() =>
+                                        openAssignmentForm(
+                                            ticket
+                                        )
+                                    }
+                                >
+                                    <span>
+                                        <strong>
+                                            {ticket.subject}
+                                        </strong>
+                                        <small>
+                                            {ticket.ticketReference}
+                                            {' · '}
+                                            {
+                                                SUPPORT_TICKET_TYPE_LABELS[
+                                                    ticket.ticketType
+                                                ]
+                                            }
+                                        </small>
+                                    </span>
+                                    <span>
+                                        <strong>
+                                            {ticket.businessNameSnapshot
+                                                ?? 'Not supplied'}
+                                        </strong>
+                                        <small>
+                                            {ticket.contactName
+                                                ?? 'No contact'}
+                                        </small>
+                                    </span>
+                                    <span>
+                                        <strong>
+                                            #{ticket.tenderId}
+                                        </strong>
+                                        <small>
+                                            {formatDate(
+                                                ticket.createdAt
+                                            )}
+                                        </small>
+                                    </span>
+                                    <span
+                                        className={
+                                            'unassigned-status '
+                                            + `is-${ticket.status
+                                                .toLowerCase()}`
+                                        }
+                                    >
+                                        {
+                                            SUPPORT_TICKET_STATUS_LABELS[
+                                                ticket.status
+                                            ]
+                                        }
+                                    </span>
+                                </button>
 
                                 <div
                                     className={
@@ -385,6 +561,7 @@ export function UnassignedSupportTicketsPage() {
                                 </div>
                             </div>
                         ))}
+                        </div>
                     </section>
 
                     {totalPages > 1 && (
