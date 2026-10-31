@@ -2,9 +2,10 @@ import type {
     ReactNode,
 } from 'react'
 
+
 import type {
-    UserRole,
-} from '../../types/auth'
+    NavigationItem,
+} from './PortalLayout'
 
 import {
     PortalLayout,
@@ -14,15 +15,8 @@ interface ProcurementLayoutProps {
     children: ReactNode
 }
 
-interface ProcurementNavigationItem {
-    label: string
-    path: string
-    roles?: UserRole[]
-}
-
 const procurementNavigation:
-    ProcurementNavigationItem[] = [
-
+    NavigationItem[] = [
     {
         label: 'Showcase',
         path: '/showcase',
@@ -30,25 +24,39 @@ const procurementNavigation:
     {
         label: 'Procurement overview',
         path: '/procurement',
-    },
-    {
-        label: 'Procurement overview',
-        path: '/procurement',
-    },
-    {
-        label: 'Support queue',
-        path: '/procurement/support-tickets',
         roles: [
+            'ROLE_ANALYST',
             'ROLE_SPECIFICATION_OFFICER',
+            'ROLE_EVALUATOR',
             'ROLE_ADJUDICATOR',
             'ROLE_PLATFORM_ADMIN',
         ],
     },
     {
-        label: 'AI assessment queue',
-        path: '/procurement/ai-assessments',
+        label: 'Fraud assessments',
+        path:
+            '/procurement/fraud-assessments',
+        roles: [
+            'ROLE_ANALYST',
+            'ROLE_PLATFORM_ADMIN',
+        ],
+    },
+    {
+        label: 'AI assessments',
+        path:
+            '/procurement/ai-assessments',
         roles: [
             'ROLE_SPECIFICATION_OFFICER',
+            'ROLE_PLATFORM_ADMIN',
+        ],
+    },
+    {
+        label: 'Support queue',
+        path:
+            '/procurement/support-tickets',
+        roles: [
+            'ROLE_SPECIFICATION_OFFICER',
+            'ROLE_ADJUDICATOR',
             'ROLE_PLATFORM_ADMIN',
         ],
     },
@@ -60,36 +68,7 @@ const procurementNavigation:
             'ROLE_PLATFORM_ADMIN',
         ],
     },
-    {
-        label: 'Tender specifications',
-        path: '/procurement/specifications',
-        roles: [
-            'ROLE_SPECIFICATION_OFFICER',
-        ],
-    },
-    {
-        label: 'Bid evaluations',
-        path: '/procurement/evaluations',
-        roles: [
-            'ROLE_EVALUATOR',
-        ],
-    },
-    {
-        label: 'Adjudication',
-        path: '/procurement/adjudication',
-        roles: [
-            'ROLE_ADJUDICATOR',
-        ],
-    },
-    {
-        label: 'Fraud alerts',
-        path: '/procurement/alerts',
-        roles: [
-            'ROLE_ANALYST',
-        ],
-    },
 ]
-
 export function ProcurementLayout({
                                       children,
                                   }: ProcurementLayoutProps) {

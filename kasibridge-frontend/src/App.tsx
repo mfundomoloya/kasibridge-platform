@@ -93,6 +93,10 @@ import {
 } from './pages/KasiBridgePrototypePage'
 
 import {
+    FraudAssessmentDashboardPage,
+} from './pages/FraudAssessmentDashboardPage'
+
+import {
     UnauthorizedPage,
 } from './pages/UnauthorizedPage'
 
@@ -325,6 +329,21 @@ function App() {
                     </RoleRoute>
                 }
             />
+
+            <Route
+                path="/procurement/fraud-assessments"
+                element={
+                    <RoleRoute
+                        allowedRoles={[
+                            'ROLE_ANALYST',
+                            'ROLE_PLATFORM_ADMIN',
+                        ]}
+                    >
+                        <FraudAssessmentDashboardPage />
+                    </RoleRoute>
+                }
+            />
+
 
             <Route
                 path="/procurement/support-tickets"

@@ -84,6 +84,7 @@ export function PortalLayout({
                             <NavLink
                                 key={item.path}
                                 to={item.path}
+                                end={item.path === '/procurement'}
                             >
                                 <span>
                                     {item.label}
