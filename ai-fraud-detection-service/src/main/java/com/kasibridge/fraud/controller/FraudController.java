@@ -52,8 +52,7 @@ public class FraudController {
             description = "Runs fraud detection rules and creates alerts if suspicious activity is detected")
     @Tag(name = "Fraud Analysis")
     @PostMapping("/analyze")
-    public ResponseEntity<List<FraudAlertResponse>> analyzeTransaction(
-            @Valid @RequestBody AnalyzeTransactionRequest request) {
+    public ResponseEntity<List<FraudAlertResponse>> analyzeTransaction(@Valid @RequestBody AnalyzeTransactionRequest request) {
         log.info("POST /api/v1/fraud/analyze - transaction ID: {}", request.getTransactionId());
 
         List<FraudAlert> alerts = service.detect(request.toTransactionEvent());
@@ -75,8 +74,7 @@ public class FraudController {
     )
     @Tag(name = "Fraud Analysis")
     @PostMapping("/invoices/predict")
-    public ResponseEntity<InvoiceFraudPredictionResponse> predictInvoiceFraud(@Valid
-                                                                                  @RequestBody InvoiceFraudPredictionRequest request
+    public ResponseEntity<InvoiceFraudPredictionResponse> predictInvoiceFraud(@Valid @RequestBody InvoiceFraudPredictionRequest request
     ) {
         log.info(
                 "POST /api/v1/fraud/invoices/predict"
@@ -123,6 +121,77 @@ public class FraudController {
 
         return ResponseEntity.ok(
                 result.assessment()
+        );
+    }
+
+    @Operation(summary = "Search procurement fraud assessments",
+            description =
+                    "Returns a paginated analyst queue with "
+                            + "optional filters for review status, "
+                            + "risk level, classification, supplier, "
+                            + "department, model version, and "
+                            + "assessment time. When no explicit "
+                            + "sort is supplied, the queue prioritises "
+                            + "pending and escalated assessments, "
+                            + "then higher risk levels and older "
+                            + "assessments."
+    )
+    @Tag(name = "Fraud Assessment Review")
+    @GetMapping("/assessments")
+    public ResponseEntity<Page<FraudAssessmentResponse>> searchFraudAssessments(@ParameterObject
+                                                                                    FraudAssessmentSearchCriteria criteria,
+
+            @ParameterObject
+            @PageableDefault(page = 0, size = 20) Pageable pageable
+    ) {
+        log.debug(
+                "GET /api/v1/fraud/assessments "
+                        + "- reviewStatus={} "
+                        + "riskLevel={} "
+                        + "classification={} "
+                        + "supplierId={} "
+                        + "departmentId={} "
+                        + "modelVersion={} "
+                        + "assessedFrom={} "
+                        + "assessedTo={} "
+                        + "page={} "
+                        + "size={} "
+                        + "sort={}",
+                criteria != null
+                        ? criteria.reviewStatus()
+                        : null,
+                criteria != null
+                        ? criteria.riskLevel()
+                        : null,
+                criteria != null
+                        ? criteria.classification()
+                        : null,
+                criteria != null
+                        ? criteria.supplierId()
+                        : null,
+                criteria != null
+                        ? criteria.departmentId()
+                        : null,
+                criteria != null
+                        ? criteria.modelVersion()
+                        : null,
+                criteria != null
+                        ? criteria.assessedFrom()
+                        : null,
+                criteria != null
+                        ? criteria.assessedTo()
+                        : null,
+                pageable.getPageNumber(),
+                pageable.getPageSize(),
+                pageable.getSort()
+        );
+
+        return ResponseEntity.ok(
+                fraudAssessmentService
+                        .searchAssessments(
+                                criteria,
+                                pageable
+                        )
         );
     }
 

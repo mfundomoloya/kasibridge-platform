@@ -8,8 +8,13 @@ import com.kasibridge.fraud.exception.FraudAssessmentConflictException;
 import com.kasibridge.fraud.exception.FraudAssessmentNotFoundException;
 import com.kasibridge.fraud.exception.FraudAssessmentVersionConflictException;
 import com.kasibridge.fraud.repository.FraudAssessmentRepository;
+import com.kasibridge.fraud.repository.FraudAssessmentSpecification;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,12 +25,35 @@ import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
 import java.util.HexFormat;
 import java.util.Locale;
+import java.util.Set;
 import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class FraudAssessmentService {
+
+    private static final int DEFAULT_PAGE_SIZE = 20;
+
+    private static final int MAXIMUM_PAGE_SIZE = 100;
+
+    private static final Set<String>
+            ALLOWED_QUEUE_SORT_FIELDS =
+            Set.of(
+                    "assessmentReference",
+                    "invoiceReference",
+                    "supplierId",
+                    "departmentId",
+                    "invoiceAmount",
+                    "classification",
+                    "riskLevel",
+                    "riskProbability",
+                    "reviewStatus",
+                    "modelVersion",
+                    "assessedAt",
+                    "createdAt",
+                    "updatedAt"
+            );
 
     private final InvoiceFraudPredictionService predictionService;
 
@@ -122,6 +150,70 @@ public class FraudAssessmentService {
         );
     }
 
+    @Transactional(readOnly = true)
+    public Page<FraudAssessmentResponse> searchAssessments(FraudAssessmentSearchCriteria criteria, Pageable pageable) {
+        if (criteria != null) {
+            criteria.validate();
+        }
+
+        Pageable validatedPageable = validateAndNormalizePageable(pageable);
+
+        log.debug(
+                "Searching fraud assessments: "
+                        + "reviewStatus={} "
+                        + "riskLevel={} "
+                        + "classification={} "
+                        + "supplierId={} "
+                        + "departmentId={} "
+                        + "modelVersion={} "
+                        + "assessedFrom={} "
+                        + "assessedTo={} "
+                        + "page={} "
+                        + "size={} "
+                        + "sort={}",
+                criteria != null
+                        ? criteria.reviewStatus()
+                        : null,
+                criteria != null
+                        ? criteria.riskLevel()
+                        : null,
+                criteria != null
+                        ? criteria.classification()
+                        : null,
+                criteria != null
+                        ? criteria.supplierId()
+                        : null,
+                criteria != null
+                        ? criteria.departmentId()
+                        : null,
+                criteria != null
+                        ? criteria.modelVersion()
+                        : null,
+                criteria != null
+                        ? criteria.assessedFrom()
+                        : null,
+                criteria != null
+                        ? criteria.assessedTo()
+                        : null,
+                validatedPageable.getPageNumber(),
+                validatedPageable.getPageSize(),
+                validatedPageable.getSort()
+        );
+
+        return assessmentRepository
+                .findAll(
+                        FraudAssessmentSpecification
+                                .withCriteria(
+                                        criteria
+                                ),
+                        validatedPageable
+                )
+                .map(
+                        FraudAssessmentResponse::from
+                );
+    }
+
+
     @Transactional
     public FraudAssessmentResponse confirmFraud(
             String assessmentReference,
@@ -151,11 +243,9 @@ public class FraudAssessmentService {
     }
 
     @Transactional
-    public FraudAssessmentResponse escalate(
-            String assessmentReference,
-            FraudAssessmentReviewRequest request,
-            String reviewer
-    ) {
+    public FraudAssessmentResponse escalate(String assessmentReference, FraudAssessmentReviewRequest request,
+                                            String reviewer)
+    {
         return applyReviewDecision(
                 assessmentReference,
                 request,
@@ -603,6 +693,97 @@ public class FraudAssessmentService {
         }
 
         return value.trim();
+    }
+
+    private Pageable validateAndNormalizePageable(Pageable pageable) {
+        if (
+                pageable == null
+                        || pageable.isUnpaged()
+        ) {
+            return PageRequest.of(
+                    0,
+                    DEFAULT_PAGE_SIZE
+            );
+        }
+
+        int pageNumber =
+                pageable.getPageNumber();
+
+        int pageSize =
+                pageable.getPageSize();
+
+        if (pageNumber < 0) {
+            throw new IllegalArgumentException(
+                    "Page number cannot be negative."
+            );
+        }
+
+        if (pageSize < 1) {
+            throw new IllegalArgumentException(
+                    "Page size must be at least 1."
+            );
+        }
+
+        if (
+                pageSize
+                        > MAXIMUM_PAGE_SIZE
+        ) {
+            throw new IllegalArgumentException(
+                    "Page size cannot exceed "
+                            + MAXIMUM_PAGE_SIZE
+                            + "."
+            );
+        }
+
+        Sort validatedSort =
+                validateSort(
+                        pageable.getSort()
+                );
+
+        return PageRequest.of(
+                pageNumber,
+                pageSize,
+                validatedSort
+        );
+    }
+
+    private Sort validateSort(Sort requestedSort) {
+        if (
+                requestedSort == null
+                        || requestedSort.isUnsorted()
+        ) {
+            /*
+             * An unsorted pageable allows the JPA
+             * specification to apply the default
+             * analyst-queue priority:
+             *
+             * review status
+             * risk level
+             * oldest assessment first
+             */
+            return Sort.unsorted();
+        }
+
+        for (Sort.Order order : requestedSort) {
+            String property =
+                    order.getProperty();
+
+            if (
+                    !ALLOWED_QUEUE_SORT_FIELDS
+                            .contains(
+                                    property
+                            )
+            ) {
+                throw new IllegalArgumentException(
+                        "Unsupported fraud assessment "
+                                + "sort field: "
+                                + property
+                                + "."
+                );
+            }
+        }
+
+        return requestedSort;
     }
 
     private enum ReviewDecision {

@@ -48,10 +48,10 @@ public class SecurityConfig {
                                 "/api/v1/fraud/invoices/assess")
                         .hasAnyRole("SYSTEM", "ANALYST", "PLATFORM_ADMIN")
 
-                        .requestMatchers(HttpMethod.GET, "/api/v1/fraud/assessments/*"
+                        .requestMatchers(HttpMethod.GET, "/api/v1/fraud/assessments",
+                                "/api/v1/fraud/assessments/*"
                         )
-                        .hasAnyRole("ANALYST", "PLATFORM_ADMIN"
-                        )
+                        .hasAnyRole("ANALYST", "PLATFORM_ADMIN")
 
                         .requestMatchers(HttpMethod.POST,
                                 "/api/v1/fraud/assessments/*/confirm",
