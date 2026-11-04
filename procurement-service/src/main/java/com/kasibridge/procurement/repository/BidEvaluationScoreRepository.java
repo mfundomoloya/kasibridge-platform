@@ -13,8 +13,11 @@ public interface BidEvaluationScoreRepository extends JpaRepository<BidEvaluatio
 
     List<BidEvaluationScore> findByTenderId(Long tenderId);
     List<BidEvaluationScore> findByBidId(Long bidId);
+    List<BidEvaluationScore> findByTenderIdAndEvaluatorUserIdOrderByBidIdAsc(Long tenderId, Long evaluatorUserId);
     boolean existsByTenderId(Long tenderId);
     boolean existsByTenderIdAndBidIdAndEvaluatorUserId(Long tenderId, Long bidId, Long evaluatorUserId);
+    boolean existsByTenderIdAndBidId(Long tenderId, Long bidId);
+    boolean existsByBidIdAndEvaluatorUserId(Long bidId, Long evaluatorUserId);
 
     @Query("""
        SELECT s.bidId,
@@ -28,5 +31,4 @@ public interface BidEvaluationScoreRepository extends JpaRepository<BidEvaluatio
 """)
     List<Object[]> findAverageScoresByTenderId(@Param("tenderId") Long tenderId);
 
-    boolean existsByTenderIdAndBidId(Long tenderId, Long bidId);
 }

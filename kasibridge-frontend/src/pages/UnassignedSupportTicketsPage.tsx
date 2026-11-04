@@ -638,7 +638,9 @@ export function UnassignedSupportTicketsPage() {
                     <p>
                         Enter the authorised staff
                         user ID and a clear reason for
-                        the assignment.
+                        the assignment. The platform records
+                        the assigning user, manual source, and
+                        timestamp automatically.
                     </p>
 
                     {assignmentError && (

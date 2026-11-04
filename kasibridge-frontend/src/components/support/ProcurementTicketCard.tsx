@@ -117,6 +117,16 @@ export function ProcurementTicketCard({
                     </div>
                 )}
 
+                {ticket.assignedByUserId !== null && (
+                    <div>
+                        <dt>Assigned by</dt>
+
+                        <dd>
+                            User {ticket.assignedByUserId}
+                        </dd>
+                    </div>
+                )}
+
                 {ticket.assignmentSource && (
                     <div>
                         <dt>Assignment source</dt>

@@ -10,10 +10,8 @@ public interface EvaluationService {
 
     List<BlindBidResponse> getBlindBidsForEvaluation(Long tenderId);
 
-    BidEvaluationResponse scoreBid(
-            Long tenderId,
-            Long bidId,
-            EvaluateBidRequest request
-    );
+    List<BidEvaluationResponse> getCurrentEvaluatorScores(Long tenderId);
+
+    BidEvaluationResponse scoreBid(Long tenderId, Long bidId, EvaluateBidRequest request);
 
 }

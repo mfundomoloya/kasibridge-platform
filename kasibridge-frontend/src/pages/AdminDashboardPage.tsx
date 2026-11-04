@@ -18,50 +18,14 @@ import {
 } from '../components/fraud/FraudMetricCard'
 
 import {
-    PortalLayout,
-} from '../components/layout/PortalLayout'
-
-import type {
-    NavigationItem,
-} from '../components/layout/PortalLayout'
+    AdministrationLayout,
+} from '../components/layout/AdministrationLayout'
 
 import type {
     FraudAssessmentDashboard,
 } from '../types/fraudAssessment'
 
 import './FraudAssessmentDashboardPage.css'
-
-const adminNavigation:
-    NavigationItem[] = [
-    {
-        label: 'Administration',
-        path: '/admin',
-    },
-    {
-        label: 'Fraud assessments',
-        path:
-            '/procurement/fraud-assessments',
-        roles: [
-            'ROLE_PLATFORM_ADMIN',
-        ],
-    },
-    {
-        label: 'Users and roles',
-        path: '/admin/users',
-    },
-    {
-        label: 'Committee assignments',
-        path: '/admin/committees',
-    },
-    {
-        label: 'Audit activity',
-        path: '/admin/audit',
-    },
-    {
-        label: 'System notifications',
-        path: '/admin/notifications',
-    },
-]
 
 export function AdminDashboardPage() {
     const [
@@ -128,14 +92,7 @@ export function AdminDashboardPage() {
     )
 
     return (
-        <PortalLayout
-            portalName={
-                'Administration Dashboard'
-            }
-            navigationItems={
-                adminNavigation
-            }
-        >
+        <AdministrationLayout>
             <section className="page-heading">
                 <div>
                     <span className="eyebrow">
@@ -206,7 +163,7 @@ export function AdminDashboardPage() {
                             ?.latestAssessedAt
                             ? (
                                 <span>
-                                Latest assessment:
+                                    Latest assessment:
                                     {' '}
                                     {
                                         formatDateTime(
@@ -214,7 +171,7 @@ export function AdminDashboardPage() {
                                                 .latestAssessedAt
                                         )
                                     }
-                            </span>
+                                </span>
                             )
                             : undefined
                     }
@@ -407,6 +364,37 @@ export function AdminDashboardPage() {
 
                 <article className="content-card">
                     <span className="eyebrow">
+                        Support operations
+                    </span>
+
+                    <h2>
+                        Assign clarification requests
+                    </h2>
+
+                    <p className="tender-detail-text">
+                        Allocate newly created support
+                        tickets to authorised reviewers and
+                        preserve the assignment reason and
+                        evidence for the responsible queue.
+                    </p>
+
+                    <div className="form-actions">
+                        <Link
+                            className={
+                                'primary-link-button'
+                            }
+                            to={
+                                '/procurement/'
+                                + 'support-tickets/unassigned'
+                            }
+                        >
+                            Open assignment queue
+                        </Link>
+                    </div>
+                </article>
+
+                <article className="content-card">
+                    <span className="eyebrow">
                         Segregation of duties
                     </span>
 
@@ -426,7 +414,7 @@ export function AdminDashboardPage() {
                     </p>
                 </article>
             </section>
-        </PortalLayout>
+        </AdministrationLayout>
     )
 }
 

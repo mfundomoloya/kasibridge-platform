@@ -97,6 +97,26 @@ import {
 } from './pages/FraudAssessmentDashboardPage'
 
 import {
+    CreateTenderSpecificationPage,
+} from './pages/CreateTenderSpecificationPage'
+
+import {
+    SpecificationTenderDetailsPage,
+} from './pages/SpecificationTenderDetailsPage'
+
+import {
+    SpecificationTenderQueuePage,
+} from './pages/SpecificationTenderQueuePage'
+
+import {
+    EvaluatorAssignmentQueuePage,
+} from './pages/EvaluatorAssignmentQueuePage'
+
+import {
+    EvaluationWorkspacePage,
+} from './pages/EvaluationWorkspacePage'
+
+import {
     UnauthorizedPage,
 } from './pages/UnauthorizedPage'
 
@@ -113,11 +133,10 @@ function App() {
                 }
             />
 
-
             <Route
                 path="/showcase"
                 element={
-                        <KasiBridgeShowcasePage />
+                    <KasiBridgeShowcasePage />
                 }
             />
 
@@ -128,10 +147,11 @@ function App() {
                 }
             />
 
-
             <Route
                 path="/login"
-                element={<LoginPage />}
+                element={
+                    <LoginPage />
+                }
             />
 
             <Route
@@ -204,33 +224,6 @@ function App() {
                         ]}
                     >
                         <SupportTicketsPage />
-                    </RoleRoute>
-                }
-            />
-
-            <Route
-                path="/procurement/ai-assessments"
-                element={
-                    <RoleRoute
-                        allowedRoles={[
-                            'ROLE_SPECIFICATION_OFFICER',
-                            'ROLE_PLATFORM_ADMIN',
-                        ]}
-                    >
-                        <TicketAiAssessmentsPage />
-                    </RoleRoute>
-                }
-            />
-
-            <Route
-                path="/procurement/support-tickets/unassigned"
-                element={
-                    <RoleRoute
-                        allowedRoles={[
-                            'ROLE_PLATFORM_ADMIN',
-                        ]}
-                    >
-                        <UnassignedSupportTicketsPage />
                     </RoleRoute>
                 }
             />
@@ -322,10 +315,75 @@ function App() {
                             'ROLE_SPECIFICATION_OFFICER',
                             'ROLE_EVALUATOR',
                             'ROLE_ADJUDICATOR',
-                            'ROLE_PLATFORM_ADMIN',
                         ]}
                     >
                         <ProcurementDashboardPage />
+                    </RoleRoute>
+                }
+            />
+
+            <Route
+                path="/procurement/specifications"
+                element={
+                    <RoleRoute
+                        allowedRoles={[
+                            'ROLE_SPECIFICATION_OFFICER',
+                        ]}
+                    >
+                        <SpecificationTenderQueuePage />
+                    </RoleRoute>
+                }
+            />
+
+            <Route
+                path="/procurement/specifications/new"
+                element={
+                    <RoleRoute
+                        allowedRoles={[
+                            'ROLE_SPECIFICATION_OFFICER',
+                        ]}
+                    >
+                        <CreateTenderSpecificationPage />
+                    </RoleRoute>
+                }
+            />
+
+
+            <Route
+                path="/procurement/specifications/:tenderId"
+                element={
+                    <RoleRoute
+                        allowedRoles={[
+                            'ROLE_SPECIFICATION_OFFICER',
+                        ]}
+                    >
+                        <SpecificationTenderDetailsPage />
+                    </RoleRoute>
+                }
+            />
+
+            <Route
+                path="/procurement/evaluations"
+                element={
+                    <RoleRoute
+                        allowedRoles={[
+                            'ROLE_EVALUATOR',
+                        ]}
+                    >
+                        <EvaluatorAssignmentQueuePage />
+                    </RoleRoute>
+                }
+            />
+
+            <Route
+                path="/procurement/evaluations/:tenderId"
+                element={
+                    <RoleRoute
+                        allowedRoles={[
+                            'ROLE_EVALUATOR',
+                        ]}
+                    >
+                        <EvaluationWorkspacePage />
                     </RoleRoute>
                 }
             />
@@ -344,6 +402,18 @@ function App() {
                 }
             />
 
+            <Route
+                path="/procurement/ai-assessments"
+                element={
+                    <RoleRoute
+                        allowedRoles={[
+                            'ROLE_SPECIFICATION_OFFICER',
+                        ]}
+                    >
+                        <TicketAiAssessmentsPage />
+                    </RoleRoute>
+                }
+            />
 
             <Route
                 path="/procurement/support-tickets"
@@ -352,7 +422,6 @@ function App() {
                         allowedRoles={[
                             'ROLE_SPECIFICATION_OFFICER',
                             'ROLE_ADJUDICATOR',
-                            'ROLE_PLATFORM_ADMIN',
                         ]}
                     >
                         <ProcurementSupportQueuePage />
@@ -367,7 +436,6 @@ function App() {
                         allowedRoles={[
                             'ROLE_SPECIFICATION_OFFICER',
                             'ROLE_ADJUDICATOR',
-                            'ROLE_PLATFORM_ADMIN',
                         ]}
                     >
                         <ProcurementSupportTicketDetailsPage />
@@ -375,6 +443,18 @@ function App() {
                 }
             />
 
+            <Route
+                path="/procurement/support-tickets/unassigned"
+                element={
+                    <RoleRoute
+                        allowedRoles={[
+                            'ROLE_PLATFORM_ADMIN',
+                        ]}
+                    >
+                        <UnassignedSupportTicketsPage />
+                    </RoleRoute>
+                }
+            />
 
             <Route
                 path="/unauthorized"

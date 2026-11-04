@@ -181,14 +181,19 @@ public class SecurityConfig {
                                  */
                                 .requestMatchers(
                                         HttpMethod.PATCH,
-                                        "/api/v1/tenders/{id}/publish",
-                                        "/api/v1/tenders/{id}/close-bidding",
-                                        "/api/v1/tenders/{id}/start-evaluation",
-                                        "/api/v1/tenders/{id}/start-adjudication"
+                                        "/api/v1/tenders/*/publish",
+                                        "/api/v1/tenders/*/close-bidding",
+                                        "/api/v1/tenders/*/start-evaluation"
                                 )
-                                .hasAnyRole(
-                                        "SPECIFICATION_OFFICER",
-                                        "PLATFORM_ADMIN"
+                                .hasRole(
+                                        "SPECIFICATION_OFFICER"
+                                )
+                                .requestMatchers(
+                                        HttpMethod.PATCH,
+                                        "/api/v1/tenders/*/start-adjudication"
+                                )
+                                .hasRole(
+                                        "ADJUDICATOR"
                                 )
 
                                 .requestMatchers(
@@ -217,6 +222,21 @@ public class SecurityConfig {
                                 )
 
                                 /*
+                                 * Authenticated user's own active committee
+                                 * assignment and dashboard queues.
+                                 */
+                                .requestMatchers(
+                                        HttpMethod.GET,
+                                        "/api/v1/committee-assignments/my",
+                                        "/api/v1/committee-assignments/my/queue"
+                                )
+                                .hasAnyRole(
+                                        "SPECIFICATION_OFFICER",
+                                        "EVALUATOR",
+                                        "ADJUDICATOR"
+                                )
+
+                                /*
                                  * Committee management.
                                  */
                                 .requestMatchers(
@@ -232,26 +252,40 @@ public class SecurityConfig {
                                  * Evaluation endpoints.
                                  */
                                 .requestMatchers(
-                                        "/api/v1/tenders/{id}/evaluation",
-                                        "/api/v1/tenders/{id}/evaluation/{evaluationId}"
+                                        HttpMethod.GET,
+                                        "/api/v1/tenders/*/evaluation/**"
                                 )
                                 .hasAnyRole(
                                         "EVALUATOR",
                                         "PLATFORM_ADMIN"
                                 )
+                                .requestMatchers(
+                                        "/api/v1/tenders/*/evaluation/**"
+                                )
+                                .hasRole(
+                                        "EVALUATOR"
+                                )
+
 
                                 /*
                                  * Adjudication endpoints.
                                  */
                                 .requestMatchers(
-                                        "/api/v1/tenders/{id}/adjudication",
-                                        "/api/v1/tenders/{id}/adjudication/{decisionId}"
+                                        HttpMethod.GET,
+                                        "/api/v1/tenders/*/adjudication/**"
                                 )
                                 .hasAnyRole(
                                         "ADJUDICATOR",
                                         "PLATFORM_ADMIN"
                                 )
 
+                                .requestMatchers(
+                                        HttpMethod.POST,
+                                        "/api/v1/tenders/*/adjudication/**"
+                                )
+                                .hasRole(
+                                        "ADJUDICATOR"
+                                )
                                 /*.
                                  * Procurement audit events.
                                  */
@@ -437,6 +471,27 @@ public class SecurityConfig {
                                         "/api/v1/bids/{bidId}/withdraw"
                                 )
                                 .hasRole("TRADER")
+
+                                /*
+                                 * Evaluators may retrieve blind bids and their
+                                 * own persisted scores. The service layer also
+                                 * verifies an active tender assignment.
+                                 */
+                                .requestMatchers(
+                                        HttpMethod.GET,
+                                        "/api/v1/tenders/*/evaluation/bids",
+                                        "/api/v1/tenders/*/evaluation/my-scores"
+                                )
+                                .hasRole(
+                                        "EVALUATOR"
+                                )
+
+
+                                .requestMatchers(HttpMethod.POST, "/api/v1/tenders/*/evaluation/bids/*/score")
+                                .hasRole("EVALUATOR")
+
+                                .requestMatchers(HttpMethod.GET, "/api/v1/committee-assignments/my")
+                                .hasAnyRole("SPECIFICATION_OFFICER", "EVALUATOR", "ADJUDICATOR")
 
                                 .anyRequest()
                                 .authenticated()

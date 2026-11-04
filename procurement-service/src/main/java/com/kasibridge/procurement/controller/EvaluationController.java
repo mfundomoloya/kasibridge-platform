@@ -29,6 +29,18 @@ public class EvaluationController {
         return ResponseEntity.ok(service.getBlindBidsForEvaluation(tenderId));
     }
 
+    @GetMapping("/my-scores")
+    public ResponseEntity<List<BidEvaluationResponse>> getCurrentEvaluatorScores(@PathVariable("tenderId") Long tenderId) {
+        log.info(
+                "GET /api/v1/tenders/{}/"
+                        + "evaluation/my-scores",
+                tenderId
+        );
+
+        return ResponseEntity.ok(service.getCurrentEvaluatorScores(tenderId)
+        );
+    }
+
     @PostMapping("/bids/{bidId}/score")
     public ResponseEntity<BidEvaluationResponse> scoreBid(@PathVariable("tenderId") Long tenderId,
                                                           @PathVariable("bidId") Long bidId,

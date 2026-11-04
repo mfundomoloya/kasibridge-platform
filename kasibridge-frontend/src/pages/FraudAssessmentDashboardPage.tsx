@@ -5,8 +5,20 @@ import {
 } from 'react'
 
 import {
-    ProcurementLayout,
-} from '../components/layout/ProcurementLayout'
+    confirmFraudAssessment,
+    escalateFraudAssessment,
+    getFraudApiErrorMessage,
+    getFraudAssessment,
+    getFraudAssessmentDashboard,
+    getFraudAssessments,
+    isFraudAssessmentStateConflict,
+    isFraudAssessmentVersionConflict,
+    markFraudAssessmentFalsePositive,
+} from '../api/fraudAssessmentApi'
+
+import {
+    useAuth,
+} from '../auth/useAuth'
 
 import {
     FraudAssessmentDetailsPanel,
@@ -29,20 +41,12 @@ import {
 } from '../components/fraud/FraudMetricCard'
 
 import {
-    confirmFraudAssessment,
-    escalateFraudAssessment,
-    getFraudApiErrorMessage,
-    getFraudAssessment,
-    getFraudAssessmentDashboard,
-    getFraudAssessments,
-    isFraudAssessmentStateConflict,
-    isFraudAssessmentVersionConflict,
-    markFraudAssessmentFalsePositive,
-} from '../api/fraudAssessmentApi'
+    AdministrationLayout,
+} from '../components/layout/AdministrationLayout'
 
 import {
-    useAuth,
-} from '../auth/useAuth'
+    ProcurementLayout,
+} from '../components/layout/ProcurementLayout'
 
 import type {
     FraudAssessment,
@@ -177,6 +181,11 @@ export function FraudAssessmentDashboardPage() {
             'ROLE_PLATFORM_ADMIN'
         )
 
+    const DashboardLayout =
+        isPlatformAdministrator
+            ? AdministrationLayout
+            : ProcurementLayout
+
     const loadDashboard =
         useCallback(
             async (): Promise<void> => {
@@ -228,8 +237,7 @@ export function FraudAssessmentDashboardPage() {
                         (currentAssessment) =>
                             reconcileSelection(
                                 currentAssessment,
-                                response
-                                    .content
+                                response.content
                             )
                     )
                 } catch (error) {
@@ -575,7 +583,7 @@ export function FraudAssessmentDashboardPage() {
         assessmentPage?.page ?? null
 
     return (
-        <ProcurementLayout>
+        <DashboardLayout>
             <section className="page-heading">
                 <div>
                     <span className="eyebrow">
@@ -671,7 +679,7 @@ export function FraudAssessmentDashboardPage() {
                             ?.latestAssessedAt
                             ? (
                                 <span>
-                                Latest assessment:
+                                    Latest assessment:
                                     {' '}
                                     {
                                         formatDateTime(
@@ -679,7 +687,7 @@ export function FraudAssessmentDashboardPage() {
                                                 .latestAssessedAt
                                         )
                                     }
-                            </span>
+                                </span>
                             )
                             : undefined
                     }
@@ -947,7 +955,7 @@ export function FraudAssessmentDashboardPage() {
                     handleCloseReview
                 }
             />
-        </ProcurementLayout>
+        </DashboardLayout>
     )
 }
 

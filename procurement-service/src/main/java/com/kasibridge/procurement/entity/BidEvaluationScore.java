@@ -1,7 +1,19 @@
 package com.kasibridge.procurement.entity;
 
-import jakarta.persistence.*;
-import lombok.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Index;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -15,9 +27,11 @@ import java.time.LocalDateTime;
                 @Index(name = "idx_eval_evaluator_user_id", columnList = "evaluator_user_id")
         },
         uniqueConstraints = {
-                @UniqueConstraint(
-                        name = "uk_eval_bid_evaluator",
-                        columnNames = {"bid_id", "evaluator_user_id"}
+                @UniqueConstraint(name = "uk_eval_bid_evaluator",
+                        columnNames = {
+                                "bid_id",
+                                "evaluator_user_id"
+                        }
                 )
         }
 )
@@ -58,6 +72,8 @@ public class BidEvaluationScore {
 
     @PrePersist
     protected void onCreate() {
-        submittedAt = LocalDateTime.now();
+        if (submittedAt == null) {
+            submittedAt = LocalDateTime.now();
+        }
     }
 }

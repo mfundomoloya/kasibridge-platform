@@ -27,10 +27,7 @@ import java.util.Optional;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -308,6 +305,7 @@ class EvaluationServiceImplTest {
 
     @Test
     void shouldRejectUnassignedEvaluator() {
+
         when(currentUserService.getCurrentUserId())
                 .thenReturn(EVALUATOR_USER_ID);
 
@@ -315,12 +313,6 @@ class EvaluationServiceImplTest {
                 .thenReturn(
                         Optional.of(evaluationTender)
                 );
-
-        when(
-                currentUserService.hasRole(
-                        "ROLE_PLATFORM_ADMIN"
-                )
-        ).thenReturn(false);
 
         when(
                 assignmentRepository
@@ -457,105 +449,66 @@ class EvaluationServiceImplTest {
     }
 
     @Test
-    void shouldAllowPlatformAdminWithoutEvaluatorAssignment() {
-        Bid compliantBid = createBid(
-                16L,
-                "Bidder B",
-                "Platform administrator blind proposal view.",
-                Bid.BidStatus.COMPLIANT
+    void shouldRejectPlatformAdminWithoutEvaluatorAssignment() {
+        Long platformAdminUserId =
+                2L;
+
+        when(
+                currentUserService
+                        .getCurrentUserId()
+        ).thenReturn(
+                platformAdminUserId
         );
 
-        when(currentUserService.getCurrentUserId())
-                .thenReturn(EVALUATOR_USER_ID);
-
-        when(tenderRepository.findById(TENDER_ID))
-                .thenReturn(
-                        Optional.of(evaluationTender)
-                );
-
         when(
-                currentUserService.hasRole(
-                        "ROLE_PLATFORM_ADMIN"
-                )
-        ).thenReturn(true);
-
-        when(
-                bidRepository.findByTenderIdAndStatusIn(
-                        TENDER_ID,
-                        eligibleEvaluationStatuses()
+                tenderRepository.findById(
+                        TENDER_ID
                 )
         ).thenReturn(
-                List.of(compliantBid)
+                Optional.of(
+                        evaluationTender
+                )
         );
 
-        List<BlindBidResponse> responses =
-                evaluationService
-                        .getBlindBidsForEvaluation(
-                                TENDER_ID
-                        );
+        when(
+                assignmentRepository
+                        .existsByTenderIdAndUserIdAndCommitteeRoleAndActiveTrue(
+                                TENDER_ID,
+                                platformAdminUserId,
+                                TenderCommitteeAssignment
+                                        .CommitteeRole
+                                        .EVALUATOR
+                        )
+        ).thenReturn(false);
+
+        ProcurementAuthorizationException
+                exception =
+                assertThrows(
+                        ProcurementAuthorizationException
+                                .class,
+                        () ->
+                                evaluationService
+                                        .getBlindBidsForEvaluation(
+                                                TENDER_ID
+                                        )
+                );
 
         assertEquals(
-                1,
-                responses.size()
-        );
-
-        BlindBidResponse response =
-                responses.get(0);
-
-        assertEquals(
-                16L,
-                response.getBidId()
-        );
-
-        assertEquals(
-                TENDER_ID,
-                response.getTenderId()
-        );
-
-        assertEquals(
-                "Bidder B",
-                response.getBidderAlias()
-        );
-
-        assertEquals(
-                "Platform administrator blind proposal view.",
-                response.getTechnicalProposal()
+                "User is not assigned as "
+                        + "evaluator to this tender.",
+                exception.getMessage()
         );
 
         verify(
-                assignmentRepository,
+                bidRepository,
                 never()
-        ).existsByTenderIdAndUserIdAndCommitteeRoleAndActiveTrue(
-                any(),
-                any(),
-                any()
+        ).findByTenderIdAndStatusIn(
+                anyLong(),
+                anyList()
         );
-
-        verify(auditService)
-                .recordSuccess(
-                        eq(
-                                ProcurementAuditEvent
-                                        .AuditEventType
-                                        .BID_SCORE_VIEWED
-                        ),
-                        eq(TENDER_ID),
-                        isNull(),
-                        eq(EVALUATOR_USER_ID),
-                        eq("Evaluator viewed blind bids"),
-                        eq(
-                                "Blind bid list accessed for tenderId="
-                                        + TENDER_ID
-                        )
-                );
     }
 
     private void mockAssignedEvaluator() {
-        when(
-                currentUserService.hasRole(
-                        "ROLE_PLATFORM_ADMIN"
-                )
-        ).thenReturn(false);
-
         when(
                 assignmentRepository
                         .existsByTenderIdAndUserIdAndCommitteeRoleAndActiveTrue(

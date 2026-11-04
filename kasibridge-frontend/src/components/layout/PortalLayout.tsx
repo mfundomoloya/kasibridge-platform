@@ -20,6 +20,7 @@ export interface NavigationItem {
     path: string
     roles?: UserRole[]
     badge?: number
+    end?: boolean
 }
 
 interface PortalLayoutProps {
@@ -84,7 +85,7 @@ export function PortalLayout({
                             <NavLink
                                 key={item.path}
                                 to={item.path}
-                                end={item.path === '/procurement'}
+                                end={item.end}
                             >
                                 <span>
                                     {item.label}

@@ -1,0 +1,148 @@
+.status-page {
+    display: grid;
+    min-height: 100vh;
+    place-items: center;
+    padding: 32px 20px;
+    overflow: hidden;
+    background:
+        radial-gradient(
+            circle at 12% 12%,
+            rgba(116, 218, 164, 0.18),
+            transparent 31%
+        ),
+        radial-gradient(
+            circle at 92% 88%,
+            rgba(18, 107, 71, 0.12),
+            transparent 35%
+        ),
+        #f3f6f4;
+}
+
+.status-card {
+    position: relative;
+    width: min(100%, 560px);
+    padding: 48px;
+    overflow: hidden;
+    border: 1px solid #dfe8e2;
+    border-radius: 24px;
+    background: rgba(255, 255, 255, 0.94);
+    text-align: center;
+    box-shadow: 0 24px 70px rgba(13, 61, 42, 0.12);
+}
+
+.status-card::before {
+    position: absolute;
+    inset: 0 0 auto;
+    height: 5px;
+    content: '';
+    background: linear-gradient(90deg, #0c3d2a, #44bf7a, #0c3d2a);
+}
+
+.status-icon {
+    display: grid;
+    width: 76px;
+    height: 76px;
+    margin: 0 auto 24px;
+    place-items: center;
+    border: 1px solid #bfe3cd;
+    border-radius: 22px;
+    color: #0b6b4a;
+    background: #eaf7ef;
+}
+
+.status-icon svg {
+    width: 42px;
+    height: 42px;
+    fill: none;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 2.2;
+}
+
+.status-code {
+    display: block;
+    margin-bottom: 10px;
+    color: #16845a;
+    font-size: 0.74rem;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+}
+
+.status-card h1 {
+    margin: 0;
+    color: #10251b;
+    font-family: 'Bricolage Grotesque', Inter, sans-serif;
+    font-size: clamp(2rem, 5vw, 2.8rem);
+    letter-spacing: -0.035em;
+    line-height: 1.05;
+}
+
+.status-description {
+    max-width: 430px;
+    margin: 18px auto 0;
+    color: #596a60;
+    line-height: 1.7;
+}
+
+.status-user {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 24px;
+    padding: 9px 14px;
+    border: 1px solid #dce8df;
+    border-radius: 999px;
+    color: #1d4733;
+    background: #f5faf6;
+    font-size: 0.9rem;
+}
+
+.status-user-label {
+    color: #718078;
+}
+
+.status-actions {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 30px;
+}
+
+.status-actions .primary-button,
+.status-actions .secondary-button {
+    min-height: 46px;
+    border-radius: 999px;
+}
+
+.status-actions .primary-button {
+    padding-inline: 22px;
+}
+
+.status-actions .secondary-button {
+    padding-inline: 20px;
+    border: 1px solid #d4dfd8;
+    background: #ffffff;
+}
+
+.status-help {
+    margin: 28px 0 0;
+    color: #849088;
+    font-size: 0.82rem;
+}
+
+@media (max-width: 520px) {
+    .status-card {
+        padding: 40px 24px;
+        border-radius: 20px;
+    }
+
+    .status-actions {
+        flex-direction: column;
+    }
+
+    .status-actions button {
+        width: 100%;
+    }
+}
