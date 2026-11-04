@@ -51,4 +51,9 @@ public interface BidRepository extends JpaRepository<Bid, Long> {
     long countByTenderIdAndStatus(Long tenderId, Bid.BidStatus status);
 
     Optional<Bid> findTopByTenderIdOrderBySubmittedAtDesc(Long tenderId);
+
+    long countByTenderIdAndStatusIn(
+            Long tenderId,
+            List<Bid.BidStatus> statuses
+    );
 }

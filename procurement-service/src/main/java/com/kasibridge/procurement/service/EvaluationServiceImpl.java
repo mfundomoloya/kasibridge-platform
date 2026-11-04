@@ -3,6 +3,7 @@ package com.kasibridge.procurement.service;
 import com.kasibridge.procurement.dto.BidEvaluationResponse;
 import com.kasibridge.procurement.dto.BlindBidResponse;
 import com.kasibridge.procurement.dto.EvaluateBidRequest;
+import com.kasibridge.procurement.dto.EvaluationProgressResponse;
 import com.kasibridge.procurement.entity.*;
 import com.kasibridge.procurement.exception.BidEvaluationException;
 import com.kasibridge.procurement.exception.BidNotFoundException;
@@ -129,6 +130,170 @@ public class EvaluationServiceImpl implements EvaluationService {
         );
 
         return scores;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public EvaluationProgressResponse
+    getEvaluationProgress(
+            Long tenderId
+    ) {
+        if (
+                tenderId == null
+                        || tenderId <= 0
+        ) {
+            throw new IllegalArgumentException(
+                    "A valid tender ID is required."
+            );
+        }
+
+        Tender tender =
+                tenderRepository
+                        .findById(tenderId)
+                        .orElseThrow(
+                                () ->
+                                        new TenderNotFoundException(
+                                                "Tender not found "
+                                                        + "with ID: "
+                                                        + tenderId
+                                        )
+                        );
+
+        long activeEvaluatorCount =
+                assignmentRepository
+                        .countByTenderIdAndCommitteeRoleAndActiveTrue(
+                                tenderId,
+                                TenderCommitteeAssignment
+                                        .CommitteeRole
+                                        .EVALUATOR
+                        );
+
+        long eligibleBidCount =
+                bidRepository
+                        .countByTenderIdAndStatusIn(
+                                tenderId,
+                                List.of(
+                                        Bid.BidStatus
+                                                .COMPLIANT,
+                                        Bid.BidStatus
+                                                .UNDER_EVALUATION
+                                )
+                        );
+
+        long expectedScoreCount =
+                Math.multiplyExact(
+                        activeEvaluatorCount,
+                        eligibleBidCount
+                );
+
+        long submittedScoreCount =
+                scoreRepository
+                        .countSubmittedScoresByTenderId(
+                                tenderId
+                        );
+
+        long remainingScoreCount =
+                Math.max(
+                        expectedScoreCount
+                                - submittedScoreCount,
+                        0
+                );
+
+        BigDecimal completionPercentage =
+                calculateCompletionPercentage(
+                        expectedScoreCount,
+                        submittedScoreCount
+                );
+
+        boolean hasRequiredParticipants =
+                activeEvaluatorCount > 0
+                        && eligibleBidCount > 0
+                        && expectedScoreCount > 0;
+
+        boolean scoreCountMatches =
+                submittedScoreCount
+                        == expectedScoreCount;
+
+        boolean evaluationComplete =
+                hasRequiredParticipants
+                        && scoreCountMatches;
+
+        boolean readyForAdjudication =
+                tender.getStatus()
+                        == Tender.TenderStatus
+                        .EVALUATION
+                        && evaluationComplete;
+
+        String blockingReason =
+                determineEvaluationBlockingReason(
+                        tender,
+                        activeEvaluatorCount,
+                        eligibleBidCount,
+                        expectedScoreCount,
+                        submittedScoreCount,
+                        remainingScoreCount,
+                        readyForAdjudication
+                );
+
+        log.debug(
+                "Loaded evaluation progress: "
+                        + "tenderId={} "
+                        + "activeEvaluators={} "
+                        + "eligibleBids={} "
+                        + "expectedScores={} "
+                        + "submittedScores={} "
+                        + "remainingScores={} "
+                        + "completionPercentage={} "
+                        + "readyForAdjudication={}",
+                tenderId,
+                activeEvaluatorCount,
+                eligibleBidCount,
+                expectedScoreCount,
+                submittedScoreCount,
+                remainingScoreCount,
+                completionPercentage,
+                readyForAdjudication
+        );
+
+        return EvaluationProgressResponse
+                .builder()
+                .tenderId(
+                        tender.getId()
+                )
+                .tenderReference(
+                        tender.getTenderReference()
+                )
+                .tenderTitle(
+                        tender.getTitle()
+                )
+                .activeEvaluatorCount(
+                        activeEvaluatorCount
+                )
+                .eligibleBidCount(
+                        eligibleBidCount
+                )
+                .expectedScoreCount(
+                        expectedScoreCount
+                )
+                .submittedScoreCount(
+                        submittedScoreCount
+                )
+                .remainingScoreCount(
+                        remainingScoreCount
+                )
+                .completionPercentage(
+                        completionPercentage
+                )
+                .evaluationComplete(
+                        evaluationComplete
+                )
+                .readyForAdjudication(
+                        readyForAdjudication
+                )
+                .blockingReason(
+                        blockingReason
+                )
+                .build();
     }
 
     @Override
@@ -335,5 +500,131 @@ public class EvaluationServiceImpl implements EvaluationService {
                 .setScale(2, RoundingMode.HALF_UP);
     }
 
+    private BigDecimal
+    calculateCompletionPercentage(
+            long expectedScoreCount,
+            long submittedScoreCount
+    ) {
+        if (expectedScoreCount <= 0) {
+            return BigDecimal.ZERO
+                    .setScale(
+                            2,
+                            RoundingMode.HALF_UP
+                    );
+        }
 
+        BigDecimal submitted =
+                BigDecimal.valueOf(
+                        submittedScoreCount
+                );
+
+        BigDecimal expected =
+                BigDecimal.valueOf(
+                        expectedScoreCount
+                );
+
+        BigDecimal percentage =
+                submitted
+                        .multiply(
+                                new BigDecimal(
+                                        "100.00"
+                                )
+                        )
+                        .divide(
+                                expected,
+                                2,
+                                RoundingMode.HALF_UP
+                        );
+
+        return percentage.min(
+                new BigDecimal(
+                        "100.00"
+                )
+        );
+    }
+
+    private String
+    determineEvaluationBlockingReason(
+            Tender tender,
+            long activeEvaluatorCount,
+            long eligibleBidCount,
+            long expectedScoreCount,
+            long submittedScoreCount,
+            long remainingScoreCount,
+            boolean readyForAdjudication
+    ) {
+        if (readyForAdjudication) {
+            return null;
+        }
+
+        if (
+                tender.getStatus()
+                        != Tender.TenderStatus.EVALUATION
+        ) {
+            return (
+                    "Tender must be in EVALUATION "
+                            + "status before it can "
+                            + "progress to adjudication. "
+                            + "Current status: "
+                            + tender.getStatus()
+                            + "."
+            );
+        }
+
+        if (activeEvaluatorCount == 0) {
+            return (
+                    "At least one active Evaluator "
+                            + "committee assignment is "
+                            + "required."
+            );
+        }
+
+        if (eligibleBidCount == 0) {
+            return (
+                    "At least one compliant bid is "
+                            + "required for evaluation."
+            );
+        }
+
+        if (expectedScoreCount == 0) {
+            return (
+                    "No evaluator scores are currently "
+                            + "required because the "
+                            + "evaluation matrix is empty."
+            );
+        }
+
+        if (
+                submittedScoreCount
+                        > expectedScoreCount
+        ) {
+            return (
+                    "The number of submitted scores "
+                            + "exceeds the current "
+                            + "evaluation requirement. "
+                            + "Review inactive assignments "
+                            + "or stale evaluation records."
+            );
+        }
+
+        if (remainingScoreCount == 1) {
+            return (
+                    "One required evaluator score "
+                            + "remains outstanding."
+            );
+        }
+
+        if (remainingScoreCount > 1) {
+            return (
+                    remainingScoreCount
+                            + " required evaluator "
+                            + "scores remain outstanding."
+            );
+        }
+
+        return (
+                "The evaluation is not ready for "
+                        + "adjudication."
+        );
+    }
 }

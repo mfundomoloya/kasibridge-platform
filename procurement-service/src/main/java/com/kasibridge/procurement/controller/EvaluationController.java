@@ -3,6 +3,7 @@ package com.kasibridge.procurement.controller;
 import com.kasibridge.procurement.dto.BidEvaluationResponse;
 import com.kasibridge.procurement.dto.BlindBidResponse;
 import com.kasibridge.procurement.dto.EvaluateBidRequest;
+import com.kasibridge.procurement.dto.EvaluationProgressResponse;
 import com.kasibridge.procurement.service.EvaluationService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -19,6 +20,7 @@ import java.util.List;
 public class EvaluationController {
 
     private final EvaluationService service;
+    private final EvaluationService evaluationService;
 
     @GetMapping("/bids")
     public ResponseEntity<List<BlindBidResponse>> getBlindBidsForEvaluation(@PathVariable("tenderId") Long tenderId) {
@@ -38,6 +40,23 @@ public class EvaluationController {
         );
 
         return ResponseEntity.ok(service.getCurrentEvaluatorScores(tenderId)
+        );
+    }
+
+    @GetMapping("/progress")
+    public ResponseEntity<EvaluationProgressResponse> getEvaluationProgress(@PathVariable("tenderId") Long tenderId
+    ) {
+        log.info(
+                "GET /api/v1/tenders/{}/"
+                        + "evaluation/progress",
+                tenderId
+        );
+
+        return ResponseEntity.ok(
+                evaluationService
+                        .getEvaluationProgress(
+                                tenderId
+                        )
         );
     }
 

@@ -309,6 +309,24 @@ public class SecurityConfig {
                                         )
 
                                         /*
+                                         * Evaluation-progress summary.
+                                         *
+                                         * This endpoint exposes aggregate completion
+                                         * information but not individual evaluator
+                                         * comments, identities or bid submissions.
+                                         */
+                                        .requestMatchers(
+                                                HttpMethod.GET,
+                                                "/api/v1/tenders/{tenderId}/evaluation/progress"
+                                        )
+                                        .hasAnyRole(
+                                                "SPECIFICATION_OFFICER",
+                                                "EVALUATOR",
+                                                "ADJUDICATOR",
+                                                "PLATFORM_ADMIN"
+                                        )
+
+                                        /*
                                          * Evaluator read endpoints.
                                          *
                                          * The service layer additionally

@@ -79,4 +79,11 @@ public interface TenderCommitteeAssignmentRepository
             TenderCommitteeAssignment.CommitteeRole
                     committeeRole
     );
+
+    long countByTenderIdAndCommitteeRoleAndActiveTrue(
+            Long tenderId,
+            TenderCommitteeAssignment.CommitteeRole
+                    committeeRole
+    );
+
 }
