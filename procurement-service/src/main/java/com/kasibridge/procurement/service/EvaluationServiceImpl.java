@@ -35,10 +35,9 @@ public class EvaluationServiceImpl implements EvaluationService {
     private final CurrentUserService currentUserService;
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public List<BlindBidResponse> getBlindBidsForEvaluation(Long tenderId) {
-        Long evaluatorUserId =
-                currentUserService.getCurrentUserId();
+        Long evaluatorUserId = currentUserService.getCurrentUserId();
 
         Tender tender = tenderRepository.findById(tenderId)
                 .orElseThrow(() -> new TenderNotFoundException("Tender not found with ID: " + tenderId));
