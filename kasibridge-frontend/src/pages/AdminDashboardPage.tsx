@@ -413,6 +413,35 @@ export function AdminDashboardPage() {
                         protection.
                     </p>
                 </article>
+
+                <article className="content-card">
+    <span className="eyebrow">
+        Procurement governance
+    </span>
+
+                    <h2>
+                        Manage tender committees
+                    </h2>
+
+                    <p>
+                        Assign authorised Specification
+                        Officers, Evaluators and Adjudicators
+                        while preserving segregation of duties
+                        for each tender.
+                    </p>
+
+                    <div className="form-actions">
+                        <Link
+                            className="primary-link-button"
+                            to={
+                                '/admin/'
+                                + 'committee-assignments'
+                            }
+                        >
+                            Open committee assignments
+                        </Link>
+                    </div>
+                </article>
             </section>
         </AdministrationLayout>
     )

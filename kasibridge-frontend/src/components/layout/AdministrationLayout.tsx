@@ -16,19 +16,27 @@ const administrationNavigation:
         label: 'Administration',
         path: '/admin',
         end: true,
-    },
-    {
-        label: 'Fraud assessments',
-        path:
-            '/procurement/fraud-assessments',
         roles: [
             'ROLE_PLATFORM_ADMIN',
         ],
     },
     {
-        label: 'Unassigned support tickets',
+        label: 'Fraud assessments',
         path:
-            '/procurement/support-tickets/unassigned',
+            '/procurement/fraud-assessments',
+        end: true,
+        roles: [
+            'ROLE_PLATFORM_ADMIN',
+        ],
+    },
+    {
+        label:
+            'Unassigned support tickets',
+        path:
+            '/procurement/'
+            + 'support-tickets/'
+            + 'unassigned',
+        end: true,
         roles: [
             'ROLE_PLATFORM_ADMIN',
         ],
@@ -36,13 +44,17 @@ const administrationNavigation:
     {
         label: 'Users and roles',
         path: '/admin/users',
+        end: true,
         roles: [
             'ROLE_PLATFORM_ADMIN',
         ],
     },
     {
         label: 'Committee assignments',
-        path: '/admin/committees',
+        path:
+            '/admin/'
+            + 'committee-assignments',
+        end: true,
         roles: [
             'ROLE_PLATFORM_ADMIN',
         ],
@@ -50,13 +62,16 @@ const administrationNavigation:
     {
         label: 'Audit activity',
         path: '/admin/audit',
+        end: true,
         roles: [
             'ROLE_PLATFORM_ADMIN',
         ],
     },
     {
         label: 'System notifications',
-        path: '/admin/notifications',
+        path:
+            '/admin/notifications',
+        end: true,
         roles: [
             'ROLE_PLATFORM_ADMIN',
         ],

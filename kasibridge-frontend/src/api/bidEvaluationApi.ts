@@ -9,6 +9,7 @@ import type {
     BlindEvaluationBid,
     EvaluateBidRequest,
     EvaluationApiErrorResponse,
+    TenderBidActivity,
 } from '../types/bidEvaluation'
 
 export async function getBlindBidsForEvaluation(
@@ -26,6 +27,46 @@ export async function getBlindBidsForEvaluation(
                 '/api/v1/tenders/'
                 + validTenderId
                 + '/evaluation/bids'
+            )
+
+    return response.data
+}
+
+export async function getMyBidEvaluationScores(
+    tenderId: number,
+): Promise<BidEvaluation[]> {
+    const validTenderId =
+        requirePositiveIdentifier(
+            tenderId,
+            'Tender ID'
+        )
+
+    const response =
+        await procurementApiClient
+            .get<BidEvaluation[]>(
+                '/api/v1/tenders/'
+                + validTenderId
+                + '/evaluation/my-scores'
+            )
+
+    return response.data
+}
+
+export async function getTenderBidActivity(
+    tenderId: number,
+): Promise<TenderBidActivity> {
+    const validTenderId =
+        requirePositiveIdentifier(
+            tenderId,
+            'Tender ID'
+        )
+
+    const response =
+        await procurementApiClient
+            .get<TenderBidActivity>(
+                '/api/v1/tenders/'
+                + validTenderId
+                + '/bids/activity'
             )
 
     return response.data
@@ -127,7 +168,9 @@ export function getBidEvaluationApiErrorMessage(
                         fieldError.message
                             .trim()
 
-                    if (fieldName.length === 0) {
+                    if (
+                        fieldName.length === 0
+                    ) {
                         return message
                     }
 
@@ -166,44 +209,44 @@ export function getBidEvaluationApiErrorMessage(
     switch (error.response.status) {
         case 400:
             return (
-                'The bid evaluation contains '
-                + 'invalid information. Confirm '
-                + 'the score and comments.'
+                'The evaluation request '
+                + 'contains invalid '
+                + 'information.'
             )
 
         case 401:
             return (
-                'The current session is no '
-                + 'longer authenticated. Sign '
-                + 'in again before continuing.'
+                'The current session is no longer '
+                + 'authenticated. Sign in again '
+                + 'and retry.'
             )
 
         case 403:
             return (
-                'The authenticated evaluator '
-                + 'is not authorised to access '
-                + 'or score this tender.'
+                'The authenticated account is not '
+                + 'authorised to view this '
+                + 'procurement resource.'
             )
 
         case 404:
             return (
-                'The requested tender or blind '
-                + 'bid could not be found.'
+                'The requested tender, bid or '
+                + 'evaluation resource could '
+                + 'not be found.'
             )
 
         case 409:
             return (
-                'The bid cannot be scored in '
-                + 'its current workflow state, '
-                + 'or an evaluation already '
-                + 'exists.'
+                'The request conflicts with '
+                + 'the current tender or '
+                + 'evaluation state.'
             )
 
         case 422:
             return (
                 'The evaluation request could '
                 + 'not be processed. Confirm '
-                + 'the score and comments.'
+                + 'the supplied information.'
             )
 
         default:

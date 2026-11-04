@@ -14,6 +14,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -114,34 +115,44 @@ public class BidServiceImpl implements BidService {
 
         Bid finalBid = bidRepository.save(savedBid);
 
+        ProcurementAuditEvent.AuditEventType
+                auditEventType =
+                decision.passed()
+                        ? ProcurementAuditEvent
+                        .AuditEventType
+                        .BID_COMPLIANCE_PASSED
+                        : ProcurementAuditEvent
+                        .AuditEventType
+                        .BID_COMPLIANCE_FAILED;
+
+        String complianceMessage =
+                decision.passed()
+                        ? "Bid submitted and compliance passed"
+                        : "Bid submitted and compliance failed";
+
+        String complianceDetails =
+                "Bid reference="
+                        + finalBid.getBidReference()
+                        + ", bidderAlias="
+                        + finalBid.getBidderAlias()
+                        + ", compliancePassed="
+                        + decision.passed()
+                        + ", failureReason="
+                        + (
+                        decision.failureReason()
+                                == null
+                                ? "None"
+                                : decision.failureReason()
+                );
+
         auditService.recordSuccess(
-                ProcurementAuditEvent.AuditEventType.BID_SUBMITTED,
+                auditEventType,
                 tenderId,
                 finalBid.getId(),
                 submittedByUserId,
-                "Bid submitted",
-                "Bid reference: " + finalBid.getBidReference() + ", bidderAlias: " + finalBid.getBidderAlias()
+                complianceMessage,
+                complianceDetails
         );
-
-        if (decision.passed()) {
-            auditService.recordSuccess(
-                    ProcurementAuditEvent.AuditEventType.BID_COMPLIANCE_PASSED,
-                    tenderId,
-                    finalBid.getId(),
-                    submittedByUserId,
-                    "Bid compliance passed",
-                    "All baseline compliance checks passed"
-            );
-        } else {
-            auditService.recordFailure(
-                    ProcurementAuditEvent.AuditEventType.BID_COMPLIANCE_FAILED,
-                    tenderId,
-                    finalBid.getId(),
-                    submittedByUserId,
-                    "Bid compliance failed",
-                    decision.failureReason()
-            );
-        }
 
         procurementNotificationService.queueBidReceived(
                 finalBid,
@@ -330,6 +341,79 @@ public class BidServiceImpl implements BidService {
                 withdrawnBid,
                 compliance
         );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public TenderBidActivityResponse getTenderBidActivity(Long tenderId) {
+        Tender tender =
+                tenderRepository
+                        .findById(tenderId)
+                        .orElseThrow(
+                                () ->
+                                        new TenderNotFoundException(
+                                                "Tender not found "
+                                                        + "with ID: "
+                                                        + tenderId
+                                        )
+                        );
+
+        long totalBids =
+                bidRepository
+                        .countByTenderId(
+                                tenderId
+                        );
+
+        long withdrawnBids =
+                bidRepository
+                        .countByTenderIdAndStatus(
+                                tenderId,
+                                Bid.BidStatus.WITHDRAWN
+                        );
+
+        long compliantBids =
+                bidRepository
+                        .countByTenderIdAndStatus(
+                                tenderId,
+                                Bid.BidStatus.COMPLIANT
+                        );
+
+        long complianceFailedBids =
+                bidRepository
+                        .countByTenderIdAndStatus(
+                                tenderId,
+                                Bid.BidStatus
+                                        .COMPLIANCE_FAILED
+                        );
+
+        long underEvaluationBids =
+                bidRepository
+                        .countByTenderIdAndStatus(
+                                tenderId,
+                                Bid.BidStatus
+                                        .UNDER_EVALUATION
+                        );
+
+        LocalDateTime lastBidSubmittedAt =
+                bidRepository
+                        .findTopByTenderIdOrderBySubmittedAtDesc(
+                                tenderId
+                        )
+                        .map(Bid::getSubmittedAt)
+                        .orElse(null);
+
+        return TenderBidActivityResponse
+                .builder()
+                .tenderId(tender.getId())
+                .tenderReference(tender.getTenderReference())
+                .totalBids(totalBids)
+                .activeBids(Math.max(totalBids - withdrawnBids, 0))
+                .compliantBids(compliantBids)
+                .complianceFailedBids(complianceFailedBids)
+                .withdrawnBids(withdrawnBids)
+                .underEvaluationBids(underEvaluationBids)
+                .lastBidSubmittedAt(lastBidSubmittedAt)
+                .build();
     }
 
     private boolean isWithdrawableStatus(

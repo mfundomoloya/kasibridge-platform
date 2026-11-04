@@ -4,6 +4,7 @@ package com.kasibridge.procurement.controller;
 import com.kasibridge.procurement.dto.AnonymizedBidResponse;
 import com.kasibridge.procurement.dto.BidResponse;
 import com.kasibridge.procurement.dto.SubmitBidRequest;
+import com.kasibridge.procurement.dto.TenderBidActivityResponse;
 import com.kasibridge.procurement.service.BidService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -43,4 +44,10 @@ public class BidController {
         return ResponseEntity.ok(service.getAnonymizedBidsForTender(tenderId));
     }
 
+    @GetMapping("/activity")
+    public ResponseEntity<TenderBidActivityResponse> getTenderBidActivity(@PathVariable Long tenderId) {
+        return ResponseEntity.ok(
+                service.getTenderBidActivity(tenderId)
+        );
+    }
 }

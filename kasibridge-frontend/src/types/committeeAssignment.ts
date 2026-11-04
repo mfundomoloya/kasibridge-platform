@@ -60,6 +60,49 @@ export const COMMITTEE_ROLE_LABELS:
         'Adjudicator',
 }
 
+export interface AssignCommitteeMemberRequest {
+    userId: number
+    committeeRole: CommitteeRole
+    assignedByUserId: number
+    reason: string
+}
+
+export interface AdministrativeCommitteeAssignment {
+    id: number
+    tenderId: number
+    userId: number
+    committeeRole: CommitteeRole
+    assignedByUserId: number
+    active: boolean
+    assignedAt: string
+    reason: string | null
+}
+
+export interface CommitteeAssignmentFormState {
+    tenderId: string
+    userId: string
+    committeeRole: CommitteeRole
+    assignedByUserId: string
+    reason: string
+}
+
+export interface CommitteeAssignmentFormErrors {
+    tenderId?: string
+    userId?: string
+    assignedByUserId?: string
+    reason?: string
+    form?: string
+}
+
+export const EMPTY_COMMITTEE_ASSIGNMENT_FORM:
+    CommitteeAssignmentFormState = {
+    tenderId: '',
+    userId: '',
+    committeeRole: 'EVALUATOR',
+    assignedByUserId: '',
+    reason: '',
+}
+
 export function isEvaluationAssignmentReady(
     assignment:
     CurrentUserCommitteeAssignment,

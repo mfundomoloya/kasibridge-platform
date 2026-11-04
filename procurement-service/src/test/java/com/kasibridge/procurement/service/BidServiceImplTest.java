@@ -1102,33 +1102,38 @@ class BidServiceImplTest {
                         eq(
                                 ProcurementAuditEvent
                                         .AuditEventType
-                                        .BID_SUBMITTED
-                        ),
-                        eq(TENDER_ID),
-                        eq(replacementBidId),
-                        eq(CURRENT_USER_ID),
-                        eq("Bid submitted"),
-                        anyString()
-                );
-
-        verify(auditService)
-                .recordSuccess(
-                        eq(
-                                ProcurementAuditEvent
-                                        .AuditEventType
                                         .BID_COMPLIANCE_PASSED
                         ),
                         eq(TENDER_ID),
                         eq(replacementBidId),
                         eq(CURRENT_USER_ID),
                         eq(
-                                "Bid compliance passed"
+                                "Bid submitted and "
+                                        + "compliance passed"
                         ),
                         eq(
-                                "All baseline compliance "
-                                        + "checks passed"
+                                "Bid reference="
+                                        + savedBid
+                                        .getBidReference()
+                                        + ", bidderAlias="
+                                        + savedBid
+                                        .getBidderAlias()
+                                        + ", compliancePassed=true"
+                                        + ", failureReason=None"
                         )
                 );
+
+        verify(
+                auditService,
+                times(1)
+        ).recordSuccess(
+                any(),
+                any(),
+                any(),
+                any(),
+                anyString(),
+                anyString()
+        );
 
         verify(
                 procurementNotificationService
@@ -1429,30 +1434,39 @@ class BidServiceImplTest {
                         eq(
                                 ProcurementAuditEvent
                                         .AuditEventType
-                                        .BID_SUBMITTED
-                        ),
-                        eq(TENDER_ID),
-                        eq(replacementBidId),
-                        eq(CURRENT_USER_ID),
-                        eq("Bid submitted"),
-                        anyString()
-                );
-
-        verify(auditService)
-                .recordFailure(
-                        eq(
-                                ProcurementAuditEvent
-                                        .AuditEventType
                                         .BID_COMPLIANCE_FAILED
                         ),
                         eq(TENDER_ID),
                         eq(replacementBidId),
                         eq(CURRENT_USER_ID),
                         eq(
-                                "Bid compliance failed"
+                                "Bid submitted and "
+                                        + "compliance failed"
                         ),
-                        eq(failureReason)
+                        eq(
+                                "Bid reference="
+                                        + savedBid
+                                        .getBidReference()
+                                        + ", bidderAlias="
+                                        + savedBid
+                                        .getBidderAlias()
+                                        + ", compliancePassed=false"
+                                        + ", failureReason="
+                                        + failureReason
+                        )
                 );
+
+        verify(
+                auditService,
+                times(1)
+        ).recordSuccess(
+                any(),
+                any(),
+                any(),
+                any(),
+                anyString(),
+                anyString()
+        );
 
         verify(
                 procurementNotificationService

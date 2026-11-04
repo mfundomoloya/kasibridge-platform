@@ -2135,3 +2135,140 @@ select:disabled {
     grid-column: auto;
   }
 }
+.form-field-help {
+  margin: 7px 0 0;
+  color: #68736c;
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+
+.bid-compliance-fieldset {
+  display: grid;
+  gap: 12px;
+  margin: 8px 0 0;
+  padding: 20px;
+  border: 1px solid #dce5df;
+  border-radius: 15px;
+  background: #f7faf8;
+}
+
+.bid-compliance-fieldset legend {
+  padding: 0 8px;
+  color: #1e3328;
+  font-weight: 800;
+}
+
+.bid-compliance-introduction {
+  margin: 0 0 4px;
+  color: #59635d;
+  line-height: 1.6;
+}
+
+.bid-compliance-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid #dce5df;
+  border-radius: 12px;
+  color: #405249;
+  background: #ffffff;
+  cursor: pointer;
+  line-height: 1.5;
+}
+
+.bid-compliance-option:hover {
+  border-color: #9bc5ae;
+  background: #f4faf6;
+}
+
+.bid-compliance-option.is-confirmed {
+  border-color: #8fc9aa;
+  color: #173e29;
+  background: #edf9f1;
+}
+
+.bid-compliance-option input {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  margin: 2px 0 0;
+  accent-color: #0b6b4a;
+}
+
+.bid-compliance-option input:focus-visible {
+  outline: 3px solid
+  rgba(11, 107, 74, 0.24);
+  outline-offset: 3px;
+}
+
+.bid-compliance-option:has(
+  input:disabled
+) {
+  cursor: not-allowed;
+  opacity: 0.68;
+}
+
+.bid-compliance-error {
+  margin: 2px 0 0;
+}
+
+.bid-compliance-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 13px 15px;
+  border: 1px solid #e8cc8d;
+  border-radius: 11px;
+  color: #72500f;
+  background: #fff7df;
+}
+
+.bid-compliance-summary.is-complete {
+  border-color: #8fc9aa;
+  color: #12522f;
+  background: #e4f6ea;
+}
+
+.bid-compliance-summary span {
+  font-size: 0.82rem;
+  white-space: nowrap;
+}
+
+.bid-compliance-result {
+  display: grid;
+  gap: 5px;
+  margin-top: 18px;
+  padding: 15px;
+  border: 1px solid #dce5df;
+  border-radius: 12px;
+}
+
+.bid-compliance-result span {
+  font-size: 0.78rem;
+}
+
+.bid-compliance-result.is-passed {
+  border-color: #8fc9aa;
+  color: #12522f;
+  background: #e4f6ea;
+}
+
+.bid-compliance-result.is-failed {
+  border-color: #e3a5a1;
+  color: #8f1d18;
+  background: #fff1f0;
+}
+
+.bid-compliance-result p {
+  margin: 5px 0 0;
+  line-height: 1.5;
+}
+
+@media (max-width: 620px) {
+  .bid-compliance-summary {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

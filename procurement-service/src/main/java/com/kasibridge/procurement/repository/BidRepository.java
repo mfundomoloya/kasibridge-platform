@@ -47,4 +47,8 @@ public interface BidRepository extends JpaRepository<Bid, Long> {
     List<Bid> findByTenderIdAndStatusIn(Long tenderId, Collection<Bid.BidStatus> statuses);
 
     Optional<Bid> findByIdAndTraderProfileId(Long bidId, Long traderProfileId);
+
+    long countByTenderIdAndStatus(Long tenderId, Bid.BidStatus status);
+
+    Optional<Bid> findTopByTenderIdOrderBySubmittedAtDesc(Long tenderId);
 }

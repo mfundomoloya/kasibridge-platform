@@ -12,6 +12,10 @@ import type {
 export interface SubmitBidRequest {
     technicalProposal: string
     priceAmount: number
+    csdValid: boolean
+    taxClearanceValid: boolean
+    bbbeeValid: boolean
+    requiredDocumentsUploaded: boolean
 }
 
 export interface BidApiError {

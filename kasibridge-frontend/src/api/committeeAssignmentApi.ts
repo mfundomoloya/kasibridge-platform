@@ -5,6 +5,8 @@ import {
 } from './procurementApiClient'
 
 import type {
+    AdministrativeCommitteeAssignment,
+    AssignCommitteeMemberRequest,
     CommitteeRole,
     CurrentUserCommitteeAssignment,
 } from '../types/committeeAssignment'
@@ -38,6 +40,55 @@ getMyCommitteeAssignmentQueue(
                                 committeeRole,
                             },
                 }
+            )
+
+    return response.data
+}
+
+export async function assignCommitteeMember(
+    tenderId: number,
+    request: AssignCommitteeMemberRequest,
+): Promise<AdministrativeCommitteeAssignment> {
+    const validTenderId =
+        requirePositiveIdentifier(
+            tenderId,
+            'Tender ID'
+        )
+
+    const validRequest =
+        normalizeAssignmentRequest(
+            request
+        )
+
+    const response =
+        await procurementApiClient
+            .post<AdministrativeCommitteeAssignment>(
+                '/api/v1/tenders/'
+                + validTenderId
+                + '/committee',
+                validRequest
+            )
+
+    return response.data
+}
+
+export async function getTenderCommitteeAssignments(
+    tenderId: number,
+): Promise<AdministrativeCommitteeAssignment[]> {
+    const validTenderId =
+        requirePositiveIdentifier(
+            tenderId,
+            'Tender ID'
+        )
+
+    const response =
+        await procurementApiClient
+            .get<
+                AdministrativeCommitteeAssignment[]
+            >(
+                '/api/v1/tenders/'
+                + validTenderId
+                + '/committee'
             )
 
     return response.data
@@ -120,29 +171,36 @@ getCommitteeAssignmentApiErrorMessage(
     switch (error.response.status) {
         case 400:
             return (
-                'The committee assignment query '
-                + 'is invalid.'
+                'The committee assignment contains '
+                + 'invalid information.'
             )
 
         case 401:
             return (
-                'The current session is no '
-                + 'longer authenticated. Sign in '
-                + 'again and retry.'
+                'The current session is no longer '
+                + 'authenticated. Sign in again '
+                + 'and retry.'
             )
 
         case 403:
             return (
-                'The authenticated account is '
-                + 'not authorised to access this '
-                + 'committee assignment queue.'
+                'The authenticated account is not '
+                + 'authorised to manage committee '
+                + 'assignments.'
             )
 
         case 404:
             return (
-                'A tender associated with an '
-                + 'active committee assignment '
-                + 'could not be found.'
+                'The selected tender or committee '
+                + 'member could not be found.'
+            )
+
+        case 409:
+            return (
+                'The user already has an active '
+                + 'committee role on this tender, '
+                + 'or the assignment violates '
+                + 'segregation of duties.'
             )
 
         default:
@@ -158,4 +216,75 @@ isCommitteeAssignmentApiForbidden(
         axios.isAxiosError(error)
         && error.response?.status === 403
     )
+
+}
+
+function normalizeAssignmentRequest(
+    request:
+    AssignCommitteeMemberRequest,
+): AssignCommitteeMemberRequest {
+    if (
+        request === null
+        || request === undefined
+    ) {
+        throw new Error(
+            'A committee assignment '
+            + 'request is required.'
+        )
+    }
+
+    const userId =
+        requirePositiveIdentifier(
+            request.userId,
+            'Committee member user ID'
+        )
+
+    const assignedByUserId =
+        requirePositiveIdentifier(
+            request.assignedByUserId,
+            'Assigning user ID'
+        )
+
+    const reason =
+        request.reason.trim()
+
+    if (reason.length < 10) {
+        throw new Error(
+            'The assignment reason must '
+            + 'contain at least '
+            + '10 characters.'
+        )
+    }
+
+    if (reason.length > 1000) {
+        throw new Error(
+            'The assignment reason cannot '
+            + 'exceed 1000 characters.'
+        )
+    }
+
+    return {
+        userId,
+        committeeRole:
+        request.committeeRole,
+        assignedByUserId,
+        reason,
+    }
+}
+
+function requirePositiveIdentifier(
+    value: number,
+    fieldName: string,
+): number {
+    if (
+        !Number.isInteger(value)
+        || value <= 0
+    ) {
+        throw new Error(
+            fieldName
+            + ' must be a positive integer.'
+        )
+    }
+
+    return value
 }

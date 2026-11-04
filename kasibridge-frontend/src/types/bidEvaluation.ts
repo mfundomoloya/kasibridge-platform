@@ -26,6 +26,18 @@ export interface BidEvaluation {
     submittedAt: string
 }
 
+export interface TenderBidActivity {
+    tenderId: number
+    tenderReference: string
+    totalBids: number
+    activeBids: number
+    compliantBids: number
+    complianceFailedBids: number
+    withdrawnBids: number
+    underEvaluationBids: number
+    lastBidSubmittedAt: string | null
+}
+
 export interface EvaluationWorkspace {
     tender: ProcurementTender
     bids: BlindEvaluationBid[]
@@ -123,11 +135,15 @@ export function validateBidEvaluationForm(
     if (comments.length === 0) {
         errors.comments =
             'Evaluation comments are required.'
-    } else if (comments.length < 10) {
+    } else if (
+        comments.length < 10
+    ) {
         errors.comments =
             'Evaluation comments must contain '
             + 'at least 10 characters.'
-    } else if (comments.length > 1000) {
+    } else if (
+        comments.length > 1000
+    ) {
         errors.comments =
             'Evaluation comments cannot exceed '
             + '1000 characters.'
@@ -192,7 +208,9 @@ export function calculateEvaluationStatistics(
             0
         )
 
-    if (completedEvaluations.length === 0) {
+    if (
+        completedEvaluations.length === 0
+    ) {
         return {
             totalBids,
             scoredBids,
@@ -218,6 +236,7 @@ export function calculateEvaluationStatistics(
         totalBids,
         scoredBids,
         remainingBids,
+
         averageTechnicalScore:
             technicalScoreTotal
             / completedEvaluations.length,

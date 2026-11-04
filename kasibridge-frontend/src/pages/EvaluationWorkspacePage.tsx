@@ -13,6 +13,7 @@ import {
 import {
     getBidEvaluationApiErrorMessage,
     getBlindBidsForEvaluation,
+    getMyBidEvaluationScores,
     scoreBlindBid,
 } from '../api/bidEvaluationApi'
 
@@ -40,13 +41,13 @@ import {
 
 import type {
     BidEvaluation,
+    BlindEvaluationBid,
     EvaluationBidState,
     EvaluateBidRequest,
 } from '../types/bidEvaluation'
 
 import {
     calculateEvaluationStatistics,
-    createEvaluationBidStates,
     formatTechnicalScore,
     updateEvaluationBidState,
 } from '../types/bidEvaluation'
@@ -225,18 +226,31 @@ export function EvaluationWorkspacePage() {
                         return
                     }
 
-                    const bids =
-                        await getBlindBidsForEvaluation(
-                            tenderId
+                    const [
+                        bids,
+                        existingScores,
+                    ] =
+                        await Promise.all([
+                            getBlindBidsForEvaluation(
+                                tenderId
+                            ),
+
+                            getMyBidEvaluationScores(
+                                tenderId
+                            ),
+                        ])
+
+                    const loadedStates =
+                        createPersistedEvaluationStates(
+                            bids,
+                            existingScores
                         )
 
                     setBidStates(
                         (currentStates) =>
                             reconcileBidStates(
                                 currentStates,
-                                createEvaluationBidStates(
-                                    bids
-                                )
+                                loadedStates
                             )
                     )
                 } catch (error) {
@@ -1131,6 +1145,43 @@ function findMatchingAssignment(
     ) ?? null
 }
 
+function createPersistedEvaluationStates(
+    bids: BlindEvaluationBid[],
+    evaluations: BidEvaluation[],
+): EvaluationBidState[] {
+    const evaluationsByBidId =
+        new Map<number, BidEvaluation>()
+
+    for (const evaluation of evaluations) {
+        evaluationsByBidId.set(
+            evaluation.bidId,
+            evaluation
+        )
+    }
+
+    return bids.map(
+        (bid) => {
+            const evaluation =
+                evaluationsByBidId.get(
+                    bid.bidId
+                ) ?? null
+
+            return {
+                bid,
+
+                status:
+                    evaluation === null
+                        ? 'NOT_SCORED'
+                        : 'SCORED',
+
+                evaluation,
+
+                errorMessage: null,
+            }
+        }
+    )
+}
+
 function reconcileBidStates(
     currentStates:
     EvaluationBidState[],
@@ -1154,6 +1205,23 @@ function reconcileBidStates(
                 return loadedState
             }
 
+            /*
+             * The backend response is authoritative.
+             * If a persisted score exists, always
+             * display it as completed.
+             */
+            if (
+                loadedState.evaluation
+                !== null
+            ) {
+                return loadedState
+            }
+
+            /*
+             * Preserve a score submitted during the
+             * current session when a refresh response
+             * has not yet returned that score.
+             */
             if (
                 currentState.evaluation
                 !== null
@@ -1171,8 +1239,7 @@ function reconcileBidStates(
                         : currentState.status,
 
                 errorMessage:
-                currentState
-                    .errorMessage,
+                currentState.errorMessage,
             }
         }
     )

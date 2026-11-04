@@ -12,6 +12,11 @@ import {
 } from 'react-router-dom'
 
 import {
+    getBidEvaluationApiErrorMessage,
+    getTenderBidActivity,
+} from '../api/bidEvaluationApi'
+
+import {
     closeProcurementTenderBidding,
     getProcurementTender,
     getProcurementTenderApiErrorMessage,
@@ -27,6 +32,10 @@ import {
 import {
     ProcurementTenderStatusBadge,
 } from '../components/procurement/ProcurementTenderStatusBadge'
+
+import type {
+    TenderBidActivity,
+} from '../types/bidEvaluation'
 
 import type {
     ProcurementTender,
@@ -47,10 +56,6 @@ type TenderDetailsAction =
     | 'VERIFY_INTEGRITY'
     | 'CLOSE_BIDDING'
     | 'START_EVALUATION'
-
-type TenderConfirmation =
-    | TenderDetailsAction
-    | null
 
 const currencyFormatter =
     new Intl.NumberFormat(
@@ -92,6 +97,14 @@ export function SpecificationTenderDetailsPage() {
         )
 
     const [
+        bidActivity,
+        setBidActivity,
+    ] =
+        useState<TenderBidActivity | null>(
+            null
+        )
+
+    const [
         integrityResult,
         setIntegrityResult,
     ] =
@@ -108,8 +121,29 @@ export function SpecificationTenderDetailsPage() {
         >(null)
 
     const [
+        isCloseBiddingDialogOpen,
+        setIsCloseBiddingDialogOpen,
+    ] = useState(false)
+
+    const [
+        isStartEvaluationDialogOpen,
+        setIsStartEvaluationDialogOpen,
+    ] = useState(false)
+
+    const closeBiddingDialogRef =
+        useRef<HTMLDialogElement>(null)
+
+    const startEvaluationDialogRef =
+        useRef<HTMLDialogElement>(null)
+
+    const [
         isLoading,
         setIsLoading,
+    ] = useState(true)
+
+    const [
+        isBidActivityLoading,
+        setIsBidActivityLoading,
     ] = useState(true)
 
     const [
@@ -123,6 +157,14 @@ export function SpecificationTenderDetailsPage() {
         )
 
     const [
+        bidActivityError,
+        setBidActivityError,
+    ] =
+        useState<string | null>(
+            null
+        )
+
+    const [
         successMessage,
         setSuccessMessage,
     ] =
@@ -132,22 +174,15 @@ export function SpecificationTenderDetailsPage() {
             )
         )
 
-    const confirmationDialogRef =
-        useRef<HTMLDialogElement>(null)
-
-    const [
-        confirmationAction,
-        setConfirmationAction,
-    ] =
-        useState<TenderConfirmation>(null)
-
     const loadTender =
         useCallback(
             async (): Promise<void> => {
                 if (tenderId === null) {
                     setIsLoading(false)
+
                     setErrorMessage(
-                        'A valid tender ID is required.'
+                        'A valid tender ID '
+                        + 'is required.'
                     )
 
                     return
@@ -180,16 +215,65 @@ export function SpecificationTenderDetailsPage() {
             ]
         )
 
+    const loadBidActivity =
+        useCallback(
+            async (): Promise<void> => {
+                if (tenderId === null) {
+                    setIsBidActivityLoading(
+                        false
+                    )
+
+                    return
+                }
+
+                setIsBidActivityLoading(
+                    true
+                )
+
+                setBidActivityError(
+                    null
+                )
+
+                try {
+                    const response =
+                        await getTenderBidActivity(
+                            tenderId
+                        )
+
+                    setBidActivity(
+                        response
+                    )
+                } catch (error) {
+                    setBidActivityError(
+                        getBidEvaluationApiErrorMessage(
+                            error,
+                            'Unable to load tender '
+                            + 'bid activity.'
+                        )
+                    )
+                } finally {
+                    setIsBidActivityLoading(
+                        false
+                    )
+                }
+            },
+            [
+                tenderId,
+            ]
+        )
+
     useEffect(
         () => {
             queueMicrotask(
                 () => {
                     void loadTender()
+                    void loadBidActivity()
                 }
             )
         },
         [
             loadTender,
+            loadBidActivity,
         ]
     )
 
@@ -202,7 +286,9 @@ export function SpecificationTenderDetailsPage() {
             const dismissalTimer =
                 window.setTimeout(
                     () => {
-                        setSuccessMessage(null)
+                        setSuccessMessage(
+                            null
+                        )
                     },
                     5000
                 )
@@ -221,125 +307,142 @@ export function SpecificationTenderDetailsPage() {
     useEffect(
         () => {
             const dialog =
-                confirmationDialogRef.current
+                closeBiddingDialogRef.current
 
             if (dialog === null) {
                 return
             }
 
             if (
-                confirmationAction !== null
+                isCloseBiddingDialogOpen
                 && !dialog.open
             ) {
                 dialog.showModal()
-            }
-
-            if (
-                confirmationAction === null
+            } else if (
+                !isCloseBiddingDialogOpen
                 && dialog.open
             ) {
                 dialog.close()
             }
         },
         [
-            confirmationAction,
+            isCloseBiddingDialogOpen,
         ]
     )
 
-    function requestConfirmation(
-        action: TenderDetailsAction,
-    ): void {
+    useEffect(
+        () => {
+            const dialog =
+                startEvaluationDialogRef.current
+
+            if (dialog === null) {
+                return
+            }
+
+            if (
+                isStartEvaluationDialogOpen
+                && !dialog.open
+            ) {
+                dialog.showModal()
+            } else if (
+                !isStartEvaluationDialogOpen
+                && dialog.open
+            ) {
+                dialog.close()
+            }
+        },
+        [
+            isStartEvaluationDialogOpen,
+        ]
+    )
+
+    async function handlePublish():
+        Promise<void> {
         if (tender === null) {
             return
         }
 
-        setConfirmationAction(action)
-    }
-
-    async function confirmTenderAction(): Promise<void> {
-        if (
-            tender === null
-            || confirmationAction === null
-        ) {
-            return
-        }
-
-        const action =
-            confirmationAction
-
-        setConfirmationAction(null)
-
-        if (action === 'PUBLISH') {
-            await executeTenderTransition(
-                action,
-                () =>
-                    publishProcurementTender(
-                        tender.id
-                    ),
-                'Tender published successfully.'
+        const confirmed =
+            window.confirm(
+                'Publish '
+                + tender.tenderReference
+                + '? The specification will '
+                + 'be locked with a SHA-256 '
+                + 'evidence hash.'
             )
 
-            return
-        }
-
-        if (action === 'CLOSE_BIDDING') {
-            await executeTenderTransition(
-                action,
-                () =>
-                    closeProcurementTenderBidding(
-                        tender.id
-                    ),
-                'Tender bidding was closed.'
-            )
-
+        if (!confirmed) {
             return
         }
 
         await executeTenderTransition(
-            action,
+            'PUBLISH',
+            () =>
+                publishProcurementTender(
+                    tender.id
+                ),
+            'Tender published successfully.'
+        )
+    }
+
+    async function handleCloseBidding():
+        Promise<void> {
+        if (tender === null) {
+            return
+        }
+
+        setIsCloseBiddingDialogOpen(true)
+    }
+
+    async function confirmCloseBidding():
+        Promise<void> {
+        if (
+            tender === null
+            || pendingAction !== null
+        ) {
+            return
+        }
+
+        setIsCloseBiddingDialogOpen(false)
+
+        await executeTenderTransition(
+            'CLOSE_BIDDING',
+            () =>
+                closeProcurementTenderBidding(
+                    tender.id
+                ),
+            'Tender bidding was closed.'
+        )
+    }
+
+    async function handleStartEvaluation():
+        Promise<void> {
+        if (tender === null) {
+            return
+        }
+
+        setIsStartEvaluationDialogOpen(true)
+    }
+
+    async function confirmStartEvaluation():
+        Promise<void> {
+        if (
+            tender === null
+            || pendingAction !== null
+        ) {
+            return
+        }
+
+        setIsStartEvaluationDialogOpen(false)
+
+        await executeTenderTransition(
+            'START_EVALUATION',
             () =>
                 startProcurementTenderEvaluation(
                     tender.id
                 ),
             'Tender moved to evaluation.'
         )
-    }
-
-    function getConfirmationCopy():
-        {
-            title: string
-            description: string
-        } {
-        if (confirmationAction === 'PUBLISH') {
-            return {
-                title: 'Publish this tender?',
-                description:
-                    'Publish '
-                    + (tender?.tenderReference ?? 'this tender')
-                    + '? The specification will be locked '
-                    + 'with a SHA-256 evidence hash.',
-            }
-        }
-
-        if (confirmationAction === 'CLOSE_BIDDING') {
-            return {
-                title: 'Close bidding?',
-                description:
-                    'Close bidding for '
-                    + (tender?.tenderReference ?? 'this tender')
-                    + '? Traders will no longer be able to '
-                    + 'submit bids.',
-            }
-        }
-
-        return {
-            title: 'Start evaluation?',
-            description:
-                'Move '
-                + (tender?.tenderReference ?? 'this tender')
-                + ' into evaluation? Bid scoring must be '
-                + 'completed by authorised evaluators.',
-        }
     }
 
     async function handleVerifyIntegrity():
@@ -409,6 +512,8 @@ export function SpecificationTenderDetailsPage() {
                 + updatedTender
                     .tenderReference
             )
+
+            await loadBidActivity()
         } catch (error) {
             setErrorMessage(
                 getProcurementTenderApiErrorMessage(
@@ -419,6 +524,7 @@ export function SpecificationTenderDetailsPage() {
             )
 
             await loadTender()
+            await loadBidActivity()
         } finally {
             setPendingAction(null)
         }
@@ -429,52 +535,6 @@ export function SpecificationTenderDetailsPage() {
 
     return (
         <ProcurementLayout>
-            <dialog
-                ref={confirmationDialogRef}
-                className="confirmation-dialog"
-                aria-labelledby="tender-confirmation-title"
-                aria-describedby="tender-confirmation-description"
-                onClose={() => {
-                    setConfirmationAction(null)
-                }}
-            >
-                <div className="confirmation-dialog-content">
-                    <span className="eyebrow">
-                        Confirm workflow action
-                    </span>
-
-                    <h2 id="tender-confirmation-title">
-                        {getConfirmationCopy().title}
-                    </h2>
-
-                    <p id="tender-confirmation-description">
-                        {getConfirmationCopy().description}
-                    </p>
-
-                    <div className="form-actions">
-                        <button
-                            className="secondary-button"
-                            type="button"
-                            onClick={() => {
-                                setConfirmationAction(null)
-                            }}
-                        >
-                            Cancel
-                        </button>
-
-                        <button
-                            className="primary-button"
-                            type="button"
-                            onClick={() => {
-                                void confirmTenderAction()
-                            }}
-                        >
-                            Confirm
-                        </button>
-                    </div>
-                </div>
-            </dialog>
-
             <nav
                 className="back-navigation"
                 aria-label={
@@ -538,9 +598,9 @@ export function SpecificationTenderDetailsPage() {
 
                         <p>
                             The requested tender could
-                            not be loaded. Return to the
-                            specification queue and
-                            select another tender.
+                            not be loaded. Return to
+                            the specification queue
+                            and select another tender.
                         </p>
                     </div>
                 </section>
@@ -548,6 +608,23 @@ export function SpecificationTenderDetailsPage() {
                 <>
                     <TenderDetailHeader
                         tender={tender}
+                    />
+
+                    <TenderBidActivityPanel
+                        activity={
+                            bidActivity
+                        }
+                        isLoading={
+                            isBidActivityLoading
+                        }
+                        errorMessage={
+                            bidActivityError
+                        }
+                        onRefresh={
+                            () => {
+                                void loadBidActivity()
+                            }
+                        }
                     />
 
                     {integrityResult !== null && (
@@ -820,6 +897,9 @@ export function SpecificationTenderDetailsPage() {
 
                     <TenderWorkflowActions
                         tender={tender}
+                        bidActivity={
+                            bidActivity
+                        }
                         pendingAction={
                             pendingAction
                         }
@@ -828,9 +908,7 @@ export function SpecificationTenderDetailsPage() {
                         }
                         onPublish={
                             () => {
-                                requestConfirmation(
-                                    'PUBLISH'
-                                )
+                                void handlePublish()
                             }
                         }
                         onVerify={
@@ -840,26 +918,184 @@ export function SpecificationTenderDetailsPage() {
                         }
                         onCloseBidding={
                             () => {
-                                requestConfirmation(
-                                    'CLOSE_BIDDING'
-                                )
+                                void handleCloseBidding()
                             }
                         }
                         onStartEvaluation={
                             () => {
-                                requestConfirmation(
-                                    'START_EVALUATION'
-                                )
+                                void handleStartEvaluation()
                             }
                         }
                         onRefresh={
                             () => {
                                 void loadTender()
+                                void loadBidActivity()
                             }
                         }
                     />
                 </>
             )}
+
+            <dialog
+                ref={closeBiddingDialogRef}
+                className="confirmation-dialog"
+                aria-labelledby={
+                    'close-bidding-dialog-title'
+                }
+                aria-describedby={
+                    'close-bidding-dialog-description'
+                }
+                onClose={
+                    () => {
+                        setIsCloseBiddingDialogOpen(
+                            false
+                        )
+                    }
+                }
+            >
+                <div
+                    className={
+                        'confirmation-dialog-content'
+                    }
+                >
+                    <span className="eyebrow">
+                        Controlled transition
+                    </span>
+
+                    <h2
+                        id={
+                            'close-bidding-dialog-title'
+                        }
+                    >
+                        Close bidding?
+                    </h2>
+
+                    <p
+                        id={
+                            'close-bidding-dialog-description'
+                        }
+                    >
+                        Close bidding for{' '}
+                        <strong>
+                            {tender?.tenderReference}
+                        </strong>
+                        ? Traders will no longer be
+                        able to submit or replace bids.
+                    </p>
+
+                    <div className="form-actions">
+                        <button
+                            className="secondary-button"
+                            type="button"
+                            onClick={
+                                () => {
+                                    setIsCloseBiddingDialogOpen(
+                                        false
+                                    )
+                                }
+                            }
+                        >
+                            Cancel
+                        </button>
+
+                        <button
+                            className={
+                                'primary-button '
+                                + 'specification-close-confirm-button'
+                            }
+                            type="button"
+                            onClick={
+                                () => {
+                                    void confirmCloseBidding()
+                                }
+                            }
+                        >
+                            Close bidding
+                        </button>
+                    </div>
+                </div>
+            </dialog>
+
+            <dialog
+                ref={startEvaluationDialogRef}
+                className="confirmation-dialog"
+                aria-labelledby={
+                    'start-evaluation-dialog-title'
+                }
+                aria-describedby={
+                    'start-evaluation-dialog-description'
+                }
+                onClose={
+                    () => {
+                        setIsStartEvaluationDialogOpen(
+                            false
+                        )
+                    }
+                }
+            >
+                <div
+                    className={
+                        'confirmation-dialog-content'
+                    }
+                >
+                    <span className="eyebrow">
+                        Controlled transition
+                    </span>
+
+                    <h2
+                        id={
+                            'start-evaluation-dialog-title'
+                        }
+                    >
+                        Start evaluation?
+                    </h2>
+
+                    <p
+                        id={
+                            'start-evaluation-dialog-description'
+                        }
+                    >
+                        Move{' '}
+                        <strong>
+                            {tender?.tenderReference}
+                        </strong>
+                        {' '}into evaluation? Only
+                        assigned evaluators should score
+                        its anonymised bids.
+                    </p>
+
+                    <div className="form-actions">
+                        <button
+                            className="secondary-button"
+                            type="button"
+                            onClick={
+                                () => {
+                                    setIsStartEvaluationDialogOpen(
+                                        false
+                                    )
+                                }
+                            }
+                        >
+                            Cancel
+                        </button>
+
+                        <button
+                            className={
+                                'primary-button '
+                                + 'specification-evaluation-confirm-button'
+                            }
+                            type="button"
+                            onClick={
+                                () => {
+                                    void confirmStartEvaluation()
+                                }
+                            }
+                        >
+                            Start evaluation
+                        </button>
+                    </div>
+                </div>
+            </dialog>
         </ProcurementLayout>
     )
 }
@@ -904,8 +1140,224 @@ function TenderDetailHeader({
     )
 }
 
+interface TenderBidActivityPanelProps {
+    activity:
+        TenderBidActivity | null
+    isLoading: boolean
+    errorMessage: string | null
+    onRefresh: () => void
+}
+
+function TenderBidActivityPanel({
+                                    activity,
+                                    isLoading,
+                                    errorMessage,
+                                    onRefresh,
+                                }: TenderBidActivityPanelProps) {
+    return (
+        <section
+            className={
+                'content-card '
+                + 'tender-bid-activity-panel'
+            }
+            aria-labelledby={
+                'tender-bid-activity-heading'
+            }
+        >
+            <div
+                className={
+                    'tender-bid-activity-header'
+                }
+            >
+                <div>
+                    <span className="eyebrow">
+                        Submission activity
+                    </span>
+
+                    <h2
+                        id={
+                            'tender-bid-activity-heading'
+                        }
+                    >
+                        Bid activity
+                    </h2>
+
+                    <p>
+                        Aggregate counts are shown
+                        without exposing trader
+                        identities, bid prices,
+                        bidder aliases or technical
+                        proposals.
+                    </p>
+                </div>
+
+                <button
+                    className="secondary-button"
+                    type="button"
+                    onClick={onRefresh}
+                    disabled={isLoading}
+                >
+                    {isLoading
+                        ? 'Refreshing...'
+                        : 'Refresh activity'}
+                </button>
+            </div>
+
+            {errorMessage !== null && (
+                <p
+                    className={
+                        'form-error-message'
+                    }
+                    role="alert"
+                >
+                    {errorMessage}
+                </p>
+            )}
+
+            {isLoading && activity === null ? (
+                <p
+                    className={
+                        'tender-bid-activity-loading'
+                    }
+                    aria-busy="true"
+                >
+                    Loading bid activity...
+                </p>
+            ) : activity === null ? (
+                <div className="empty-state">
+                    <h3>
+                        Bid activity unavailable
+                    </h3>
+
+                    <p>
+                        Aggregate submission counts
+                        could not be retrieved.
+                    </p>
+                </div>
+            ) : (
+                <>
+                    <dl
+                        className={
+                            'tender-bid-activity-grid'
+                        }
+                    >
+                        <BidActivityItem
+                            label="Total submissions"
+                            value={
+                                activity.totalBids
+                            }
+                        />
+
+                        <BidActivityItem
+                            label="Active submissions"
+                            value={
+                                activity.activeBids
+                            }
+                        />
+
+                        <BidActivityItem
+                            label="Compliant"
+                            value={
+                                activity
+                                    .compliantBids
+                            }
+                            tone="positive"
+                        />
+
+                        <BidActivityItem
+                            label="Compliance failed"
+                            value={
+                                activity
+                                    .complianceFailedBids
+                            }
+                            tone={
+                                activity
+                                    .complianceFailedBids
+                                > 0
+                                    ? 'danger'
+                                    : 'default'
+                            }
+                        />
+
+                        <BidActivityItem
+                            label="Withdrawn"
+                            value={
+                                activity
+                                    .withdrawnBids
+                            }
+                        />
+
+                        <BidActivityItem
+                            label="Under evaluation"
+                            value={
+                                activity
+                                    .underEvaluationBids
+                            }
+                            tone="info"
+                        />
+                    </dl>
+
+                    <div
+                        className={
+                            'tender-bid-last-activity'
+                        }
+                    >
+                        <span>
+                            Last bid submitted
+                        </span>
+
+                        <strong>
+                            {
+                                activity
+                                    .lastBidSubmittedAt
+                                === null
+                                    ? 'No bids submitted'
+                                    : formatDateTime(
+                                        activity
+                                            .lastBidSubmittedAt
+                                    )
+                            }
+                        </strong>
+                    </div>
+                </>
+            )}
+        </section>
+    )
+}
+
+interface BidActivityItemProps {
+    label: string
+    value: number
+    tone?:
+        | 'default'
+        | 'positive'
+        | 'danger'
+        | 'info'
+}
+
+function BidActivityItem({
+                             label,
+                             value,
+                             tone = 'default',
+                         }: BidActivityItemProps) {
+    return (
+        <div
+            className={
+                'tender-bid-activity-item '
+                + 'is-'
+                + tone
+            }
+        >
+            <dt>{label}</dt>
+            <dd>{value}</dd>
+        </div>
+    )
+}
+
 interface TenderWorkflowActionsProps {
     tender: ProcurementTender
+    bidActivity:
+        TenderBidActivity | null
     pendingAction:
         TenderDetailsAction | null
     isActionPending: boolean
@@ -918,6 +1370,7 @@ interface TenderWorkflowActionsProps {
 
 function TenderWorkflowActions({
                                    tender,
+                                   bidActivity,
                                    pendingAction,
                                    isActionPending,
                                    onPublish,
@@ -926,6 +1379,28 @@ function TenderWorkflowActions({
                                    onStartEvaluation,
                                    onRefresh,
                                }: TenderWorkflowActionsProps) {
+    const hasActiveBids =
+        bidActivity !== null
+        && bidActivity.activeBids > 0
+
+    const hasCompliantBids =
+        bidActivity !== null
+        && bidActivity.compliantBids > 0
+
+    const closeBiddingDisabled =
+        isActionPending
+        || (
+            bidActivity !== null
+            && !hasActiveBids
+        )
+
+    const evaluationDisabled =
+        isActionPending
+        || (
+            bidActivity !== null
+            && !hasCompliantBids
+        )
+
     return (
         <section
             className={
@@ -952,10 +1427,42 @@ function TenderWorkflowActions({
                 <p>
                     Only actions permitted by the
                     tender’s current state are shown.
-                    Evaluation and adjudication
-                    decisions remain separated from
-                    specification responsibilities.
+                    Aggregate bid activity is used
+                    without disclosing protected
+                    bid information.
                 </p>
+
+                {canCloseTenderBidding(
+                        tender
+                    )
+                    && bidActivity !== null
+                    && !hasActiveBids && (
+                        <p
+                            className={
+                                'workflow-action-guidance'
+                            }
+                        >
+                            At least one active bid is
+                            required before bidding can
+                            be closed.
+                        </p>
+                    )}
+
+                {canStartTenderEvaluation(
+                        tender
+                    )
+                    && bidActivity !== null
+                    && !hasCompliantBids && (
+                        <p
+                            className={
+                                'workflow-action-guidance'
+                            }
+                        >
+                            At least one compliant bid is
+                            required before evaluation can
+                            begin.
+                        </p>
+                    )}
             </div>
 
             <div
@@ -1017,7 +1524,9 @@ function TenderWorkflowActions({
                         onClick={
                             onCloseBidding
                         }
-                        disabled={isActionPending}
+                        disabled={
+                            closeBiddingDisabled
+                        }
                     >
                         {pendingAction
                         === 'CLOSE_BIDDING'
@@ -1038,7 +1547,9 @@ function TenderWorkflowActions({
                         onClick={
                             onStartEvaluation
                         }
-                        disabled={isActionPending}
+                        disabled={
+                            evaluationDisabled
+                        }
                     >
                         {pendingAction
                         === 'START_EVALUATION'
@@ -1106,6 +1617,14 @@ function SpecificationIntegrityPanel({
             </div>
 
             <dl>
+                <div>
+                    <dt>Tender</dt>
+
+                    <dd>
+                        {result.tenderReference}
+                    </dd>
+                </div>
+
                 <div>
                     <dt>Stored hash</dt>
 

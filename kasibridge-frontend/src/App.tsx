@@ -117,6 +117,10 @@ import {
 } from './pages/EvaluationWorkspacePage'
 
 import {
+    AdminCommitteeAssignmentPage,
+} from './pages/AdminCommitteeAssignmentPage'
+
+import {
     UnauthorizedPage,
 } from './pages/UnauthorizedPage'
 
@@ -292,6 +296,20 @@ function App() {
                     </RoleRoute>
                 }
             />
+
+            <Route
+                path="/admin/committee-assignments"
+                element={
+                    <RoleRoute
+                        allowedRoles={[
+                            'ROLE_PLATFORM_ADMIN',
+                        ]}
+                    >
+                        <AdminCommitteeAssignmentPage />
+                    </RoleRoute>
+                }
+            />
+
 
             <Route
                 path="/admin"

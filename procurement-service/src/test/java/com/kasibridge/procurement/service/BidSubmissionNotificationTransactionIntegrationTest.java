@@ -521,7 +521,8 @@ class BidSubmissionNotificationTransactionIntegrationTest {
                         )
         );
 
-        long bidAuditCount =
+        List<ProcurementAuditEvent>
+                bidAuditEvents =
                 auditEventRepository
                         .findAll()
                         .stream()
@@ -534,17 +535,62 @@ class BidSubmissionNotificationTransactionIntegrationTest {
                                 event.getEventType()
                                         == ProcurementAuditEvent
                                         .AuditEventType
-                                        .BID_SUBMITTED
-                                        || event.getEventType()
-                                        == ProcurementAuditEvent
-                                        .AuditEventType
                                         .BID_COMPLIANCE_PASSED
                         )
-                        .count();
+                        .toList();
 
         assertEquals(
-                2,
-                bidAuditCount
+                1,
+                bidAuditEvents.size()
+        );
+
+        ProcurementAuditEvent bidAuditEvent =
+                bidAuditEvents.get(0);
+
+        assertEquals(
+                ProcurementAuditEvent
+                        .AuditEventType
+                        .BID_COMPLIANCE_PASSED,
+                bidAuditEvent.getEventType()
+        );
+
+        assertEquals(
+                ProcurementAuditEvent
+                        .AuditResult
+                        .SUCCESS,
+                bidAuditEvent.getResult()
+        );
+
+        assertEquals(
+                bidResponse.getTenderId(),
+                bidAuditEvent.getTenderId()
+        );
+
+        assertEquals(
+                bidResponse.getId(),
+                bidAuditEvent.getBidId()
+        );
+
+        assertEquals(
+                "Bid submitted and "
+                        + "compliance passed",
+                bidAuditEvent.getMessage()
+        );
+
+        assertTrue(
+                bidAuditEvent
+                        .getDetails()
+                        .contains(
+                                "compliancePassed=true"
+                        )
+        );
+
+        assertTrue(
+                bidAuditEvent
+                        .getDetails()
+                        .contains(
+                                "failureReason=None"
+                        )
         );
     }
 
