@@ -4,11 +4,11 @@ import com.kasibridge.procurement.dto.CreateTenderRequest;
 import com.kasibridge.procurement.dto.SpecificationIntegrityResponse;
 import com.kasibridge.procurement.dto.TenderResponse;
 import com.kasibridge.procurement.dto.TraderTenderResponse;
+import com.kasibridge.procurement.dto.EvaluationProgressResponse;
 import com.kasibridge.procurement.entity.ProcurementAuditEvent;
 import com.kasibridge.procurement.entity.Tender;
 import com.kasibridge.procurement.exception.TenderNotFoundException;
 import com.kasibridge.procurement.exception.TenderStateException;
-import com.kasibridge.procurement.repository.BidEvaluationScoreRepository;
 import com.kasibridge.procurement.repository.TenderRepository;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -28,8 +28,9 @@ public class TenderServiceImpl implements TenderService {
     private final TenderRepository repository;
     private final SpecificationHashService hashService;
     private final ProcurementAuditService auditService;
-    private final BidEvaluationScoreRepository scoreRepository;
     private final ProcurementNotificationService procurementNotificationService;
+    private final EvaluationService evaluationService;
+    private final CurrentUserService currentUserService;
 
     @Override
     @Transactional
@@ -168,16 +169,15 @@ public class TenderServiceImpl implements TenderService {
         LocalDateTime now = LocalDateTime.now();
 
         tender.setStatus(Tender.TenderStatus.EVALUATION);
-        tender.setClosedAt(now);
         tender.setUpdatedAt(now);
 
         Tender saved = repository.save(tender);
 
         auditService.recordSuccess(
-                ProcurementAuditEvent.AuditEventType.TENDER_EVALUATION_STARTED,
+                ProcurementAuditEvent.AuditEventType.TENDER_ADJUDICATION_STARTED,
                 saved.getId(),
                 null,
-                saved.getCreatedByUserId(),
+                currentUserService.getCurrentUserId(),
                 "Tender moved to evaluation",
                 "Tender reference: " + saved.getTenderReference()
         );
@@ -188,35 +188,90 @@ public class TenderServiceImpl implements TenderService {
     @Override
     @Transactional
     public TenderResponse startAdjudication(Long id) {
+
         Tender tender = findTender(id);
 
-        if (tender.getStatus() != Tender.TenderStatus.EVALUATION) {
+        if (tender.getStatus() != Tender.TenderStatus.EVALUATION
+        ) {
             throw new TenderStateException(
-                    "Only EVALUATION tenders can move to ADJUDICATION."
+                    "Only EVALUATION tenders can "
+                            + "move to ADJUDICATION."
             );
         }
 
-        boolean hasEvaluationScores = scoreRepository.existsByTenderId(id);
+        EvaluationProgressResponse progress = evaluationService.getEvaluationProgress(id);
 
-        if(!hasEvaluationScores){
-            throw new TenderStateException("Tender cannot move to ADJUDICATION until at least one bid has been evaluated.");
+        if (
+                !progress.isReadyForAdjudication()
+        ) {
+            String blockingReason = progress.getBlockingReason();
+
+            throw new TenderStateException(
+                    blockingReason == null
+                            || blockingReason.isBlank()
+                            ? (
+                            "Tender cannot move to "
+                                    + "ADJUDICATION until "
+                                    + "evaluation is complete."
+                    )
+                            : blockingReason
+            );
         }
+
+        Long currentUserId = currentUserService.getCurrentUserId();
 
         LocalDateTime now = LocalDateTime.now();
 
         tender.setStatus(Tender.TenderStatus.ADJUDICATION);
-        tender.setClosedAt(now);
+
         tender.setUpdatedAt(now);
 
         Tender saved = repository.save(tender);
 
         auditService.recordSuccess(
-                ProcurementAuditEvent.AuditEventType.TENDER_EVALUATION_STARTED,
+                ProcurementAuditEvent
+                        .AuditEventType
+                        .TENDER_ADJUDICATION_STARTED,
                 saved.getId(),
                 null,
-                saved.getCreatedByUserId(),
+                currentUserId,
                 "Tender moved to adjudication",
-                "Tender reference: " + saved.getTenderReference()
+                "Tender reference="
+                        + saved
+                        .getTenderReference()
+                        + ", activeEvaluators="
+                        + progress
+                        .getActiveEvaluatorCount()
+                        + ", eligibleBids="
+                        + progress
+                        .getEligibleBidCount()
+                        + ", submittedScores="
+                        + progress
+                        .getSubmittedScoreCount()
+                        + ", expectedScores="
+                        + progress
+                        .getExpectedScoreCount()
+                        + ", completionPercentage="
+                        + progress
+                        .getCompletionPercentage()
+        );
+
+        log.info(
+                "Tender moved to adjudication: "
+                        + "tenderId={} "
+                        + "reference={} "
+                        + "actorUserId={} "
+                        + "activeEvaluators={} "
+                        + "eligibleBids={} "
+                        + "submittedScores={} "
+                        + "expectedScores={}",
+                saved.getId(),
+                saved.getTenderReference(),
+                currentUserId,
+                progress.getActiveEvaluatorCount(),
+                progress.getEligibleBidCount(),
+                progress.getSubmittedScoreCount(),
+                progress.getExpectedScoreCount()
         );
 
         return TenderResponse.from(saved);
