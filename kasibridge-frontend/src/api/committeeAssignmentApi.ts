@@ -18,8 +18,7 @@ interface ProcurementApiErrorResponse {
     timestamp?: string
 }
 
-export async function
-getMyCommitteeAssignmentQueue(
+export async function getMyCommitteeAssignmentQueue(
     committeeRole?: CommitteeRole,
 ): Promise<
     CurrentUserCommitteeAssignment[]
@@ -133,6 +132,19 @@ getCommitteeAssignmentApiErrorMessage(
         + 'assignments.'
     ),
 ): string {
+
+    if (
+        error instanceof Error
+        && !axios.isAxiosError(error)
+    ) {
+        const message =
+            error.message.trim()
+
+        return message.length > 0
+            ? message
+            : fallbackMessage
+    }
+
     if (
         !axios.isAxiosError<
             ProcurementApiErrorResponse
@@ -185,8 +197,8 @@ getCommitteeAssignmentApiErrorMessage(
         case 403:
             return (
                 'The authenticated account is not '
-                + 'authorised to manage committee '
-                + 'assignments.'
+                + 'authorised to access the requested '
+                + 'committee assignment resource.'
             )
 
         case 404:

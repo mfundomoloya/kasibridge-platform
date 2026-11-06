@@ -121,6 +121,15 @@ import {
 } from './pages/AdminCommitteeAssignmentPage'
 
 import {
+    AdjudicationWorkspacePage,
+} from './pages/AdjudicationWorkspacePage'
+
+import {
+    AdjudicatorAssignmentQueuePage,
+} from './pages/AdjudicatorAssignmentQueuePage'
+
+
+import {
     UnauthorizedPage,
 } from './pages/UnauthorizedPage'
 
@@ -189,6 +198,32 @@ function App() {
                         ]}
                     >
                         <OpenTendersPage />
+                    </RoleRoute>
+                }
+            />
+
+            <Route
+                path="/procurement/adjudications"
+                element={
+                    <RoleRoute
+                        allowedRoles={[
+                            'ROLE_ADJUDICATOR',
+                        ]}
+                    >
+                        <AdjudicatorAssignmentQueuePage />
+                    </RoleRoute>
+                }
+            />
+
+            <Route
+                path="/procurement/adjudications/:tenderId"
+                element={
+                    <RoleRoute
+                        allowedRoles={[
+                            'ROLE_ADJUDICATOR',
+                        ]}
+                    >
+                        <AdjudicationWorkspacePage />
                     </RoleRoute>
                 }
             />
@@ -405,6 +440,20 @@ function App() {
                     </RoleRoute>
                 }
             />
+
+            <Route
+                path="/procurement/adjudications/:tenderId"
+                element={
+                    <RoleRoute
+                        allowedRoles={[
+                            'ROLE_ADJUDICATOR',
+                        ]}
+                    >
+                        <AdjudicationWorkspacePage />
+                    </RoleRoute>
+                }
+            />
+
 
             <Route
                 path="/procurement/fraud-assessments"

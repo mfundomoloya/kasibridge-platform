@@ -50,6 +50,7 @@ const procurementNavigation:
             'ROLE_SPECIFICATION_OFFICER',
         ],
     },
+
     {
         label: 'My evaluations',
         path:
@@ -59,6 +60,16 @@ const procurementNavigation:
             'ROLE_EVALUATOR',
         ],
     },
+    {
+        label: 'My adjudications',
+        path:
+            '/procurement/adjudications',
+        end: true,
+        roles: [
+            'ROLE_ADJUDICATOR',
+        ],
+    },
+
     {
         label: 'Fraud assessments',
         path:
