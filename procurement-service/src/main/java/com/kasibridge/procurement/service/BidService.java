@@ -1,9 +1,6 @@
 package com.kasibridge.procurement.service;
 
-import com.kasibridge.procurement.dto.AnonymizedBidResponse;
-import com.kasibridge.procurement.dto.BidResponse;
-import com.kasibridge.procurement.dto.SubmitBidRequest;
-import com.kasibridge.procurement.dto.TenderBidActivityResponse;
+import com.kasibridge.procurement.dto.*;
 
 import java.util.List;
 
@@ -18,4 +15,6 @@ public interface BidService {
     BidResponse withdrawCurrentTraderBid(Long bidId);
 
     TenderBidActivityResponse getTenderBidActivity(Long tenderId);
+
+    TraderBidOutcomeResponse getCurrentTraderBidOutcome(Long bidId);
 }

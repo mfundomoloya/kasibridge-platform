@@ -192,6 +192,20 @@ public class SecurityConfig {
                                         )
 
                                         /*
+                                         * Authenticated Trader's own bid outcome.
+                                         *
+                                         * Ownership is enforced in the service through
+                                         * bid ID plus authenticated Trader profile ID.
+                                         */
+                                        .requestMatchers(
+                                                HttpMethod.GET,
+                                                "/api/v1/bids/{bidId}/outcome"
+                                        )
+                                        .hasRole(
+                                                "TRADER"
+                                        )
+
+                                        /*
                                          * Authenticated Trader bid
                                          * withdrawal.
                                          */

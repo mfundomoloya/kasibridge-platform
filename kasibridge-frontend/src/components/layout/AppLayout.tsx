@@ -97,10 +97,6 @@ export function AppLayout({
             path: '/dashboard',
         },
         {
-            label: 'Dashboard',
-            path: '/dashboard',
-        },
-        {
             label: 'Open tenders',
             path: '/tenders',
         },

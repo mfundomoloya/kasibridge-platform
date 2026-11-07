@@ -2272,3 +2272,31 @@ select:disabled {
     flex-direction: column;
   }
 }
+
+.bid-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  padding-top: 18px;
+  border-top: 1px solid #e7ece9;
+}
+
+.bid-card-actions
+.primary-link-button {
+  min-height: 42px;
+}
+
+@media (max-width: 620px) {
+  .bid-card-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .bid-card-actions
+  .primary-link-button,
+  .bid-card-actions button {
+    width: 100%;
+    justify-content: center;
+  }
+}

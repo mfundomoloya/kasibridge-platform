@@ -128,6 +128,9 @@ import {
     AdjudicatorAssignmentQueuePage,
 } from './pages/AdjudicatorAssignmentQueuePage'
 
+import {
+    TraderBidOutcomePage,
+} from './pages/TraderBidOutcomePage'
 
 import {
     UnauthorizedPage,
@@ -250,6 +253,19 @@ function App() {
                         ]}
                     >
                         <MyBidsPage />
+                    </RoleRoute>
+                }
+            />
+
+            <Route
+                path="/my-bids/:bidId/outcome"
+                element={
+                    <RoleRoute
+                        allowedRoles={[
+                            'ROLE_TRADER',
+                        ]}
+                    >
+                        <TraderBidOutcomePage />
                     </RoleRoute>
                 }
             />

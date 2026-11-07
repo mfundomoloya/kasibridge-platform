@@ -7,6 +7,7 @@ import {
 import type {
     ApiErrorResponse,
     Bid,
+    TraderBidOutcome,
 } from '../types/bid'
 
 export interface SubmitBidRequest {
@@ -60,6 +61,26 @@ export async function withdrawBid(
 export function getBidApiError(
     error: unknown,
 ): BidApiError {
+    if (
+        error instanceof Error
+        && !axios.isAxiosError(error)
+    ) {
+        const message =
+            error.message.trim()
+
+        return {
+            status: 0,
+            message:
+                message.length > 0
+                    ? message
+                    : (
+                        'The bid request could '
+                        + 'not be completed.'
+                    ),
+            fieldErrors: null,
+        }
+    }
+
     if (
         axios.isAxiosError<ApiErrorResponse>(
             error,
@@ -121,4 +142,41 @@ export function getBidApiError(
             'An unexpected bid error occurred.',
         fieldErrors: null,
     }
+}
+
+export async function getCurrentTraderBidOutcome(
+    bidId: number,
+): Promise<TraderBidOutcome> {
+    const validBidId =
+        requirePositiveIdentifier(
+            bidId,
+            'Bid ID'
+        )
+
+    const response =
+        await procurementApiClient
+            .get<TraderBidOutcome>(
+                '/api/v1/bids/'
+                + validBidId
+                + '/outcome'
+            )
+
+    return response.data
+}
+
+function requirePositiveIdentifier(
+    value: number,
+    fieldName: string,
+): number {
+    if (
+        !Number.isInteger(value)
+        || value <= 0
+    ) {
+        throw new Error(
+            fieldName
+            + ' must be a positive integer.'
+        )
+    }
+
+    return value
 }

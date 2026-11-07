@@ -416,6 +416,102 @@ public class BidServiceImpl implements BidService {
                 .build();
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public TraderBidOutcomeResponse getCurrentTraderBidOutcome(Long bidId) {
+        if (
+                bidId == null
+                        || bidId <= 0
+        ) {
+            throw new IllegalArgumentException(
+                    "A valid bid ID is required."
+            );
+        }
+
+        TraderProfileClientResponse trader =
+                traderProfileClient
+                        .getCurrentTraderProfile();
+
+        if (
+                trader == null
+                        || trader.getId() == null
+        ) {
+            throw new BidSubmissionException(
+                    "Authenticated user does not "
+                            + "have a linked trader "
+                            + "profile."
+            );
+        }
+
+        Long traderProfileId =
+                trader.getId();
+
+        log.info(
+                "Loading bid outcome for "
+                        + "authenticated trader: "
+                        + "bidId={} traderProfileId={}",
+                bidId,
+                traderProfileId
+        );
+
+        /*
+         * Scope the lookup by both bid ID and the
+         * authenticated Trader profile ID.
+         *
+         * Returning the same not-found response for
+         * absent and foreign bids prevents ownership
+         * information from being disclosed.
+         */
+        Bid bid =
+                bidRepository
+                        .findByIdAndTraderProfileId(
+                                bidId,
+                                traderProfileId
+                        )
+                        .orElseThrow(
+                                () ->
+                                        new BidNotFoundException(
+                                                "Bid not found or "
+                                                        + "does not belong "
+                                                        + "to the "
+                                                        + "authenticated "
+                                                        + "trader."
+                                        )
+                        );
+
+        Tender tender =
+                tenderRepository
+                        .findById(
+                                bid.getTenderId()
+                        )
+                        .orElseThrow(
+                                () ->
+                                        new TenderNotFoundException(
+                                                "Tender not found "
+                                                        + "with ID: "
+                                                        + bid.getTenderId()
+                                        )
+                        );
+
+        BidComplianceResponse compliance =
+                complianceRepository
+                        .findByBidId(
+                                bid.getId()
+                        )
+                        .map(
+                                BidComplianceResponse
+                                        ::from
+                        )
+                        .orElse(null);
+
+        return TraderBidOutcomeResponse
+                .from(
+                        bid,
+                        tender,
+                        compliance
+                );
+    }
+
     private boolean isWithdrawableStatus(
             Bid.BidStatus status
     ) {

@@ -1,6 +1,7 @@
 package com.kasibridge.procurement.controller;
 
 import com.kasibridge.procurement.dto.BidResponse;
+import com.kasibridge.procurement.dto.TraderBidOutcomeResponse;
 import com.kasibridge.procurement.service.BidService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -38,6 +39,23 @@ public class TraderBidController {
 
         return ResponseEntity.ok(
                 bidService.withdrawCurrentTraderBid(bidId)
+        );
+    }
+
+    @GetMapping("/{bidId}/outcome")
+    public ResponseEntity<TraderBidOutcomeResponse> getCurrentTraderBidOutcome(@PathVariable("bidId") Long bidId) {
+        log.info(
+                "GET /api/v1/bids/{}/outcome "
+                        + "- loading authenticated "
+                        + "trader bid outcome",
+                bidId
+        );
+
+        return ResponseEntity.ok(
+                bidService
+                        .getCurrentTraderBidOutcome(
+                                bidId
+                        )
         );
     }
 }

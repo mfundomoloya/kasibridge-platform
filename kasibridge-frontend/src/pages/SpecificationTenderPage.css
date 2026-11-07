@@ -3059,3 +3059,262 @@ dd {
         text-align: left;
     }
 }
+
+.trader-outcome-heading-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 12px;
+}
+
+.trader-outcome-summary {
+    position: relative;
+    display: grid;
+    gap: 22px;
+    overflow: hidden;
+    margin-bottom: 22px;
+}
+
+.trader-outcome-summary::before {
+    position: absolute;
+    width: 6px;
+    content: '';
+    inset-block: 0;
+    inset-inline-start: 0;
+    background: #87938c;
+}
+
+.trader-outcome-summary.is-positive {
+    border-color: #8fc9aa;
+    background: #f6fcf8;
+}
+
+.trader-outcome-summary.is-positive::before {
+    background: #16845a;
+}
+
+.trader-outcome-summary.is-negative {
+    border-color: #e3a5a1;
+    background: #fff8f7;
+}
+
+.trader-outcome-summary.is-negative::before {
+    background: #a83232;
+}
+
+.trader-outcome-summary.is-warning {
+    border-color: #e8cc8d;
+    background: #fffbf1;
+}
+
+.trader-outcome-summary.is-warning::before {
+    background: #b67a12;
+}
+
+.trader-outcome-summary.is-neutral::before {
+    background: #315d9f;
+}
+
+.trader-outcome-status {
+    padding-left: 10px;
+}
+
+.trader-outcome-status > span {
+    color: #68736c;
+    font-size: 0.75rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.trader-outcome-status h2 {
+    margin: 7px 0 8px;
+    font-size: 1.65rem;
+}
+
+.trader-outcome-status p {
+    margin: 0;
+    color: #405249;
+    line-height: 1.6;
+}
+
+.trader-outcome-reason {
+    padding: 17px;
+    border: 1px solid #dce5df;
+    border-radius: 13px;
+    background: rgba(255, 255, 255, 0.78);
+}
+
+.trader-outcome-reason span,
+.trader-outcome-compliance-reason span {
+    color: #68736c;
+    font-size: 0.75rem;
+    font-weight: 800;
+}
+
+.trader-outcome-reason p,
+.trader-outcome-compliance-reason p {
+    margin: 7px 0 0;
+    color: #354a60;
+    line-height: 1.65;
+    white-space: pre-wrap;
+}
+
+.trader-outcome-result-grid,
+.trader-outcome-details-grid {
+    display: grid;
+    grid-template-columns:
+    repeat(3, minmax(0, 1fr));
+    gap: 16px;
+    margin: 0;
+}
+
+.trader-outcome-result-grid div,
+.trader-outcome-details-grid div {
+    min-width: 0;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #e4ebe7;
+}
+
+.trader-outcome-result-grid dt,
+.trader-outcome-details-grid dt {
+    margin-bottom: 5px;
+    color: #68736c;
+    font-size: 0.75rem;
+}
+
+.trader-outcome-result-grid dd,
+.trader-outcome-details-grid dd {
+    margin: 0;
+    color: #1e3328;
+    font-weight: 800;
+    overflow-wrap: anywhere;
+}
+
+.trader-outcome-bid-details {
+    display: grid;
+    gap: 22px;
+    margin-bottom: 22px;
+}
+
+.trader-outcome-bid-details h2 {
+    margin: 7px 0 8px;
+}
+
+.trader-outcome-bid-details > div > p {
+    margin: 0;
+    color: #59635d;
+    line-height: 1.6;
+}
+
+.trader-outcome-compliance {
+    display: grid;
+    grid-template-columns:
+    minmax(220px, 1fr)
+    auto;
+    align-items: center;
+    gap: 22px;
+    margin-bottom: 22px;
+}
+
+.trader-outcome-compliance h2 {
+    margin: 7px 0 0;
+}
+
+.trader-outcome-compliance.is-passed {
+    border-color: #8fc9aa;
+    background: #f6fcf8;
+}
+
+.trader-outcome-compliance.is-failed {
+    border-color: #e3a5a1;
+    background: #fff8f7;
+}
+
+.trader-outcome-compliance-result {
+    display: grid;
+    min-width: 125px;
+    gap: 5px;
+    padding: 14px 17px;
+    border: 1px solid #dce5df;
+    border-radius: 12px;
+    background: #ffffff;
+    text-align: center;
+}
+
+.trader-outcome-compliance-result span {
+    color: #68736c;
+    font-size: 0.75rem;
+}
+
+.trader-outcome-compliance-result strong {
+    color: #1e3328;
+    font-size: 1.15rem;
+}
+
+.trader-outcome-compliance-reason {
+    grid-column: 1 / -1;
+    padding: 15px;
+    border-left: 4px solid #a83232;
+    border-radius: 0 11px 11px 0;
+    background: #fff1f0;
+}
+
+.trader-outcome-privacy {
+    display: grid;
+    grid-template-columns:
+    minmax(240px, 0.75fr)
+    minmax(0, 1.25fr);
+    gap: 24px;
+}
+
+.trader-outcome-privacy h2 {
+    margin: 7px 0 0;
+}
+
+.trader-outcome-privacy > p {
+    margin: 0;
+    color: #405249;
+    line-height: 1.7;
+}
+
+.trader-outcome-loading {
+    margin-top: 18px;
+}
+
+@media (max-width: 800px) {
+    .trader-outcome-result-grid,
+    .trader-outcome-details-grid {
+        grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+    }
+
+    .trader-outcome-privacy {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 620px) {
+    .trader-outcome-heading-actions {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .trader-outcome-heading-actions button {
+        width: 100%;
+    }
+
+    .trader-outcome-result-grid,
+    .trader-outcome-details-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .trader-outcome-compliance {
+        grid-template-columns: 1fr;
+    }
+
+    .trader-outcome-compliance-result {
+        width: 100%;
+    }
+}

@@ -1,8 +1,13 @@
+import {
+    Link,
+} from 'react-router-dom'
+
 import type {
     Bid,
 } from '../../types/bid'
 
 import {
+    canViewTraderBidOutcome,
     canWithdrawBid,
 } from '../../types/bid'
 
@@ -18,7 +23,9 @@ import {
 interface BidCardProps {
     bid: Bid
     isWithdrawing?: boolean
-    onWithdraw?: (bid: Bid) => void
+    onWithdraw?: (
+        bid: Bid,
+    ) => void
 }
 
 export function BidCard({
@@ -27,32 +34,63 @@ export function BidCard({
                             onWithdraw,
                         }: BidCardProps) {
     const withdrawalAllowed =
-        canWithdrawBid(bid.status)
+        canWithdrawBid(
+            bid.status
+        )
+
+    const outcomeAvailable =
+        canViewTraderBidOutcome(
+            bid.status
+        )
 
     return (
-        <article className="content-card bid-card">
-            <div className="bid-card-header">
+        <article
+            className={
+                'content-card bid-card'
+            }
+        >
+            <div
+                className={
+                    'bid-card-header'
+                }
+            >
                 <div>
                     <span className="eyebrow">
                         Bid reference
                     </span>
 
-                    <h2>{bid.bidReference}</h2>
+                    <h2>
+                        {bid.bidReference}
+                    </h2>
                 </div>
 
                 <BidStatusBadge
-                    status={bid.status}
+                    status={
+                        bid.status
+                    }
                 />
             </div>
 
-            <dl className="profile-details">
+            <dl
+                className={
+                    'profile-details'
+                }
+            >
                 <div>
-                    <dt>Evaluation alias</dt>
-                    <dd>{bid.bidderAlias}</dd>
+                    <dt>
+                        Evaluation alias
+                    </dt>
+
+                    <dd>
+                        {bid.bidderAlias}
+                    </dd>
                 </div>
 
                 <div>
-                    <dt>Bid price</dt>
+                    <dt>
+                        Bid price
+                    </dt>
+
                     <dd>
                         {formatCurrency(
                             bid.priceAmount
@@ -61,7 +99,10 @@ export function BidCard({
                 </div>
 
                 <div>
-                    <dt>Submitted</dt>
+                    <dt>
+                        Submitted
+                    </dt>
+
                     <dd>
                         {formatDateTime(
                             bid.submittedAt
@@ -70,7 +111,10 @@ export function BidCard({
                 </div>
 
                 <div>
-                    <dt>Last updated</dt>
+                    <dt>
+                        Last updated
+                    </dt>
+
                     <dd>
                         {formatDateTime(
                             bid.updatedAt
@@ -79,60 +123,135 @@ export function BidCard({
                 </div>
             </dl>
 
-            <div className="bid-card-proposal">
-                <h3>Technical proposal</h3>
+            <div
+                className={
+                    'bid-card-proposal'
+                }
+            >
+                <h3>
+                    Technical proposal
+                </h3>
 
-                <p className="tender-detail-text">
-                    {bid.technicalProposal}
+                <p
+                    className={
+                        'tender-detail-text'
+                    }
+                >
+                    {
+                        bid
+                            .technicalProposal
+                    }
                 </p>
             </div>
 
             {bid.compliance && (
-                <div className="bid-compliance-summary">
-                    <h3>Compliance assessment</h3>
+                <div
+                    className={
+                        'bid-compliance-summary'
+                    }
+                >
+                    <h3>
+                        Compliance assessment
+                    </h3>
 
                     <p>
-                        Result:{' '}
+                        Result:
+                        {' '}
                         <strong>
-                            {bid.compliance.passed
-                                ? 'Passed'
-                                : 'Failed'}
+                            {
+                                bid
+                                    .compliance
+                                    .passed
+                                    ? 'Passed'
+                                    : 'Failed'
+                            }
                         </strong>
                     </p>
 
-                    {bid.compliance.failureReason && (
-                        <p
-                            className="error-message"
-                            role="status"
-                        >
-                            {
-                                bid.compliance
-                                    .failureReason
-                            }
-                        </p>
-                    )}
+                    {
+                        bid
+                            .compliance
+                            .failureReason
+                        && (
+                            <p
+                                className={
+                                    'error-message'
+                                }
+                                role="status"
+                            >
+                                {
+                                    bid
+                                        .compliance
+                                        .failureReason
+                                }
+                            </p>
+                        )
+                    }
 
                     <p>
-                        Checked:{' '}
+                        Checked:
+                        {' '}
                         {formatDateTime(
-                            bid.compliance.checkedAt
+                            bid
+                                .compliance
+                                .checkedAt
                         )}
                     </p>
                 </div>
             )}
 
-            {withdrawalAllowed && onWithdraw && (
-                <div className="form-actions">
-                    <button
-                        className="secondary-button"
-                        type="button"
-                        disabled={isWithdrawing}
-                        onClick={() => onWithdraw(bid)}
-                    >
-                        {isWithdrawing
-                            ? 'Withdrawing bid...'
-                            : 'Withdraw bid'}
-                    </button>
+            {(outcomeAvailable
+                || (
+                    withdrawalAllowed
+                    && onWithdraw
+                )) && (
+                <div
+                    className={
+                        'form-actions '
+                        + 'bid-card-actions'
+                    }
+                >
+                    {outcomeAvailable && (
+                        <Link
+                            className={
+                                'primary-link-button'
+                            }
+                            to={
+                                '/my-bids/'
+                                + bid.id
+                                + '/outcome'
+                            }
+                        >
+                            View outcome
+                        </Link>
+                    )}
+
+                    {withdrawalAllowed
+                        && onWithdraw && (
+                            <button
+                                className={
+                                    'secondary-button'
+                                }
+                                type="button"
+                                disabled={
+                                    isWithdrawing
+                                }
+                                onClick={
+                                    () => {
+                                        onWithdraw(
+                                            bid
+                                        )
+                                    }
+                                }
+                            >
+                                {isWithdrawing
+                                    ? (
+                                        'Withdrawing '
+                                        + 'bid...'
+                                    )
+                                    : 'Withdraw bid'}
+                            </button>
+                        )}
                 </div>
             )}
         </article>
