@@ -28,6 +28,18 @@ from model_contract import (
     ModelInformationResponse,
 )
 
+from award_integrity_service import (
+    AwardIntegrityService,
+)
+
+from model_contract import (
+    AwardIntegrityAssessmentRequest,
+    AwardIntegrityAssessmentResponse,
+    HealthResponse,
+    InvoiceFraudPredictionRequest,
+    InvoiceFraudPredictionResponse,
+    ModelInformationResponse,
+)
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
@@ -103,6 +115,10 @@ app = FastAPI(
         "fraud classifier."
     ),
     lifespan=lifespan,
+
+)
+award_integrity_service = (
+    AwardIntegrityService()
 )
 
 @app.get(
@@ -207,5 +223,36 @@ def predict(
             status_code=500,
             detail=(
                 "Fraud prediction failed."
+            ),
+        ) from exception
+
+@app.post(
+    "/assess-award-integrity",
+    response_model=(
+            AwardIntegrityAssessmentResponse
+    ),
+)
+def assess_award_integrity(
+        assessment_request:
+        AwardIntegrityAssessmentRequest,
+) -> AwardIntegrityAssessmentResponse:
+    try:
+        return (
+            award_integrity_service
+            .assess(
+                assessment_request
+            )
+        )
+    except ValueError as exception:
+        raise HTTPException(
+            status_code=400,
+            detail=str(exception),
+        ) from exception
+    except Exception as exception:
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "Award integrity "
+                "assessment failed."
             ),
         ) from exception

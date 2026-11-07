@@ -2,6 +2,7 @@ package com.kasibridge.fraud.controller;
 
 import com.kasibridge.fraud.dto.*;
 import com.kasibridge.fraud.entity.FraudAlert;
+import com.kasibridge.fraud.service.AwardIntegrityAssessmentService;
 import com.kasibridge.fraud.service.FraudAssessmentService;
 import com.kasibridge.fraud.service.FraudDetectionService;
 import com.kasibridge.fraud.service.InvoiceFraudPredictionService;
@@ -38,13 +39,16 @@ public class FraudController {
     private final FraudDetectionService service;
     private final InvoiceFraudPredictionService invoiceFraudPredictionService;
     private final FraudAssessmentService fraudAssessmentService;
+    private final AwardIntegrityAssessmentService awardIntegrityAssessmentService;
 
     public FraudController(FraudDetectionService service,
                            InvoiceFraudPredictionService invoiceFraudPredictionService,
-                           FraudAssessmentService fraudAssessmentService) {
+                           FraudAssessmentService fraudAssessmentService,
+                           AwardIntegrityAssessmentService awardIntegrityAssessmentService) {
         this.service = service;
         this.invoiceFraudPredictionService = invoiceFraudPredictionService;
         this.fraudAssessmentService = fraudAssessmentService;
+        this.awardIntegrityAssessmentService = awardIntegrityAssessmentService;
     }
 
     @Operation(
@@ -86,6 +90,39 @@ public class FraudController {
         );
     }
 
+    @Operation(
+            summary =
+                    "Assess tender award integrity",
+            description =
+                    "Runs deterministic, explainable "
+                            + "award-integrity rules. "
+                            + "The response is advisory "
+                            + "and does not alter the "
+                            + "tender or award."
+    )
+    @Tag(name = "Fraud Analysis")
+    @PostMapping("/awards/assess")
+    public ResponseEntity<
+            AwardIntegrityAssessmentResponse
+            >
+    assessAwardIntegrity(
+            @Valid
+            @RequestBody
+            AwardIntegrityAssessmentRequest request
+    ) {
+        log.info(
+                "POST /api/v1/fraud/awards/assess "
+                        + "- tenderId={}",
+                request.tenderId()
+        );
+
+        return ResponseEntity.ok(
+                awardIntegrityAssessmentService
+                        .assess(
+                                request
+                        )
+        );
+    }
 
     @Operation(summary = "Assess and persist procurement invoice risk",
             description =

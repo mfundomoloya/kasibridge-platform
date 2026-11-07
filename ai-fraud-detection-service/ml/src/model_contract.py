@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from enum import Enum
 from typing import Any
 
@@ -7,6 +8,7 @@ from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
+    PositiveInt,
 )
 
 
@@ -320,3 +322,186 @@ class HealthResponse(
     model_loaded: bool
 
     model_checksum_verified: bool
+
+
+class AwardIntegrityRiskLevel(
+    str,
+    Enum,
+):
+    LOW = "LOW"
+    MEDIUM = "MEDIUM"
+    HIGH = "HIGH"
+    CRITICAL = "CRITICAL"
+
+
+class AwardIntegrityRecommendation(
+    str,
+    Enum,
+):
+    ACCEPT_WITH_MONITORING = (
+        "ACCEPT_WITH_MONITORING"
+    )
+
+    REVIEW_COMPETITION = (
+        "REVIEW_COMPETITION"
+    )
+
+    REQUIRE_GOVERNANCE_REVIEW = (
+        "REQUIRE_GOVERNANCE_REVIEW"
+    )
+
+    ESCALATE_FOR_INVESTIGATION = (
+        "ESCALATE_FOR_INVESTIGATION"
+    )
+
+
+class AwardIntegritySignalSeverity(
+    str,
+    Enum,
+):
+    INFO = "INFO"
+    LOW = "LOW"
+    MEDIUM = "MEDIUM"
+    HIGH = "HIGH"
+    CRITICAL = "CRITICAL"
+
+
+class AwardIntegrityAssessmentRequest(
+    BaseModel,
+):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+
+    tender_id: PositiveInt
+
+    budget_amount: float = Field(
+        gt=0,
+    )
+
+    awarded_amount: float = Field(
+        ge=0,
+    )
+
+    submitted_bid_count: int = Field(
+        ge=0,
+    )
+
+    eligible_bid_count: int = Field(
+        ge=0,
+    )
+
+    withdrawn_bid_count: int = Field(
+        ge=0,
+    )
+
+    active_evaluator_count: int = Field(
+        ge=0,
+    )
+
+    expected_score_count: int = Field(
+        ge=0,
+    )
+
+    submitted_score_count: int = Field(
+        ge=0,
+    )
+
+    average_technical_score: float = Field(
+        ge=0,
+        le=100,
+    )
+
+    average_price_score: float = Field(
+        ge=0,
+        le=20,
+    )
+
+    average_total_score: float = Field(
+        ge=0,
+        le=100,
+    )
+
+    minimum_technical_threshold: float = Field(
+        ge=0,
+        le=100,
+    )
+
+    award_rank: int = Field(
+        gt=0,
+    )
+
+    specification_officer_user_id: PositiveInt
+
+    evaluator_user_ids: list[PositiveInt] = Field(
+        min_length=1,
+    )
+
+    adjudicator_user_id: PositiveInt
+
+    published_at: datetime
+
+    bidding_closed_at: datetime
+
+    awarded_at: datetime
+
+
+class AwardIntegritySignal(
+    BaseModel,
+):
+    code: str = Field(
+        min_length=1,
+    )
+
+    severity: AwardIntegritySignalSeverity
+
+    message: str = Field(
+        min_length=1,
+    )
+
+    observed_value: (
+            float
+            | int
+            | str
+            | None
+    ) = None
+
+    threshold: (
+            float
+            | int
+            | str
+            | None
+    ) = None
+
+    risk_points: int = Field(
+        ge=0,
+    )
+
+
+class AwardIntegrityAssessmentResponse(
+    BaseModel,
+):
+    tender_id: int = Field(
+        gt=0,
+    )
+
+    assessment_type: str
+
+    risk_score: float = Field(
+        ge=0,
+        le=1,
+    )
+
+    risk_level: AwardIntegrityRiskLevel
+
+    recommendation: AwardIntegrityRecommendation
+
+    rule_version: str
+
+    model_used: bool
+
+    award_consistent_with_rules: bool
+
+    signals: list[AwardIntegritySignal]
+
+    assessed_at: datetime

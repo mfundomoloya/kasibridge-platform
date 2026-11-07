@@ -3,6 +3,7 @@ package com.kasibridge.fraud.controller;
 import com.kasibridge.fraud.dto.FraudAssessmentResponse;
 import com.kasibridge.fraud.dto.FraudAssessmentReviewRequest;
 import com.kasibridge.fraud.entity.FraudAssessment;
+import com.kasibridge.fraud.service.AwardIntegrityAssessmentService;
 import com.kasibridge.fraud.service.FraudAssessmentService;
 import com.kasibridge.fraud.service.FraudDetectionService;
 import com.kasibridge.fraud.service.InvoiceFraudPredictionService;
@@ -65,6 +66,9 @@ class FraudAssessmentControllerTest {
     @Mock
     private FraudAssessmentService
             fraudAssessmentService;
+    @Mock
+    private AwardIntegrityAssessmentService
+            awardIntegrityAssessmentService;
 
     @Mock
     private Authentication authentication;
@@ -77,7 +81,8 @@ class FraudAssessmentControllerTest {
                 new FraudController(
                         fraudDetectionService,
                         invoiceFraudPredictionService,
-                        fraudAssessmentService
+                        fraudAssessmentService,
+                        awardIntegrityAssessmentService
                 );
     }
 

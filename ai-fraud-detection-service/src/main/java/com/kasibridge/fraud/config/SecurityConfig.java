@@ -176,6 +176,15 @@ public class SecurityConfig {
                                                 "PLATFORM_ADMIN"
                                         )
 
+                                        .requestMatchers(
+                                                HttpMethod.POST,
+                                                "/api/v1/fraud/awards/assess"
+                                        )
+                                        .hasAnyRole(
+                                                "PLATFORM_ADMIN",
+                                                "FRAUD_ANALYST"
+                                        )
+
                                         /*
                                          * Assessment queue, dashboard,
                                          * and individual assessment

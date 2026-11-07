@@ -4,6 +4,9 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kasibridge.fraud.dto.MlInferenceRequest;
 import com.kasibridge.fraud.dto.MlInferenceResponse;
+import com.kasibridge.fraud.dto.AwardIntegrityAssessmentRequest;
+import com.kasibridge.fraud.dto.AwardIntegrityAssessmentResponse;
+import com.kasibridge.fraud.dto.AwardIntegritySignalResponse;
 import com.kasibridge.fraud.exception.MlInferenceException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -63,9 +66,7 @@ public class MlInferenceClient {
                 readTimeoutMilliseconds;
     }
 
-    public MlInferenceResponse predict(
-            MlInferenceRequest request
-    ) {
+    public MlInferenceResponse predict(MlInferenceRequest request) {
         if (request == null) {
             throw new IllegalArgumentException(
                     "ML inference request is required."
@@ -219,6 +220,489 @@ public class MlInferenceClient {
                     "Unexpected procurement fraud "
                             + "model error.",
                     exception
+            );
+        }
+    }
+
+    public AwardIntegrityAssessmentResponse
+    assessAwardIntegrity(
+            AwardIntegrityAssessmentRequest request
+    ) {
+        if (request == null) {
+            throw new IllegalArgumentException(
+                    "Award integrity assessment "
+                            + "request is required."
+            );
+        }
+
+        String jsonBody =
+                serializeAwardIntegrityRequest(
+                        request
+                );
+
+        if (jsonBody.isBlank()) {
+            throw new MlInferenceException(
+                    "Award integrity request "
+                            + "serialized to an empty "
+                            + "JSON body."
+            );
+        }
+
+        String endpoint =
+                baseUrl
+                        + "/assess-award-integrity";
+
+        HttpRequest httpRequest =
+                HttpRequest
+                        .newBuilder()
+                        .uri(
+                                URI.create(
+                                        endpoint
+                                )
+                        )
+                        .timeout(
+                                Duration.ofMillis(
+                                        readTimeoutMilliseconds
+                                )
+                        )
+                        .header(
+                                "Content-Type",
+                                "application/json"
+                        )
+                        .header(
+                                "Accept",
+                                "application/json"
+                        )
+                        .POST(
+                                HttpRequest
+                                        .BodyPublishers
+                                        .ofString(
+                                                jsonBody
+                                        )
+                        )
+                        .build();
+
+        log.debug(
+                "Calling award integrity service: "
+                        + "endpoint={} tenderId={} "
+                        + "bodyLength={} "
+                        + "contentType=application/json",
+                endpoint,
+                request.tenderId(),
+                jsonBody.getBytes(
+                        java.nio.charset
+                                .StandardCharsets
+                                .UTF_8
+                ).length
+        );
+
+        try {
+            HttpResponse<String> httpResponse =
+                    httpClient.send(
+                            httpRequest,
+                            HttpResponse
+                                    .BodyHandlers
+                                    .ofString()
+                    );
+
+            int statusCode =
+                    httpResponse.statusCode();
+
+            String responseBody =
+                    httpResponse.body();
+
+            if (
+                    statusCode < 200
+                            || statusCode >= 300
+            ) {
+                log.warn(
+                        "Award integrity request "
+                                + "rejected: status={} "
+                                + "response={}",
+                        statusCode,
+                        sanitizeResponseBody(
+                                responseBody
+                        )
+                );
+
+                throw new MlInferenceException(
+                        buildProviderFailure(
+                                statusCode,
+                                responseBody
+                        )
+                );
+            }
+
+            AwardIntegrityAssessmentResponse
+                    response =
+                    deserializeAwardIntegrityResponse(
+                            responseBody
+                    );
+
+            validateAwardIntegrityResponse(
+                    response,
+                    request.tenderId()
+            );
+
+            log.info(
+                    "Award integrity assessment "
+                            + "completed: tenderId={} "
+                            + "riskLevel={} "
+                            + "riskScore={} "
+                            + "recommendation={} "
+                            + "consistentWithRules={} "
+                            + "ruleVersion={}",
+                    response.tenderId(),
+                    response.riskLevel(),
+                    response.riskScore(),
+                    response.recommendation(),
+                    response
+                            .awardConsistentWithRules(),
+                    response.ruleVersion()
+            );
+
+            return response;
+
+        } catch (
+                InterruptedException exception
+        ) {
+            Thread.currentThread()
+                    .interrupt();
+
+            throw new MlInferenceException(
+                    "Award integrity assessment "
+                            + "request was interrupted.",
+                    exception
+            );
+
+        } catch (
+                IOException exception
+        ) {
+            log.warn(
+                    "Award integrity service could "
+                            + "not be reached: {}",
+                    exception.getMessage()
+            );
+
+            throw new MlInferenceException(
+                    "Award integrity assessment "
+                            + "service is unavailable.",
+                    exception
+            );
+
+        } catch (
+                MlInferenceException exception
+        ) {
+            throw exception;
+
+        } catch (Exception exception) {
+            log.error(
+                    "Unexpected award integrity "
+                            + "client failure.",
+                    exception
+            );
+
+            throw new MlInferenceException(
+                    "Unexpected award integrity "
+                            + "assessment error.",
+                    exception
+            );
+        }
+    }
+
+    private String
+    serializeAwardIntegrityRequest(
+            AwardIntegrityAssessmentRequest request
+    ) {
+        try {
+            return objectMapper
+                    .writeValueAsString(
+                            request
+                    );
+
+        } catch (
+                JsonProcessingException exception
+        ) {
+            throw new MlInferenceException(
+                    "Could not serialize the award "
+                            + "integrity assessment "
+                            + "request.",
+                    exception
+            );
+        }
+    }
+
+    private AwardIntegrityAssessmentResponse
+    deserializeAwardIntegrityResponse(
+            String responseBody
+    ) {
+        if (
+                responseBody == null
+                        || responseBody.isBlank()
+        ) {
+            throw new MlInferenceException(
+                    "Award integrity service returned "
+                            + "an empty response."
+            );
+        }
+
+        try {
+            return objectMapper.readValue(
+                    responseBody,
+                    AwardIntegrityAssessmentResponse
+                            .class
+            );
+
+        } catch (
+                JsonProcessingException exception
+        ) {
+            throw new MlInferenceException(
+                    "Could not parse the award "
+                            + "integrity assessment "
+                            + "response.",
+                    exception
+            );
+        }
+    }
+
+    private void
+    validateAwardIntegrityResponse(
+            AwardIntegrityAssessmentResponse response,
+            Long expectedTenderId
+    ) {
+        if (response == null) {
+            throw new MlInferenceException(
+                    "Award integrity service returned "
+                            + "an empty response."
+            );
+        }
+
+        if (response.tenderId() == null) {
+            throw new MlInferenceException(
+                    "Award integrity response has no "
+                            + "tender ID."
+            );
+        }
+
+        if (
+                expectedTenderId != null
+                        && !expectedTenderId.equals(
+                        response.tenderId()
+                )
+        ) {
+            throw new MlInferenceException(
+                    "Award integrity response tender "
+                            + "ID does not match the "
+                            + "request."
+            );
+        }
+
+        if (
+                response.assessmentType() == null
+                        || response
+                        .assessmentType()
+                        .isBlank()
+        ) {
+            throw new MlInferenceException(
+                    "Award integrity response has no "
+                            + "assessment type."
+            );
+        }
+
+        if (response.riskScore() == null) {
+            throw new MlInferenceException(
+                    "Award integrity response has no "
+                            + "risk score."
+            );
+        }
+
+        if (
+                response.riskScore()
+                        .compareTo(
+                                java.math.BigDecimal.ZERO
+                        ) < 0
+                        || response.riskScore()
+                        .compareTo(
+                                java.math.BigDecimal.ONE
+                        ) > 0
+        ) {
+            throw new MlInferenceException(
+                    "Award integrity risk score must "
+                            + "be between zero and one."
+            );
+        }
+
+        if (
+                response.riskLevel() == null
+                        || response
+                        .riskLevel()
+                        .isBlank()
+        ) {
+            throw new MlInferenceException(
+                    "Award integrity response has no "
+                            + "risk level."
+            );
+        }
+
+        if (
+                !java.util.Set.of(
+                        "LOW",
+                        "MEDIUM",
+                        "HIGH",
+                        "CRITICAL"
+                ).contains(
+                        response.riskLevel()
+                )
+        ) {
+            throw new MlInferenceException(
+                    "Award integrity response contains "
+                            + "an unsupported risk level."
+            );
+        }
+
+        if (
+                response.recommendation() == null
+                        || response
+                        .recommendation()
+                        .isBlank()
+        ) {
+            throw new MlInferenceException(
+                    "Award integrity response has no "
+                            + "recommendation."
+            );
+        }
+
+        if (
+                response.ruleVersion() == null
+                        || response
+                        .ruleVersion()
+                        .isBlank()
+        ) {
+            throw new MlInferenceException(
+                    "Award integrity response has no "
+                            + "rule version."
+            );
+        }
+
+        if (response.modelUsed() == null) {
+            throw new MlInferenceException(
+                    "Award integrity response does not "
+                            + "state whether a model "
+                            + "was used."
+            );
+        }
+
+        if (
+                response
+                        .awardConsistentWithRules()
+                        == null
+        ) {
+            throw new MlInferenceException(
+                    "Award integrity response has no "
+                            + "rule-consistency result."
+            );
+        }
+
+        if (response.assessedAt() == null) {
+            throw new MlInferenceException(
+                    "Award integrity response has no "
+                            + "assessment timestamp."
+            );
+        }
+
+        if (
+                response.signals() == null
+                        || response
+                        .signals()
+                        .isEmpty()
+        ) {
+            throw new MlInferenceException(
+                    "Award integrity response has no "
+                            + "assessment signals."
+            );
+        }
+
+        for (
+                AwardIntegritySignalResponse signal
+                : response.signals()
+        ) {
+            validateAwardIntegritySignal(
+                    signal
+            );
+        }
+    }
+
+    private void
+    validateAwardIntegritySignal(
+            AwardIntegritySignalResponse signal
+    ) {
+        if (signal == null) {
+            throw new MlInferenceException(
+                    "Award integrity response contains "
+                            + "an empty signal."
+            );
+        }
+
+        if (
+                signal.code() == null
+                        || signal
+                        .code()
+                        .isBlank()
+        ) {
+            throw new MlInferenceException(
+                    "Award integrity signal has no "
+                            + "code."
+            );
+        }
+
+        if (
+                signal.severity() == null
+                        || signal
+                        .severity()
+                        .isBlank()
+        ) {
+            throw new MlInferenceException(
+                    "Award integrity signal has no "
+                            + "severity."
+            );
+        }
+
+        if (
+                !java.util.Set.of(
+                        "INFO",
+                        "LOW",
+                        "MEDIUM",
+                        "HIGH",
+                        "CRITICAL"
+                ).contains(
+                        signal.severity()
+                )
+        ) {
+            throw new MlInferenceException(
+                    "Award integrity signal contains "
+                            + "an unsupported severity."
+            );
+        }
+
+        if (
+                signal.message() == null
+                        || signal
+                        .message()
+                        .isBlank()
+        ) {
+            throw new MlInferenceException(
+                    "Award integrity signal has no "
+                            + "message."
+            );
+        }
+
+        if (
+                signal.riskPoints() == null
+                        || signal.riskPoints() < 0
+        ) {
+            throw new MlInferenceException(
+                    "Award integrity signal contains "
+                            + "invalid risk points."
             );
         }
     }
