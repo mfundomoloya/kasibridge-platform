@@ -182,7 +182,7 @@ public class SecurityConfig {
                                         )
                                         .hasAnyRole(
                                                 "PLATFORM_ADMIN",
-                                                "FRAUD_ANALYST"
+                                                "ANALYST"
                                         )
 
                                         /*
