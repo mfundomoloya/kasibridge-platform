@@ -3,22 +3,20 @@ package com.kasibridge.fraud.exception;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
-import org.springframework.web.ErrorResponse;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-import com.kasibridge.fraud.exception.MlInferenceException;
-import org.springframework.http.HttpStatus;
 import org.springframework.dao.OptimisticLockingFailureException;
-import org.springframework.orm.ObjectOptimisticLockingFailureException;
+import lombok.extern.slf4j.Slf4j;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+@Slf4j
 @RestControllerAdvice
-public class GlobalExceptionHandler extends RuntimeException {
+public class GlobalExceptionHandler{
 
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ErrorResponse> handleIllegalArgument(IllegalArgumentException ex) {
@@ -45,9 +43,7 @@ public class GlobalExceptionHandler extends RuntimeException {
         return ResponseEntity.badRequest().body(response);
     }
 
-    @ExceptionHandler(
-            MlInferenceException.class
-    )
+    @ExceptionHandler(MlInferenceException.class)
     public ResponseEntity<Map<String, Object>> handleMlInferenceException(MlInferenceException exception) {
         Map<String, Object> response =
                 new LinkedHashMap<>();
@@ -87,9 +83,7 @@ public class GlobalExceptionHandler extends RuntimeException {
         );
     }
 
-    @ExceptionHandler(
-            FraudAssessmentConflictException.class
-    )
+    @ExceptionHandler(FraudAssessmentConflictException.class)
     public ResponseEntity<Map<String, Object>> handleFraudAssessmentConflict(FraudAssessmentConflictException exception) {
         return buildErrorResponse(
                 HttpStatus.CONFLICT,
@@ -118,12 +112,8 @@ public class GlobalExceptionHandler extends RuntimeException {
         );
     }
 
-    @ExceptionHandler(
-            OptimisticLockingFailureException.class
-    )
-    public ResponseEntity<Map<String, Object>>
-    handleOptimisticLockingFailure(
-            OptimisticLockingFailureException exception
+    @ExceptionHandler(OptimisticLockingFailureException.class)
+    public ResponseEntity<Map<String, Object>> handleOptimisticLockingFailure(OptimisticLockingFailureException exception
     ) {
         return buildErrorResponse(
                 HttpStatus.CONFLICT,
@@ -133,6 +123,72 @@ public class GlobalExceptionHandler extends RuntimeException {
                         + "assessment before submitting "
                         + "another review decision."
         );
+    }
+
+    @ExceptionHandler(AwardIntegrityAssessmentNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleAwardIntegrityAssessmentNotFound(AwardIntegrityAssessmentNotFoundException
+                    exception
+    ) {
+        log.warn(
+                "Award integrity assessment "
+                        + "not found: {}",
+                exception.getMessage()
+        );
+
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(
+                        ErrorResponse.of(
+                                HttpStatus
+                                        .NOT_FOUND
+                                        .value(),
+                                exception.getMessage()
+                        )
+                );
+    }
+
+    @ExceptionHandler(AwardIntegrityAssessmentVersionConflictException.class)
+    public ResponseEntity<ErrorResponse> handleAwardIntegrityAssessmentVersionConflict(
+            AwardIntegrityAssessmentVersionConflictException
+                    exception
+    ) {
+        log.warn(
+                "Award integrity assessment "
+                        + "version conflict: {}",
+                exception.getMessage()
+        );
+
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(
+                        ErrorResponse.of(
+                                HttpStatus
+                                        .CONFLICT
+                                        .value(),
+                                exception.getMessage()
+                        )
+                );
+    }
+
+    @ExceptionHandler(AwardIntegrityAssessmentConflictException.class)
+    public ResponseEntity<ErrorResponse> handleAwardIntegrityAssessmentConflict(AwardIntegrityAssessmentConflictException
+                    exception
+    ) {
+        log.warn(
+                "Award integrity assessment "
+                        + "workflow conflict: {}",
+                exception.getMessage()
+        );
+
+        return ResponseEntity
+                .status(HttpStatus.CONFLICT)
+                .body(
+                        ErrorResponse.of(
+                                HttpStatus
+                                        .CONFLICT
+                                        .value(),
+                                exception.getMessage()
+                        )
+                );
     }
 
     @ExceptionHandler(Exception.class)

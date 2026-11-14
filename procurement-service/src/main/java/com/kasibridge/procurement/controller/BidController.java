@@ -1,11 +1,9 @@
 package com.kasibridge.procurement.controller;
 
 
-import com.kasibridge.procurement.dto.AnonymizedBidResponse;
-import com.kasibridge.procurement.dto.BidResponse;
-import com.kasibridge.procurement.dto.SubmitBidRequest;
-import com.kasibridge.procurement.dto.TenderBidActivityResponse;
+import com.kasibridge.procurement.dto.*;
 import com.kasibridge.procurement.service.BidService;
+import com.kasibridge.procurement.service.EvaluationService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -22,6 +20,7 @@ import java.util.List;
 public class BidController {
 
     private final BidService service;
+    private final EvaluationService evaluationService;
 
 
     @PostMapping
@@ -49,5 +48,18 @@ public class BidController {
         return ResponseEntity.ok(
                 service.getTenderBidActivity(tenderId)
         );
+    }
+
+    @GetMapping("/evaluation/progress")
+    public ResponseEntity<EvaluationProgressResponse> getEvaluationProgress(@PathVariable Long tenderId
+    ) {
+        log.info(
+                "Loading evaluation progress for tenderId={}",
+                tenderId
+        );
+
+        EvaluationProgressResponse response = evaluationService.getEvaluationProgress(tenderId);
+
+        return ResponseEntity.ok(response);
     }
 }

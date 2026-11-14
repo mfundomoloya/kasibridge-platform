@@ -64,8 +64,7 @@ public class SecurityConfig {
                                         /*
                                          * CORS preflight requests.
                                          */
-                                        .requestMatchers(
-                                                HttpMethod.OPTIONS,
+                                        .requestMatchers(HttpMethod.OPTIONS,
                                                 "/**"
                                         )
                                         .permitAll()
@@ -102,6 +101,18 @@ public class SecurityConfig {
                                                 "/api/v1/webhooks/whatsapp"
                                         )
                                         .permitAll()
+
+
+                                        .requestMatchers(
+                                                HttpMethod.GET,
+                                                "/api/v1/tenders/*/bids/evaluation/progress"
+                                        )
+                                        .hasAnyRole(
+                                                "SPECIFICATION_OFFICER",
+                                                "EVALUATOR",
+                                                "ADJUDICATOR",
+                                                "PLATFORM_ADMIN"
+                                        )
 
                                         /*
                                          * Trader-visible tender catalogue.
