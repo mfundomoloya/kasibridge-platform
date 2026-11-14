@@ -174,7 +174,7 @@ public class TenderServiceImpl implements TenderService {
         Tender saved = repository.save(tender);
 
         auditService.recordSuccess(
-                ProcurementAuditEvent.AuditEventType.TENDER_ADJUDICATION_STARTED,
+                ProcurementAuditEvent.AuditEventType.TENDER_EVALUATION_STARTED,
                 saved.getId(),
                 null,
                 currentUserService.getCurrentUserId(),
