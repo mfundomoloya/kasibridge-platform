@@ -3,6 +3,9 @@ package com.kasibridge.procurement.controller;
 import com.kasibridge.procurement.dto.TenderResponse;
 import com.kasibridge.procurement.entity.Tender;
 import com.kasibridge.procurement.service.TenderService;
+import com.kasibridge.procurement.exception.GlobalExceptionHandler;
+import com.kasibridge.procurement.exception.TenderStateException;
+import org.springframework.context.annotation.Import;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -61,6 +64,37 @@ class TenderControllerTest {
                         .value("Supply of safety equipment"))
                 .andExpect(jsonPath("$.status")
                         .value("ADJUDICATION"));
+
+        verify(tenderService).startAdjudication(tenderId);
+    }
+
+    @Test
+    void shouldReturnBadRequestWhenEvaluationIsIncomplete()
+            throws Exception {
+
+        Long tenderId = 11L;
+
+        String blockingReason =
+                "One evaluation score is still outstanding.";
+
+        when(tenderService.startAdjudication(tenderId))
+                .thenThrow(
+                        new TenderStateException(blockingReason)
+                );
+
+        mockMvc.perform(
+                        patch(
+                                "/api/v1/tenders/{id}/start-adjudication",
+                                tenderId
+                        )
+                )
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.message")
+                        .value(blockingReason))
+                .andExpect(jsonPath("$.timestamp").exists())
+                .andExpect(jsonPath("$.fieldErrors")
+                        .doesNotExist());
 
         verify(tenderService).startAdjudication(tenderId);
     }
