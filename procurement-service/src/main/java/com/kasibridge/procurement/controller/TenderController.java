@@ -102,7 +102,7 @@ public class TenderController {
 
     @PatchMapping("/{id}/start-evaluation")
     public ResponseEntity<TenderResponse> startEvaluation(@PathVariable("id") Long id){
-        log.info("PATCH /api/v1/tenders/{}/start-evalution - starting evaluation", id);
+        log.info("PATCH /api/v1/tenders/{}/start-evaluation - starting evaluation", id);
 
         return ResponseEntity.ok(service.startEvaluation(id));
     }
@@ -115,9 +115,9 @@ public class TenderController {
     }
 
     @GetMapping("/{id}/specification/verify")
-    public ResponseEntity<SpecificationIntegrityResponse> verifySpecificationIntegrity(@PathVariable("id") Long id){
+    public ResponseEntity<SpecificationIntegrityResponse> verifySpecificationIntegrity(@PathVariable("id") Long id) {
         log.info("GET /api/v1/tenders/{}/specification/verify - verifying specification integrity", id);
 
         return ResponseEntity.ok(service.verifySpecificationIntegrity(id));
-    };
+    }
 }
