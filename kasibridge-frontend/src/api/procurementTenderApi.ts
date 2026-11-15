@@ -221,17 +221,13 @@ export function getProcurementTenderApiErrorMessage(
     const fieldErrors =
         error.response?.data?.fieldErrors
 
-    if (
-        Array.isArray(fieldErrors)
-        && fieldErrors.length > 0
-    ) {
-        return fieldErrors
-            .map(
-                (fieldError) =>
-                    `${fieldError.field}: `
-                    + fieldError.message
-            )
-            .join(' ')
+    const fieldErrorMessage =
+        getProcurementFieldErrorMessage(
+            fieldErrors
+        )
+
+    if (fieldErrorMessage !== null) {
+        return fieldErrorMessage
     }
 
     if (
@@ -312,6 +308,83 @@ export function isTenderStateRejection(
             || error.response?.status === 409
         )
     )
+}
+
+function getProcurementFieldErrorMessage(
+    fieldErrors:
+    ProcurementApiErrorResponse[
+        'fieldErrors'
+        ],
+): string | null {
+    if (
+        fieldErrors === null
+        || fieldErrors === undefined
+    ) {
+        return null
+    }
+
+    if (Array.isArray(fieldErrors)) {
+        const messages =
+            fieldErrors
+                .map(
+                    (fieldError) => {
+                        const field =
+                            fieldError.field.trim()
+
+                        const message =
+                            fieldError.message.trim()
+
+                        if (message.length === 0) {
+                            return ''
+                        }
+
+                        return field.length === 0
+                            ? message
+                            : `${field}: ${message}`
+                    }
+                )
+                .filter(
+                    (message) =>
+                        message.length > 0
+                )
+
+        return messages.length === 0
+            ? null
+            : messages.join(' ')
+    }
+
+    const messages =
+        Object.entries(fieldErrors)
+            .map(
+                ([field, message]) => {
+                    const cleanField =
+                        field.trim()
+
+                    const cleanMessage =
+                        message.trim()
+
+                    if (
+                        cleanMessage.length === 0
+                    ) {
+                        return ''
+                    }
+
+                    return cleanField.length === 0
+                        ? cleanMessage
+                        : (
+                            `${cleanField}: `
+                            + cleanMessage
+                        )
+                }
+            )
+            .filter(
+                (message) =>
+                    message.length > 0
+            )
+
+    return messages.length === 0
+        ? null
+        : messages.join(' ')
 }
 
 function normalizeCreateTenderRequest(

@@ -106,7 +106,9 @@ export interface ProcurementApiErrorResponse {
     message: string
     timestamp: string
     fieldErrors?:
-        ProcurementApiFieldError[] | null
+        ProcurementApiFieldError[]
+        | Record<string, string>
+        | null
 }
 
 export interface ProcurementTenderStatistics {
