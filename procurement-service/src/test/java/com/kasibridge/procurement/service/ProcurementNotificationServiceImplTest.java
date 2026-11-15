@@ -1064,6 +1064,7 @@ class ProcurementNotificationServiceImplTest {
                 USER_ID
         );
     }
+
     @Test
     void shouldSkipAlreadyQueuedMatchingTenderNotification() {
         tender.setRequiredBusinessType(
@@ -1193,6 +1194,227 @@ class ProcurementNotificationServiceImplTest {
         assertEquals(
                 "Matching trader lookup failed",
                 exception.getMessage()
+        );
+
+        verifyNoOutboxNotificationQueued();
+    }
+
+    @Test
+    void shouldQueueTenderAwardedNotificationForWinningTrader() {
+        withdrawnBid.setStatus(
+                Bid.BidStatus.AWARDED
+        );
+
+        tender.setStatus(
+                Tender.TenderStatus.AWARDED
+        );
+
+        tender.setAwardedBidId(
+                BID_ID
+        );
+
+        String expectedMessage =
+                "Congratulations Sifiso Magagula. "
+                        + "Your bid KB-BID-68742A06 "
+                        + "for tender "
+                        + "KB-TENDER-436FC79F "
+                        + "was awarded.";
+
+        when(
+                traderProfileClient
+                        .getTraderProfileByIdAsSystem(
+                                TRADER_PROFILE_ID
+                        )
+        ).thenReturn(trader);
+
+        when(
+                notificationOutboxRepository
+                        .existsByTemplateTypeAndRelatedBidIdAndRecipientUserId(
+                                NotificationOutbox
+                                        .NotificationTemplateType
+                                        .TENDER_AWARDED,
+                                BID_ID,
+                                USER_ID
+                        )
+        ).thenReturn(false);
+
+        when(
+                templateService.generateMessage(
+                        eq(
+                                NotificationOutbox
+                                        .NotificationTemplateType
+                                        .TENDER_AWARDED
+                        ),
+                        any(
+                                WhatsAppTemplateContext.class
+                        )
+                )
+        ).thenReturn(expectedMessage);
+
+        notificationService.queueTenderAwarded(
+                withdrawnBid,
+                tender
+        );
+
+        verify(traderProfileClient)
+                .getTraderProfileByIdAsSystem(
+                        TRADER_PROFILE_ID
+                );
+
+        verify(
+                traderProfileClient,
+                never()
+        ).getTraderProfileById(
+                any()
+        );
+
+        verify(notificationOutboxRepository)
+                .existsByTemplateTypeAndRelatedBidIdAndRecipientUserId(
+                        NotificationOutbox
+                                .NotificationTemplateType
+                                .TENDER_AWARDED,
+                        BID_ID,
+                        USER_ID
+                );
+
+        ArgumentCaptor<WhatsAppTemplateContext>
+                contextCaptor =
+                ArgumentCaptor.forClass(
+                        WhatsAppTemplateContext.class
+                );
+
+        verify(templateService)
+                .generateMessage(
+                        eq(
+                                NotificationOutbox
+                                        .NotificationTemplateType
+                                        .TENDER_AWARDED
+                        ),
+                        contextCaptor.capture()
+                );
+
+        WhatsAppTemplateContext context =
+                contextCaptor.getValue();
+
+        assertNotNull(context);
+
+        assertEquals(
+                "Sifiso Magagula",
+                context.getRecipientName()
+        );
+
+        assertEquals(
+                TENDER_ID,
+                context.getTenderId()
+        );
+
+        assertEquals(
+                "KB-TENDER-436FC79F",
+                context.getTenderReference()
+        );
+
+        assertEquals(
+                "Supply of ICT Equipment "
+                        + "for Municipal Offices",
+                context.getTenderTitle()
+        );
+
+        assertEquals(
+                BID_ID,
+                context.getBidId()
+        );
+
+        assertEquals(
+                "KB-BID-68742A06",
+                context.getBidReference()
+        );
+
+        assertEquals(
+                "Bidder B",
+                context.getBidderAlias()
+        );
+
+        assertEquals(
+                new BigDecimal("690000.00"),
+                context.getBidAmount()
+        );
+
+        verify(notificationOutboxService)
+                .queueNotification(
+                        NotificationOutbox
+                                .NotificationChannel
+                                .WHATSAPP,
+                        NotificationOutbox
+                                .NotificationTemplateType
+                                .TENDER_AWARDED,
+                        USER_ID,
+                        "+27610000001",
+                        "biddera@kasibridge.test",
+                        expectedMessage,
+                        TENDER_ID,
+                        BID_ID,
+                        null
+                );
+    }
+
+    @Test
+    void shouldSkipDuplicateTenderAwardedNotification() {
+        withdrawnBid.setStatus(
+                Bid.BidStatus.AWARDED
+        );
+
+        tender.setStatus(
+                Tender.TenderStatus.AWARDED
+        );
+
+        tender.setAwardedBidId(
+                BID_ID
+        );
+
+        when(
+                traderProfileClient
+                        .getTraderProfileByIdAsSystem(
+                                TRADER_PROFILE_ID
+                        )
+        ).thenReturn(trader);
+
+        when(
+                notificationOutboxRepository
+                        .existsByTemplateTypeAndRelatedBidIdAndRecipientUserId(
+                                NotificationOutbox
+                                        .NotificationTemplateType
+                                        .TENDER_AWARDED,
+                                BID_ID,
+                                USER_ID
+                        )
+        ).thenReturn(true);
+
+        notificationService.queueTenderAwarded(
+                withdrawnBid,
+                tender
+        );
+
+        verify(notificationOutboxRepository)
+                .existsByTemplateTypeAndRelatedBidIdAndRecipientUserId(
+                        NotificationOutbox
+                                .NotificationTemplateType
+                                .TENDER_AWARDED,
+                        BID_ID,
+                        USER_ID
+                );
+
+        verify(
+                templateService,
+                never()
+        ).generateMessage(
+                any(
+                        NotificationOutbox
+                                .NotificationTemplateType
+                                .class
+                ),
+                any(
+                        WhatsAppTemplateContext.class
+                )
         );
 
         verifyNoOutboxNotificationQueued();
