@@ -525,46 +525,59 @@ export function AdjudicationWorkspacePage() {
 
             setTender(updatedTender)
             setEvaluationProgress(null)
-
-            const rankingResponse =
-                await getAdjudicationSummary(
-                    tenderId
-                )
-
-            setRankings(rankingResponse)
-
-            setForm(
-                (currentForm) => {
-                    const highestRankedBid =
-                        getHighestRankedBid(
-                            rankingResponse
-                        )
-
-                    return {
-                        ...currentForm,
-
-                        selectedBidId:
-                            highestRankedBid
-                            === null
-                                ? ''
-                                : highestRankedBid
-                                    .bidId
-                                    .toString(),
-                    }
-                }
-            )
+            setRankings([])
 
             setSuccessMessage(
                 'Adjudication started for '
                 + updatedTender
                     .tenderReference
-                + '. The completed evaluation '
-                + 'rankings are now available.'
+                + '.'
             )
-        } catch (error) {
+
+            try {
+                const rankingResponse =
+                    await getAdjudicationSummary(
+                        tenderId
+                    )
+
+                setRankings(rankingResponse)
+
+                setForm(
+                    (currentForm) => {
+                        const highestRankedBid =
+                            getHighestRankedBid(
+                                rankingResponse
+                            )
+
+                        return {
+                            ...currentForm,
+
+                            selectedBidId:
+                                highestRankedBid
+                                === null
+                                    ? ''
+                                    : highestRankedBid
+                                        .bidId
+                                        .toString(),
+                        }
+                    }
+                )
+            } catch (rankingError) {
+                setPageError(
+                    getAdjudicationApiErrorMessage(
+                        rankingError,
+                        'Adjudication started, but '
+                        + 'the ranked evaluation '
+                        + 'evidence could not be '
+                        + 'loaded. Refresh the '
+                        + 'workspace.'
+                    )
+                )
+            }
+        } catch (transitionError) {
             setPageError(
                 getProcurementTenderApiErrorMessage(
-                    error,
+                    transitionError,
                     'Unable to start adjudication.'
                 )
             )
