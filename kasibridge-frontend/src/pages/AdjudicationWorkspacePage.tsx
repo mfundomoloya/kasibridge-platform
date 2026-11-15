@@ -27,6 +27,8 @@ import {
 import {
     getProcurementTender,
     getProcurementTenderApiErrorMessage,
+    getProcurementTenderEvaluationProgress,
+    startProcurementTenderAdjudication
 } from '../api/procurementTenderApi'
 
 import {
@@ -61,6 +63,7 @@ import type {
 } from '../types/committeeAssignment'
 
 import type {
+    EvaluationProgress,
     ProcurementTender,
 } from '../types/procurementTender'
 
@@ -101,6 +104,19 @@ export function AdjudicationWorkspacePage() {
         useState<ProcurementTender | null>(
             null
         )
+
+    const [
+        evaluationProgress,
+        setEvaluationProgress,
+    ] =
+        useState<EvaluationProgress | null>(
+            null
+        )
+
+    const [
+        isStartingAdjudication,
+        setIsStartingAdjudication,
+    ] = useState(false)
 
     const awardConfirmationDialogRef =
         useRef<HTMLDialogElement>(null)
@@ -249,6 +265,7 @@ export function AdjudicationWorkspacePage() {
                         === null
                     ) {
                         setRankings([])
+                        setEvaluationProgress(null)
 
                         setPageError(
                             'The authenticated user '
@@ -260,6 +277,25 @@ export function AdjudicationWorkspacePage() {
 
                         return
                     }
+
+                    if (
+                        tenderResponse.status
+                        === 'EVALUATION'
+                    ) {
+                        const progressResponse =
+                            await getProcurementTenderEvaluationProgress(
+                                tenderId
+                            )
+
+                        setEvaluationProgress(
+                            progressResponse
+                        )
+
+                        setRankings([])
+                        return
+                    }
+
+                    setEvaluationProgress(null)
 
                     if (
                         tenderResponse.status
@@ -461,6 +497,94 @@ export function AdjudicationWorkspacePage() {
         || assignment === null
         || tender.status !== 'ADJUDICATION'
         || awardResult !== null
+
+    async function handleStartAdjudication():
+        Promise<void> {
+        if (
+            tenderId === null
+            || tender === null
+            || assignment === null
+            || evaluationProgress === null
+            || tender.status !== 'EVALUATION'
+            || !evaluationProgress
+                .readyForAdjudication
+            || isStartingAdjudication
+        ) {
+            return
+        }
+
+        setIsStartingAdjudication(true)
+        setPageError(null)
+        setSuccessMessage(null)
+
+        try {
+            const updatedTender =
+                await startProcurementTenderAdjudication(
+                    tenderId
+                )
+
+            setTender(updatedTender)
+            setEvaluationProgress(null)
+
+            const rankingResponse =
+                await getAdjudicationSummary(
+                    tenderId
+                )
+
+            setRankings(rankingResponse)
+
+            setForm(
+                (currentForm) => {
+                    const highestRankedBid =
+                        getHighestRankedBid(
+                            rankingResponse
+                        )
+
+                    return {
+                        ...currentForm,
+
+                        selectedBidId:
+                            highestRankedBid
+                            === null
+                                ? ''
+                                : highestRankedBid
+                                    .bidId
+                                    .toString(),
+                    }
+                }
+            )
+
+            setSuccessMessage(
+                'Adjudication started for '
+                + updatedTender
+                    .tenderReference
+                + '. The completed evaluation '
+                + 'rankings are now available.'
+            )
+        } catch (error) {
+            setPageError(
+                getProcurementTenderApiErrorMessage(
+                    error,
+                    'Unable to start adjudication.'
+                )
+            )
+
+            try {
+                const currentProgress =
+                    await getProcurementTenderEvaluationProgress(
+                        tenderId
+                    )
+
+                setEvaluationProgress(
+                    currentProgress
+                )
+            } catch {
+                // Preserve the transition error.
+            }
+        } finally {
+            setIsStartingAdjudication(false)
+        }
+    }
 
     function handleBidSelect(
         bidId: number,
@@ -733,6 +857,19 @@ export function AdjudicationWorkspacePage() {
 
                     {assignment === null ? (
                         <AdjudicatorAssignmentNotice />
+                    ) : tender.status === 'EVALUATION' ? (
+                        <EvaluationReadinessPanel
+                            tender={tender}
+                            progress={evaluationProgress}
+                            isStarting={
+                                isStartingAdjudication
+                            }
+                            onStart={
+                                () => {
+                                    void handleStartAdjudication()
+                                }
+                            }
+                        />
                     ) : tender.status
                     !== 'ADJUDICATION'
                     && tender.status
@@ -1702,6 +1839,186 @@ function AdjudicatorAssignmentNotice() {
     )
 }
 
+interface EvaluationReadinessPanelProps {
+    tender: ProcurementTender
+    progress: EvaluationProgress | null
+    isStarting: boolean
+    onStart: () => void
+}
+
+function EvaluationReadinessPanel({
+                                      tender,
+                                      progress,
+                                      isStarting,
+                                      onStart,
+                                  }: EvaluationReadinessPanelProps) {
+    const isReady =
+        progress?.readyForAdjudication
+        === true
+
+    return (
+        <section
+            className={
+                'content-card '
+                + 'adjudication-readiness-panel'
+            }
+            aria-labelledby={
+                'adjudication-readiness-heading'
+            }
+        >
+            <div>
+                <span className="eyebrow">
+                    Evaluation completion gate
+                </span>
+
+                <h2
+                    id={
+                        'adjudication-readiness-heading'
+                    }
+                >
+                    {isReady
+                        ? 'Ready for adjudication'
+                        : 'Evaluation still in progress'}
+                </h2>
+
+                <p>
+                    Tender{' '}
+                    <strong>
+                        {tender.tenderReference}
+                    </strong>{' '}
+                    can move to adjudication only
+                    after every required evaluator
+                    score has been submitted.
+                </p>
+            </div>
+
+            {progress === null ? (
+                <p
+                    className={
+                        'form-error-message'
+                    }
+                    role="alert"
+                >
+                    Evaluation progress could not
+                    be loaded. Refresh the workspace
+                    before trying again.
+                </p>
+            ) : (
+                <>
+                    <dl
+                        className={
+                            'adjudication-tender-details'
+                        }
+                    >
+                        <AdjudicationDetailItem
+                            label="Active evaluators"
+                            value={
+                                progress
+                                    .activeEvaluatorCount
+                                    .toString()
+                            }
+                        />
+
+                        <AdjudicationDetailItem
+                            label="Eligible bids"
+                            value={
+                                progress
+                                    .eligibleBidCount
+                                    .toString()
+                            }
+                        />
+
+                        <AdjudicationDetailItem
+                            label="Submitted scores"
+                            value={
+                                progress
+                                    .submittedScoreCount
+                                + ' of '
+                                + progress
+                                    .expectedScoreCount
+                            }
+                        />
+
+                        <AdjudicationDetailItem
+                            label="Remaining scores"
+                            value={
+                                progress
+                                    .remainingScoreCount
+                                    .toString()
+                            }
+                        />
+
+                        <AdjudicationDetailItem
+                            label="Completion"
+                            value={
+                                formatPercentage(
+                                    progress
+                                        .completionPercentage
+                                )
+                            }
+                        />
+
+                        <AdjudicationDetailItem
+                            label="Gate status"
+                            value={
+                                isReady
+                                    ? 'Ready'
+                                    : 'Blocked'
+                            }
+                        />
+                    </dl>
+
+                    {!isReady && (
+                        <div
+                            className={
+                                'evaluation-access-notice'
+                            }
+                            role="status"
+                        >
+                            <strong>
+                                Adjudication cannot
+                                start yet
+                            </strong>
+
+                            <p>
+                                {
+                                    progress
+                                        .blockingReason
+                                    ?? (
+                                        'All required '
+                                        + 'evaluation '
+                                        + 'scores must '
+                                        + 'be submitted.'
+                                    )
+                                }
+                            </p>
+                        </div>
+                    )}
+
+                    <div className="form-actions">
+                        <button
+                            className="primary-button"
+                            type="button"
+                            disabled={
+                                !isReady
+                                || isStarting
+                            }
+                            onClick={onStart}
+                        >
+                            {isStarting
+                                ? (
+                                    'Starting '
+                                    + 'adjudication...'
+                                )
+                                : 'Start adjudication'}
+                        </button>
+                    </div>
+                </>
+            )}
+        </section>
+    )
+}
+
 interface AdjudicationStateNoticeProps {
     tender: ProcurementTender
 }
@@ -1818,6 +2135,28 @@ function AdjudicationGovernanceNotice() {
                 </li>
             </ul>
         </section>
+    )
+}
+
+function formatPercentage(
+    value: number,
+): string {
+    if (!Number.isFinite(value)) {
+        return 'Unavailable'
+    }
+
+    const boundedValue =
+        Math.min(
+            100,
+            Math.max(
+                0,
+                value
+            )
+        )
+
+    return (
+        boundedValue.toFixed(2)
+        + '%'
     )
 }
 
