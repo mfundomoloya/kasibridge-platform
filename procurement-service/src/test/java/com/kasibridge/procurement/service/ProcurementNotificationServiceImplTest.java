@@ -2,9 +2,7 @@ package com.kasibridge.procurement.service;
 
 import com.kasibridge.procurement.dto.TraderProfileClientResponse;
 import com.kasibridge.procurement.dto.WhatsAppTemplateContext;
-import com.kasibridge.procurement.entity.Bid;
-import com.kasibridge.procurement.entity.NotificationOutbox;
-import com.kasibridge.procurement.entity.Tender;
+import com.kasibridge.procurement.entity.*;
 import com.kasibridge.procurement.repository.NotificationOutboxRepository;
 import com.kasibridge.procurement.repository.TenderCommitteeAssignmentRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -1418,6 +1416,77 @@ class ProcurementNotificationServiceImplTest {
         );
 
         verifyNoOutboxNotificationQueued();
+    }
+
+    @Test
+    void shouldQueueSingleAdminFallbackWhenNoAdjudicatorIsAssigned() {
+        ProcurementAnomaly anomaly =
+                ProcurementAnomaly.builder()
+                        .id(91L)
+                        .anomalyReference(
+                                "KB-ANOMALY-00000091"
+                        )
+                        .tenderId(TENDER_ID)
+                        .bidId(BID_ID)
+                        .type(
+                                ProcurementAnomaly
+                                        .AnomalyType
+                                        .LARGE_SCORE_GAP
+                        )
+                        .severity(
+                                ProcurementAnomaly
+                                        .Severity
+                                        .HIGH
+                        )
+                        .build();
+
+        String expectedMessage =
+                "A high-severity procurement "
+                        + "anomaly requires review.";
+
+        when(
+                templateService.generateMessage(
+                        eq(
+                                NotificationOutbox
+                                        .NotificationTemplateType
+                                        .PROCUREMENT_ANOMALY_DETECTED
+                        ),
+                        any(
+                                WhatsAppTemplateContext.class
+                        )
+                )
+        ).thenReturn(expectedMessage);
+
+        when(
+                assignmentRepository
+                        .findByTenderIdAndCommitteeRoleAndActiveTrue(
+                                TENDER_ID,
+                                TenderCommitteeAssignment
+                                        .CommitteeRole
+                                        .ADJUDICATOR
+                        )
+        ).thenReturn(List.of());
+
+        notificationService.queueAnomalyDetected(
+                anomaly
+        );
+
+        verify(notificationOutboxService, times(1))
+                .queueNotification(
+                        NotificationOutbox
+                                .NotificationChannel
+                                .IN_APP,
+                        NotificationOutbox
+                                .NotificationTemplateType
+                                .PROCUREMENT_ANOMALY_DETECTED,
+                        null,
+                        null,
+                        null,
+                        expectedMessage,
+                        TENDER_ID,
+                        BID_ID,
+                        null
+                );
     }
 
     private void verifyNoOutboxNotificationQueued() {

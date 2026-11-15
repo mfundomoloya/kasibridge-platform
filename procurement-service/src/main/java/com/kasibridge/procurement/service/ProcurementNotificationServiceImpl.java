@@ -197,37 +197,11 @@ public class ProcurementNotificationServiceImpl implements ProcurementNotificati
             }
 
             if (notifiedUserIds.isEmpty()) {
-                log.warn("No active adjudicator found for anomalyId={} tenderId={}. Creating admin-only fallback notification.",
-                        anomaly.getId(),
-                        anomaly.getTenderId()
-                );
-
-                notificationOutboxService.queueNotification(
-                        NotificationOutbox.NotificationChannel.IN_APP,
-                        NotificationOutbox.NotificationTemplateType
-                                .PROCUREMENT_ANOMALY_DETECTED,
-                        null,
-                        null,
-                        null,
-                        message,
-                        anomaly.getTenderId(),
-                        anomaly.getBidId(),
-                        null
-                );
-            }
-
-            if (notifiedUserIds.isEmpty()) {
                 queueAdminFallbackAnomalyNotification(
                         anomaly,
                         message
                 );
             }
-
-            log.info("Procurement anomaly notifications queued: anomalyId={} tenderId={} assignedRecipients={}",
-                    anomaly.getId(),
-                    anomaly.getTenderId(),
-                    notifiedUserIds.size()
-            );
 
             log.info("Procurement anomaly notifications queued: anomalyId={} tenderId={} recipients={}",
                     anomaly.getId(),
