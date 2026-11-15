@@ -6,26 +6,21 @@ import com.kasibridge.procurement.dto.NotificationOutboxResponse;
 import com.kasibridge.procurement.dto.WhatsAppDeliveryResult;
 import com.kasibridge.procurement.entity.NotificationOutbox;
 import com.kasibridge.procurement.exception.NotificationOutboxException;
-import com.kasibridge.procurement.repository.NotificationOutboxRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import com.kasibridge.procurement.dto.WhatsAppDeliveryCommand;
-import com.kasibridge.procurement.dto.TraderProfileClientResponse;
-import com.kasibridge.procurement.entity.Tender;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class NotificationDispatcherServiceImpl implements NotificationDispatcherService {
 
-    private final NotificationOutboxRepository repository;
+
     private final NotificationOutboxService outboxService;
     private final WhatsAppProvider whatsAppProvider;
     private final NotificationDispatchClaimService claimService;
