@@ -234,9 +234,9 @@ export function AdjudicatorAssignmentQueuePage() {
                             .length
                     }
                     description={
-                        'Tenders with completed '
-                        + 'evaluation evidence ready '
-                        + 'for adjudication.'
+                        'Tenders currently in the '
+                        + 'Adjudication stage and '
+                        + 'requiring committee action.'
                     }
                     tone="positive"
                 />
@@ -284,13 +284,13 @@ export function AdjudicatorAssignmentQueuePage() {
                     <AdjudicationQueueSection
                         category="READY"
                         title={
-                            'Ready for adjudication'
+                            'Active adjudications'
                         }
                         description={
-                            'Evaluation is complete '
-                            + 'and the tender is ready '
-                            + 'for ranking review and '
-                            + 'a final award decision.'
+                            'These tenders have entered '
+                            + 'the Adjudication stage. '
+                            + 'Review the ranked evidence '
+                            + 'and record the final award.'
                         }
                         assignments={
                             groupedAssignments.READY
@@ -300,12 +300,12 @@ export function AdjudicatorAssignmentQueuePage() {
                     <AdjudicationQueueSection
                         category="WAITING"
                         title={
-                            'Awaiting adjudication'
+                            'Evaluation and pre-adjudication'
                         }
                         description={
-                            'These assigned tenders '
-                            + 'have not yet entered '
-                            + 'the Adjudication stage.'
+                            'Assigned tenders awaiting or '
+                            + 'completing evaluation before '
+                            + 'adjudication can begin.'
                         }
                         assignments={
                             groupedAssignments.WAITING
@@ -498,9 +498,15 @@ function AdjudicationAssignmentCard({
                                         assignment,
                                         category,
                                     }: AdjudicationAssignmentCardProps) {
+
+    const canReviewReadiness =
+        assignment.tenderStatus
+        === 'EVALUATION'
+
     const workspaceAvailable =
         category === 'READY'
         || category === 'COMPLETED'
+        || canReviewReadiness
 
     return (
         <article
@@ -621,26 +627,22 @@ function AdjudicationAssignmentCard({
                     }
                 >
                     {getCategoryStatusText(
-                        category
+                        category,
+                        assignment.tenderStatus
                     )}
                 </span>
 
                 {workspaceAvailable ? (
                     <Link
                         className={
-                            category === 'READY'
-                                ? (
-                                    'primary-link-button'
-                                )
-                                : (
-                                    'secondary-link-button'
-                                )
+                            category === 'COMPLETED'
+                                ? 'secondary-link-button'
+                                : 'primary-link-button'
                         }
                         to={
                             '/procurement/'
                             + 'adjudications/'
-                            + assignment
-                                .tenderId
+                            + assignment.tenderId
                         }
                     >
                         {category === 'READY'
@@ -648,11 +650,15 @@ function AdjudicationAssignmentCard({
                                 'Open adjudication '
                                 + 'workspace'
                             )
-                            : (
-                                'View award evidence'
-                            )}
+                            : canReviewReadiness
+                                ? (
+                                    'Review evaluation '
+                                    + 'readiness'
+                                )
+                                : 'View award evidence'}
                     </Link>
                 ) : (
+
                     <span
                         className={
                             'adjudication-queue-'
@@ -872,12 +878,19 @@ function getCategoryLabel(
 }
 
 function getCategoryStatusText(
-    category:
-    AdjudicationQueueCategory,
+    category: AdjudicationQueueCategory,
+    tenderStatus: string,
 ): string {
+    if (
+        category === 'WAITING'
+        && tenderStatus === 'EVALUATION'
+    ) {
+        return 'Evaluation readiness review'
+    }
+
     switch (category) {
         case 'READY':
-            return 'Ready for adjudication'
+            return 'Adjudication in progress'
 
         case 'WAITING':
             return 'Awaiting adjudication stage'
@@ -912,8 +925,9 @@ function getUnavailableMessage(
 
         case 'EVALUATION':
             return (
-                'Evaluator scoring is still '
-                + 'in progress.'
+                'Open the readiness review '
+                + 'to check evaluation '
+                + 'completion.'
             )
 
         case 'CANCELLED':
