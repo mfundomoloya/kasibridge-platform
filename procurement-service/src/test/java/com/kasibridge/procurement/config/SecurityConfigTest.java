@@ -5,6 +5,11 @@ import com.kasibridge.procurement.dto.TenderResponse;
 import com.kasibridge.procurement.entity.Tender;
 import com.kasibridge.procurement.service.TenderService;
 import com.kasibridge.security.JwtAuthenticationFilter;
+import com.kasibridge.procurement.controller.AdjudicationController;
+import com.kasibridge.procurement.service.AdjudicationService;
+import org.springframework.http.MediaType;
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletRequest;
 import jakarta.servlet.ServletResponse;
@@ -16,7 +21,10 @@ import org.springframework.context.annotation.Import;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import com.kasibridge.procurement.dto.AwardTenderRequest;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.verify;
@@ -25,7 +33,8 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest(TenderController.class)
+@WebMvcTest({TenderController.class,
+        AdjudicationController.class})
 @Import(SecurityConfig.class)
 class SecurityConfigTest {
 
@@ -36,6 +45,9 @@ class SecurityConfigTest {
 
     @MockitoBean
     private TenderService tenderService;
+
+    @MockitoBean
+    private AdjudicationService adjudicationService;
 
     /*
      * SecurityConfig requires the shared JWT filter.
@@ -160,5 +172,100 @@ class SecurityConfigTest {
                 .andExpect(status().isForbidden());
 
         verifyNoInteractions(tenderService);
+    }
+
+
+    @Test
+    @WithMockUser(
+            username = "adjudicator@kasibridge.test",
+            roles = "ADJUDICATOR"
+    )
+    void adjudicatorShouldAccessAwardEndpoint() throws Exception {
+        mockMvc.perform(
+                        post(
+                                "/api/v1/tenders/{tenderId}"
+                                        + "/adjudication/award",
+                                TENDER_ID
+                        )
+                                .contentType(
+                                        MediaType.APPLICATION_JSON
+                                )
+                                .content(
+                                        """
+                                        {
+                                          "winningBidId": 101,
+                                          "awardReason":
+                                            "Highest evaluated bid based on the published criteria."
+                                        }
+                                        """
+                                )
+                )
+                .andExpect(status().isCreated());
+
+        verify(adjudicationService)
+                .awardTender(
+                        eq(TENDER_ID),
+                        any(AwardTenderRequest.class)
+                );
+    }
+
+    @Test
+    @WithMockUser(
+            username = "evaluator@kasibridge.test",
+            roles = "EVALUATOR"
+    )
+    void evaluatorShouldNotAccessAwardEndpoint() throws Exception {
+        mockMvc.perform(
+                        post(
+                                "/api/v1/tenders/{tenderId}"
+                                        + "/adjudication/award",
+                                TENDER_ID
+                        )
+                                .contentType(
+                                        MediaType.APPLICATION_JSON
+                                )
+                                .content(
+                                        """
+                                        {
+                                          "winningBidId": 101,
+                                          "awardReason":
+                                            "Highest evaluated bid based on the published criteria."
+                                        }
+                                        """
+                                )
+                )
+                .andExpect(status().isForbidden());
+
+        verifyNoInteractions(adjudicationService);
+    }
+
+    @Test
+    @WithMockUser(
+            username = "admin@kasibridge.test",
+            roles = "PLATFORM_ADMIN"
+    )
+    void platformAdminShouldNotAccessAwardEndpoint() throws Exception {
+        mockMvc.perform(
+                        post(
+                                "/api/v1/tenders/{tenderId}"
+                                        + "/adjudication/award",
+                                TENDER_ID
+                        )
+                                .contentType(
+                                        MediaType.APPLICATION_JSON
+                                )
+                                .content(
+                                        """
+                                        {
+                                          "winningBidId": 101,
+                                          "awardReason":
+                                            "Highest evaluated bid based on the published criteria."
+                                        }
+                                        """
+                                )
+                )
+                .andExpect(status().isForbidden());
+
+        verifyNoInteractions(adjudicationService);
     }
 }
