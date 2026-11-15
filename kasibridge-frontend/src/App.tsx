@@ -457,19 +457,6 @@ function App() {
                 }
             />
 
-            <Route
-                path="/procurement/adjudications/:tenderId"
-                element={
-                    <RoleRoute
-                        allowedRoles={[
-                            'ROLE_ADJUDICATOR',
-                        ]}
-                    >
-                        <AdjudicationWorkspacePage />
-                    </RoleRoute>
-                }
-            />
-
 
             <Route
                 path="/procurement/fraud-assessments"
