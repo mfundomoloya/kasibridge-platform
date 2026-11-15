@@ -2155,6 +2155,7 @@ span {
 
 .adjudication-tender-summary,
 .adjudication-summary-introduction,
+.adjudication-readiness-panel,
 .adjudication-award-panel,
 .adjudication-award-result,
 .adjudication-governance-notice {
@@ -2163,6 +2164,84 @@ span {
 
 .adjudication-tender-summary {
     padding: 30px;
+}
+
+.adjudication-readiness-panel {
+    padding: 30px;
+    border-color: #cfe0d5;
+    background:
+        linear-gradient(
+            145deg,
+            #ffffff 0%,
+            #f7fbf8 100%
+        );
+}
+
+.adjudication-readiness-panel h2 {
+    margin: 8px 0 0;
+    color: #172b20;
+    font-size: clamp(
+        1.35rem,
+        2.2vw,
+        1.7rem
+    );
+    line-height: 1.25;
+}
+
+.adjudication-readiness-panel > div:first-child > p {
+    max-width: 760px;
+    margin: 12px 0 0;
+    color: #526158;
+    line-height: 1.6;
+}
+
+.adjudication-readiness-panel
+.evaluation-access-notice {
+    margin-top: 24px;
+    padding: 16px 18px;
+    border: 1px solid #efd7a3;
+    border-left: 4px solid #b7791f;
+    border-radius: 0 12px 12px 0;
+    color: #684b14;
+    background: #fffaf0;
+}
+
+.adjudication-readiness-panel
+.evaluation-access-notice strong {
+    display: block;
+    margin-bottom: 6px;
+    color: #513a0b;
+}
+
+.adjudication-readiness-panel
+.evaluation-access-notice p {
+    margin: 0;
+    color: inherit;
+}
+
+.adjudication-readiness-panel .form-actions {
+    justify-content: flex-end;
+    margin-top: 26px;
+    padding-top: 20px;
+    border-top: 1px solid #e4ebe6;
+}
+
+.adjudication-readiness-panel
+.primary-button {
+    min-width: 190px;
+    border-radius: 999px;
+    background: #0b7652;
+}
+
+.adjudication-readiness-panel
+.primary-button:hover:not(:disabled) {
+    background: #075d40;
+}
+
+.adjudication-readiness-panel
+.primary-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.58;
 }
 
 .adjudication-tender-title,
@@ -2501,6 +2580,7 @@ span {
 
     .adjudication-tender-summary,
     .adjudication-summary-introduction,
+    .adjudication-readiness-panel,
     .adjudication-award-panel,
     .adjudication-award-result,
     .adjudication-governance-notice {
@@ -2525,6 +2605,17 @@ span {
         align-items: flex-start;
         flex-direction: column;
         gap: 4px;
+    }
+
+    .adjudication-readiness-panel
+    .form-actions {
+        align-items: stretch;
+    }
+
+    .adjudication-readiness-panel
+    .primary-button {
+        width: 100%;
+        min-width: 0;
     }
 }
 .adjudication-ranking-list {
