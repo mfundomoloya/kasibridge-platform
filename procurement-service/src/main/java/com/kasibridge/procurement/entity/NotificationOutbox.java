@@ -5,6 +5,17 @@ import lombok.*;
 
 import java.time.LocalDateTime;
 
+/*
+ * Bid-event and matching-tender notification idempotency is enforced
+ * through PostgreSQL partial unique indexes managed by Flyway:
+ *
+ * V4: uk_notification_bid_event_recipient
+ * V6: uk_notification_matching_tender_recipient
+ *
+ * These indexes are intentionally not represented as JPA
+ * @UniqueConstraint entries because JPA cannot model their WHERE
+ * predicates.
+ */
 @Entity
 @Table(
         name = "notification_outbox",
