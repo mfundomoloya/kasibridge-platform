@@ -20,6 +20,7 @@ import org.springframework.test.util.ReflectionTestUtils;
 import java.util.List;
 import java.util.Optional;
 
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -883,6 +884,175 @@ class NotificationDispatcherServiceImplTest {
                         12L,
                         "wamid.MATCH001"
                 );
+    }
+
+
+    @Test
+    void dispatchPending_shouldUsePersistedTenderAwardedMessageUnchanged() {
+        String persistedMessage =
+                "Hi Sifiso Magagula, your bid "
+                        + "KB-BID-68742A06 for tender "
+                        + "KB-TENDER-436FC79F has been "
+                        + "awarded. Log in to KasiBridge "
+                        + "to view the tender outcome. "
+                        + "Formal contracting or "
+                        + "purchase-order steps will be "
+                        + "communicated separately.";
+
+        NotificationOutbox notification =
+                NotificationOutbox.builder()
+                        .id(13L)
+                        .notificationReference(
+                                "KB-NOTIF-13"
+                        )
+                        .channel(
+                                NotificationOutbox
+                                        .NotificationChannel
+                                        .WHATSAPP
+                        )
+                        .templateType(
+                                NotificationOutbox
+                                        .NotificationTemplateType
+                                        .TENDER_AWARDED
+                        )
+                        .status(
+                                NotificationOutbox
+                                        .NotificationStatus
+                                        .PENDING
+                        )
+                        .recipientUserId(8L)
+                        .recipientPhone(
+                                "+27610000006"
+                        )
+                        .message(
+                                persistedMessage
+                        )
+                        .relatedTenderId(7L)
+                        .relatedBidId(16L)
+                        .retryCount(0)
+                        .build();
+
+        when(
+                claimService.claimPendingBatch(
+                        eq(
+                                NotificationOutbox
+                                        .NotificationChannel
+                                        .WHATSAPP
+                        ),
+                        eq(3),
+                        eq(20),
+                        eq("test-worker"),
+                        eq(300)
+                )
+        ).thenReturn(
+                List.of(notification)
+        );
+
+        when(
+                whatsAppProvider.sendMessage(
+                        any(
+                                WhatsAppDeliveryCommand.class
+                        )
+                )
+        ).thenReturn(
+                WhatsAppDeliveryResult.success(
+                        "wamid.AWARD002"
+                )
+        );
+
+        NotificationDispatchResponse response =
+                dispatcherService.dispatchPending();
+
+        assertNotNull(response);
+
+        assertEquals(
+                1,
+                response.getSelected()
+        );
+
+        assertEquals(
+                1,
+                response.getProcessed()
+        );
+
+        assertEquals(
+                1,
+                response.getSent()
+        );
+
+        assertEquals(
+                0,
+                response.getFailed()
+        );
+
+        ArgumentCaptor<WhatsAppDeliveryCommand>
+                commandCaptor =
+                ArgumentCaptor.forClass(
+                        WhatsAppDeliveryCommand.class
+                );
+
+        verify(whatsAppProvider)
+                .sendMessage(
+                        commandCaptor.capture()
+                );
+
+        WhatsAppDeliveryCommand command =
+                commandCaptor.getValue();
+
+        assertEquals(
+                13L,
+                command.getNotificationId()
+        );
+
+        assertEquals(
+                NotificationOutbox
+                        .NotificationTemplateType
+                        .TENDER_AWARDED,
+                command.getTemplateType()
+        );
+
+        assertEquals(
+                "+27610000006",
+                command.getRecipientPhone()
+        );
+
+        assertEquals(
+                persistedMessage,
+                command.getRenderedMessage()
+        );
+
+        /*
+         * Award notifications currently use the durable
+         * rendered-text path. Structured template fields
+         * are intentionally absent.
+         */
+        assertNull(
+                command.getRecipientName()
+        );
+
+        assertNull(
+                command.getTenderReference()
+        );
+
+        assertNull(
+                command.getTenderTitle()
+        );
+
+        verify(outboxService)
+                .markSent(
+                        13L,
+                        "wamid.AWARD002"
+                );
+
+        verify(
+                outboxService,
+                never()
+        ).markFailed(
+                eq(13L),
+                any(
+                        MarkNotificationFailedRequest.class
+                )
+        );
     }
 
     private NotificationOutbox createNotification(
