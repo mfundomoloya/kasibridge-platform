@@ -36,35 +36,23 @@ import java.util.stream.Collectors;
 public class AdjudicationServiceImpl
         implements AdjudicationService {
 
-    private final TenderRepository
-            tenderRepository;
+    private final TenderRepository tenderRepository;
 
-    private final BidRepository
-            bidRepository;
+    private final BidRepository bidRepository;
 
-    private final BidEvaluationScoreRepository
-            scoreRepository;
+    private final BidEvaluationScoreRepository scoreRepository;
 
-    private final ProcurementAuditService
-            auditService;
+    private final ProcurementAuditService auditService;
 
-    private final CurrentUserService
-            currentUserService;
+    private final CurrentUserService currentUserService;
 
-    private final TenderCommitteeAssignmentRepository
-            assignmentRepository;
+    private final TenderCommitteeAssignmentRepository assignmentRepository;
 
-    private final ProcurementNotificationService
-            procurementNotificationService;
-
-    private final EvaluationService
-            evaluationService;
+    private final ProcurementNotificationService procurementNotificationService;
 
     @Override
     @Transactional
-    public List<BidRankingResponse>
-    getEvaluationSummary(
-            Long tenderId
+    public List<BidRankingResponse> getEvaluationSummary(Long tenderId
     ) {
         Long adjudicatorUserId =
                 currentUserService
@@ -186,9 +174,7 @@ public class AdjudicationServiceImpl
 
     @Override
     @Transactional
-    public AwardTenderResponse awardTender(
-            Long tenderId,
-            AwardTenderRequest request
+    public AwardTenderResponse awardTender(Long tenderId, AwardTenderRequest request
     ) {
         Long adjudicatorUserId =
                 currentUserService
@@ -225,8 +211,7 @@ public class AdjudicationServiceImpl
         );
 
         if (
-                tender.getStatus()
-                        == Tender.TenderStatus.AWARDED
+                tender.getStatus() == Tender.TenderStatus.AWARDED
         ) {
             recordRejectedAward(
                     tenderId,
@@ -241,8 +226,7 @@ public class AdjudicationServiceImpl
         }
 
         if (
-                tender.getStatus()
-                        == Tender.TenderStatus.CANCELLED
+                tender.getStatus() == Tender.TenderStatus.CANCELLED
         ) {
             recordRejectedAward(
                     tenderId,
@@ -276,30 +260,6 @@ public class AdjudicationServiceImpl
                     "Tender can only be awarded "
                             + "when it is in "
                             + "ADJUDICATION status."
-            );
-        }
-
-        EvaluationProgressResponse progress =
-                evaluationService
-                        .getEvaluationProgress(
-                                tenderId
-                        );
-
-        if (
-                !progress.isEvaluationComplete()
-        ) {
-            throw new AdjudicationException(
-                    progress.getBlockingReason()
-                            == null
-                            || progress
-                            .getBlockingReason()
-                            .isBlank()
-                            ? (
-                            "Tender evaluation "
-                                    + "is incomplete."
-                    )
-                            : progress
-                            .getBlockingReason()
             );
         }
 
@@ -542,49 +502,46 @@ public class AdjudicationServiceImpl
                 .build();
     }
 
-    private void rejectOtherEligibleBids(
-            Long tenderId,
-            Long winningBidId
+    private void rejectOtherEligibleBids(Long tenderId, Long winningBidId
     ) {
-        Set<Bid.BidStatus>
-                eligibleStatuses =
+        Set<Bid.BidStatus> eligibleStatuses =
                 Set.of(
                         Bid.BidStatus.COMPLIANT,
-                        Bid.BidStatus
-                                .UNDER_EVALUATION,
+                        Bid.BidStatus.UNDER_EVALUATION,
                         Bid.BidStatus.RECOMMENDED
                 );
 
-        List<Bid> otherBids =
+        List<Bid> rejectedBids =
                 bidRepository
                         .findByTenderIdAndStatusIn(
                                 tenderId,
                                 eligibleStatuses
-                        );
+                        )
+                        .stream()
+                        .filter(
+                                bid ->
+                                        !bid.getId()
+                                                .equals(
+                                                        winningBidId
+                                                )
+                        )
+                        .peek(
+                                bid ->
+                                        bid.setStatus(
+                                                Bid.BidStatus.REJECTED
+                                        )
+                        )
+                        .toList();
 
-        for (Bid bid : otherBids) {
-            if (
-                    !bid.getId()
-                            .equals(
-                                    winningBidId
-                            )
-            ) {
-                bid.setStatus(
-                        Bid.BidStatus.REJECTED
-                );
-            }
-        }
-
-        if (!otherBids.isEmpty()) {
+        if (!rejectedBids.isEmpty()) {
             bidRepository.saveAll(
-                    otherBids
+                    rejectedBids
             );
         }
     }
 
-    private List<BidRankingResponse>
-    assignRanks(
-            List<BidRankingResponse> unranked
+
+    private List<BidRankingResponse> assignRanks(List<BidRankingResponse> unranked
     ) {
         int rank = 1;
 
@@ -599,8 +556,7 @@ public class AdjudicationServiceImpl
         return unranked;
     }
 
-    private BigDecimal toBigDecimal(
-            Object value
+    private BigDecimal toBigDecimal(Object value
     ) {
         if (
                 value
