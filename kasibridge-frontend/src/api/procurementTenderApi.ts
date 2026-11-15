@@ -6,6 +6,7 @@ import {
 
 import type {
     CreateProcurementTenderRequest,
+    EvaluationProgress,
     ProcurementApiErrorResponse,
     ProcurementTender,
     ProcurementTenderPage,
@@ -141,6 +142,42 @@ export async function startProcurementTenderEvaluation(
     return response.data
 }
 
+export async function getProcurementTenderEvaluationProgress(
+    tenderId: number,
+): Promise<EvaluationProgress> {
+    const validatedTenderId =
+        requirePositiveTenderId(
+            tenderId
+        )
+
+    const response =
+        await procurementApiClient
+            .get<EvaluationProgress>(
+                `/api/v1/tenders/${validatedTenderId}`
+                + '/bids/evaluation/progress'
+            )
+
+    return response.data
+}
+
+export async function startProcurementTenderAdjudication(
+    tenderId: number,
+): Promise<ProcurementTender> {
+    const validatedTenderId =
+        requirePositiveTenderId(
+            tenderId
+        )
+
+    const response =
+        await procurementApiClient
+            .patch<ProcurementTender>(
+                `/api/v1/tenders/${validatedTenderId}`
+                + '/start-adjudication'
+            )
+
+    return response.data
+}
+
 export async function verifyProcurementTenderSpecification(
     tenderId: number,
 ): Promise<SpecificationIntegrity> {
@@ -262,6 +299,18 @@ export function isProcurementForbidden(
     return (
         axios.isAxiosError(error)
         && error.response?.status === 403
+    )
+}
+
+export function isTenderStateRejection(
+    error: unknown,
+): boolean {
+    return (
+        axios.isAxiosError(error)
+        && (
+            error.response?.status === 400
+            || error.response?.status === 409
+        )
     )
 }
 

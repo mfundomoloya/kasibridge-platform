@@ -46,6 +46,21 @@ export interface SpecificationIntegrity {
     message: string
 }
 
+export interface EvaluationProgress {
+    tenderId: number
+    tenderReference: string
+    tenderTitle: string
+    activeEvaluatorCount: number
+    eligibleBidCount: number
+    expectedScoreCount: number
+    submittedScoreCount: number
+    remainingScoreCount: number
+    completionPercentage: number
+    evaluationComplete: boolean
+    readyForAdjudication: boolean
+    blockingReason: string | null
+}
+
 export interface ProcurementTenderPageMetadata {
     size: number
     number: number
