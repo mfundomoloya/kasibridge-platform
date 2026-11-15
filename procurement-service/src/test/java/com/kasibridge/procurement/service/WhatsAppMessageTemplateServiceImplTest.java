@@ -334,4 +334,159 @@ class WhatsAppMessageTemplateServiceImplTest {
                 exception.getMessage()
         );
     }
+
+    @Test
+    void shouldGenerateDataMinimisedTenderAwardedMessage() {
+        WhatsAppTemplateContext context =
+                WhatsAppTemplateContext.builder()
+                        .recipientName(
+                                "Sifiso Magagula"
+                        )
+                        .tenderId(7L)
+                        .tenderReference(
+                                "KB-TENDER-436FC79F"
+                        )
+                        .tenderTitle(
+                                "Supply of ICT Equipment "
+                                        + "for Municipal Offices"
+                        )
+                        .bidId(16L)
+                        .bidReference(
+                                "KB-BID-68742A06"
+                        )
+                        .bidderAlias(
+                                "Bidder B"
+                        )
+                        .build();
+
+        String message =
+                templateService.generateMessage(
+                        NotificationOutbox
+                                .NotificationTemplateType
+                                .TENDER_AWARDED,
+                        context
+                );
+
+        assertTrue(
+                message.contains(
+                        "Sifiso Magagula"
+                )
+        );
+
+        assertTrue(
+                message.contains(
+                        "KB-TENDER-436FC79F"
+                )
+        );
+
+        assertTrue(
+                message.contains(
+                        "KB-BID-68742A06"
+                )
+        );
+
+        assertTrue(
+                message.toLowerCase()
+                        .contains("awarded")
+        );
+
+        /*
+         * The notification must communicate only the
+         * winning trader's own outcome. It must not
+         * expose committee identities, internal scoring,
+         * competing bids or internal anomaly records.
+         */
+        assertFalse(
+                message.toLowerCase()
+                        .contains("adjudicator")
+        );
+
+        assertFalse(
+                message.toLowerCase()
+                        .contains("evaluator")
+        );
+
+        assertFalse(
+                message.toLowerCase()
+                        .contains("technical score")
+        );
+
+        assertFalse(
+                message.toLowerCase()
+                        .contains("price score")
+        );
+
+        assertFalse(
+                message.toLowerCase()
+                        .contains("ranking")
+        );
+
+        assertFalse(
+                message.toLowerCase()
+                        .contains("other bidder")
+        );
+
+        assertFalse(
+                message.toLowerCase()
+                        .contains("anomaly")
+        );
+
+        /*
+         * An award notice must not falsely imply that
+         * contracting, purchase-order issuance or payment
+         * has already occurred.
+         */
+        assertFalse(
+                message.toLowerCase()
+                        .contains("payment completed")
+        );
+
+        assertFalse(
+                message.toLowerCase()
+                        .contains("contract signed")
+        );
+
+        assertFalse(
+                message.toLowerCase()
+                        .contains("purchase order issued")
+        );
+    }
+
+    @Test
+    void shouldRejectTenderAwardedMessageWithoutBidReference() {
+        WhatsAppTemplateContext context =
+                WhatsAppTemplateContext.builder()
+                        .recipientName(
+                                "Sifiso Magagula"
+                        )
+                        .tenderId(7L)
+                        .tenderReference(
+                                "KB-TENDER-436FC79F"
+                        )
+                        .tenderTitle(
+                                "Supply of ICT Equipment "
+                                        + "for Municipal Offices"
+                        )
+                        .bidId(16L)
+                        .build();
+
+        NotificationOutboxException exception =
+                assertThrows(
+                        NotificationOutboxException.class,
+                        () ->
+                                templateService
+                                        .generateMessage(
+                                                NotificationOutbox
+                                                        .NotificationTemplateType
+                                                        .TENDER_AWARDED,
+                                                context
+                                        )
+                );
+
+        assertEquals(
+                "Bid reference is required for "
+                        + "TENDER_AWARDED.",
+                exception.getMessage()
+        );
+    }
 }

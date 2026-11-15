@@ -244,13 +244,37 @@ public class WhatsAppMessageTemplateServiceImpl implements WhatsAppMessageTempla
                 + "The withdrawn bid will remain available in your KasiBridge bid history.";
     }
 
-    private String buildTenderAwarded(WhatsAppTemplateContext context) {
+    private String buildTenderAwarded(
+            WhatsAppTemplateContext context
+    ) {
+        requireValue(
+                context.getBidReference(),
+                "Bid reference is required for "
+                        + "TENDER_AWARDED."
+        );
 
-        String tenderIdentifier = tenderIdentifier(context);
+        String recipientName =
+                greetingName(
+                        context.getRecipientName()
+                );
 
-        return "The outcome for "
+        String tenderIdentifier =
+                tenderIdentifier(
+                        context
+                );
+
+        return "Hi "
+                + recipientName
+                + ", your bid "
+                + context.getBidReference().trim()
+                + " for "
                 + tenderIdentifier
-                + " has been published. Log in to KasiBridge to view the tender outcome and available evaluation information.";
+                + " has been awarded. "
+                + "Log in to KasiBridge to view "
+                + "the tender outcome. "
+                + "Formal contracting or "
+                + "purchase-order steps will be "
+                + "communicated separately.";
     }
 
     private String buildProcurementAnomalyDetected(WhatsAppTemplateContext context) {
