@@ -503,6 +503,110 @@ class MetaWhatsAppProviderTest {
         mockServer.verify();
     }
 
+    @Test
+    void sendMessage_shouldSendTenderAwardedAsRenderedText() {
+        String renderedMessage =
+                "Hi Sifiso Magagula, your bid "
+                        + "KB-BID-68742A06 for tender "
+                        + "KB-TENDER-436FC79F has been "
+                        + "awarded. Log in to KasiBridge "
+                        + "to view the tender outcome. "
+                        + "Formal contracting or "
+                        + "purchase-order steps will be "
+                        + "communicated separately.";
+
+        WhatsAppDeliveryCommand command =
+                WhatsAppDeliveryCommand.builder()
+                        .notificationId(131L)
+                        .templateType(
+                                NotificationOutbox
+                                        .NotificationTemplateType
+                                        .TENDER_AWARDED
+                        )
+                        .recipientPhone(
+                                "+27610000006"
+                        )
+                        .renderedMessage(
+                                renderedMessage
+                        )
+                        .build();
+
+        mockServer.expect(
+                        once(),
+                        requestTo(ENDPOINT)
+                )
+                .andExpect(
+                        method(
+                                HttpMethod.POST
+                        )
+                )
+                .andExpect(
+                        header(
+                                "Authorization",
+                                "Bearer test-access-token"
+                        )
+                )
+                .andExpect(
+                        content()
+                                .contentTypeCompatibleWith(
+                                        MediaType.APPLICATION_JSON
+                                )
+                )
+                .andExpect(
+                        jsonBodyEquals(
+                                """
+                                {
+                                  "messaging_product": "whatsapp",
+                                  "recipient_type": "individual",
+                                  "to": "27610000006",
+                                  "type": "text",
+                                  "text": {
+                                    "preview_url": false,
+                                    "body": "Hi Sifiso Magagula, your bid KB-BID-68742A06 for tender KB-TENDER-436FC79F has been awarded. Log in to KasiBridge to view the tender outcome. Formal contracting or purchase-order steps will be communicated separately."
+                                  }
+                                }
+                                """
+                        )
+                )
+                .andRespond(
+                        withSuccess(
+                                """
+                                {
+                                  "messaging_product": "whatsapp",
+                                  "messages": [
+                                    {
+                                      "id": "wamid.AWARD001"
+                                    }
+                                  ]
+                                }
+                                """,
+                                MediaType.APPLICATION_JSON
+                        )
+                );
+
+        WhatsAppDeliveryResult result =
+                provider.sendMessage(
+                        command
+                );
+
+        assertNotNull(result);
+
+        assertTrue(
+                result.successful()
+        );
+
+        assertEquals(
+                "wamid.AWARD001",
+                result.providerMessageId()
+        );
+
+        assertNull(
+                result.failureReason()
+        );
+
+        mockServer.verify();
+    }
+
     private RequestMatcher jsonBodyEquals(
             String expectedJson
     ) {
