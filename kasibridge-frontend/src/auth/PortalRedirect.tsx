@@ -36,6 +36,24 @@ export function PortalRedirect() {
         )
     }
 
+    if (hasRole('ROLE_EVALUATOR')) {
+        return (
+            <Navigate
+                to="/procurement/evaluations"
+                replace
+            />
+        )
+    }
+
+    if (hasRole('ROLE_ADJUDICATOR')) {
+        return (
+            <Navigate
+                to="/procurement/adjudications"
+                replace
+            />
+        )
+    }
+
     if (
         hasAnyRole([
             'ROLE_ANALYST',
