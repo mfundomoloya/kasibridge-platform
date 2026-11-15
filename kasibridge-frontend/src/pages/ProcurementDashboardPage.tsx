@@ -734,11 +734,11 @@ function AdjudicatorDashboard({
                     </h1>
 
                     <p>
-                        Signed in as {username}. Review
-                        evaluation rankings, supporting
-                        records, integrity alerts, and
-                        award reasons before recording
-                        an adjudication decision.
+                        Signed in as {username}.
+                        Review assigned tenders,
+                        monitor evaluation completion,
+                        inspect ranked evidence and
+                        record final award decisions.
                     </p>
                 </div>
             </section>
@@ -746,7 +746,7 @@ function AdjudicatorDashboard({
             <section className="dashboard-grid">
                 <article className="content-card">
                     <span className="eyebrow">
-                        Decision queue
+                        Assignment control
                     </span>
 
                     <h2>
@@ -754,24 +754,76 @@ function AdjudicatorDashboard({
                     </h2>
 
                     <p className="tender-detail-text">
-                        This queue will display tenders
-                        assigned to the signed-in
-                        Adjudication Committee member.
+                        Open your active Adjudicator
+                        assignments. Evaluation-stage
+                        tenders provide a readiness
+                        review, while tenders already
+                        in Adjudication provide ranked
+                        evidence and award controls.
                     </p>
 
-                    <div className="empty-state">
-                        <h3>
-                            Assignment queue required
-                        </h3>
-
-                        <p>
-                            Ranking and award APIs are
-                            available, but the backend
-                            does not yet expose the
-                            current adjudicator’s
-                            committee assignments.
-                        </p>
+                    <div className="form-actions">
+                        <Link
+                            className={
+                                'primary-link-button'
+                            }
+                            to={
+                                '/procurement/'
+                                + 'adjudications'
+                            }
+                        >
+                            Open adjudication queue
+                        </Link>
                     </div>
+                </article>
+
+                <article className="content-card">
+                    <span className="eyebrow">
+                        Controlled handover
+                    </span>
+
+                    <h2>
+                        Evaluation completion gate
+                    </h2>
+
+                    <p className="tender-detail-text">
+                        Adjudication can begin only
+                        after every required evaluator
+                        score has been submitted. The
+                        workspace displays the current
+                        completion evidence and keeps
+                        the transition action disabled
+                        while scores remain outstanding.
+                    </p>
+
+                    <ul className="procurement-role-list">
+                        <li>
+                            Review only tenders with an
+                            active Adjudicator assignment.
+                        </li>
+
+                        <li>
+                            Do not modify evaluator
+                            scores or comments.
+                        </li>
+
+                        <li>
+                            Start adjudication only
+                            after the completion gate
+                            confirms readiness.
+                        </li>
+
+                        <li>
+                            Use anonymised ranking
+                            evidence and the published
+                            evaluation criteria.
+                        </li>
+
+                        <li>
+                            Record an evidence-based
+                            reason for the final award.
+                        </li>
+                    </ul>
                 </article>
 
                 <article className="content-card">
@@ -786,14 +838,15 @@ function AdjudicatorDashboard({
                     <p className="tender-detail-text">
                         Review assigned procurement
                         support activities without
-                        changing evaluator scoring or
-                        tender specifications.
+                        changing evaluator scoring,
+                        tender specifications or
+                        committee assignments.
                     </p>
 
                     <div className="form-actions">
                         <Link
                             className={
-                                'primary-link-button'
+                                'secondary-link-button'
                             }
                             to={
                                 '/procurement/'
