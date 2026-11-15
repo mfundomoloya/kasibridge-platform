@@ -796,6 +796,159 @@ class NotificationOutboxServiceImplTest {
                 );
     }
 
+    @Test
+    void queueNotification_shouldPersistTenderAwardedOutboxRecord() {
+        String renderedAwardMessage =
+                "Hi Sifiso Magagula, your bid "
+                        + "KB-BID-68742A06 for tender "
+                        + "KB-TENDER-436FC79F has been "
+                        + "awarded. Log in to KasiBridge "
+                        + "to view the tender outcome. "
+                        + "Formal contracting or "
+                        + "purchase-order steps will be "
+                        + "communicated separately.";
+
+        when(
+                repository.saveAndFlush(
+                        any(NotificationOutbox.class)
+                )
+        ).thenAnswer(
+                invocation -> {
+                    NotificationOutbox notification =
+                            invocation.getArgument(0);
+
+                    notification.setId(21L);
+
+                    return notification;
+                }
+        );
+
+        outboxService.queueNotification(
+                NotificationOutbox
+                        .NotificationChannel
+                        .WHATSAPP,
+                NotificationOutbox
+                        .NotificationTemplateType
+                        .TENDER_AWARDED,
+                8L,
+                "+27610000006",
+                "biddera@kasibridge.test",
+                renderedAwardMessage,
+                7L,
+                16L,
+                null
+        );
+
+        ArgumentCaptor<NotificationOutbox> captor =
+                ArgumentCaptor.forClass(
+                        NotificationOutbox.class
+                );
+
+        verify(repository).saveAndFlush(
+                captor.capture()
+        );
+
+        NotificationOutbox saved =
+                captor.getValue();
+
+        assertEquals(
+                21L,
+                saved.getId()
+        );
+
+        assertNotNull(
+                saved.getNotificationReference()
+        );
+
+        assertTrue(
+                saved.getNotificationReference()
+                        .startsWith("KB-NOTIF-")
+        );
+
+        assertEquals(
+                17,
+                saved.getNotificationReference()
+                        .length()
+        );
+
+        assertEquals(
+                NotificationOutbox
+                        .NotificationChannel
+                        .WHATSAPP,
+                saved.getChannel()
+        );
+
+        assertEquals(
+                NotificationOutbox
+                        .NotificationTemplateType
+                        .TENDER_AWARDED,
+                saved.getTemplateType()
+        );
+
+        assertEquals(
+                NotificationOutbox
+                        .NotificationStatus
+                        .PENDING,
+                saved.getStatus()
+        );
+
+        assertEquals(
+                8L,
+                saved.getRecipientUserId()
+        );
+
+        assertEquals(
+                "+27610000006",
+                saved.getRecipientPhone()
+        );
+
+        assertEquals(
+                "biddera@kasibridge.test",
+                saved.getRecipientEmail()
+        );
+
+        assertEquals(
+                renderedAwardMessage,
+                saved.getMessage()
+        );
+
+        assertEquals(
+                7L,
+                saved.getRelatedTenderId()
+        );
+
+        assertEquals(
+                16L,
+                saved.getRelatedBidId()
+        );
+
+        assertNull(
+                saved.getRelatedTicketId()
+        );
+
+        assertEquals(
+                0,
+                saved.getRetryCount()
+        );
+
+        /*
+         * TENDER_AWARDED currently uses the durable
+         * rendered-text path, not a structured Meta
+         * template payload.
+         */
+        assertNull(
+                saved.getTemplateRecipientName()
+        );
+
+        assertNull(
+                saved.getTemplateTenderReference()
+        );
+
+        assertNull(
+                saved.getTemplateTenderTitle()
+        );
+    }
+
     private NotificationOutbox createInAppNotification(
             Long id,
             Long recipientUserId,
