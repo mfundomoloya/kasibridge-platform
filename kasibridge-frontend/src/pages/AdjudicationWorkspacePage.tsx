@@ -25,10 +25,15 @@ import {
 } from '../api/committeeAssignmentApi'
 
 import {
+    getProcurementAnomalyApiErrorMessage,
+    getTenderAnomalyRecords,
+} from '../api/procurementAnomalyApi'
+
+import {
     getProcurementTender,
     getProcurementTenderApiErrorMessage,
     getProcurementTenderEvaluationProgress,
-    startProcurementTenderAdjudication
+    startProcurementTenderAdjudication,
 } from '../api/procurementTenderApi'
 
 import {
@@ -61,6 +66,14 @@ import {
 import type {
     CurrentUserCommitteeAssignment,
 } from '../types/committeeAssignment'
+
+import type {
+    ProcurementAnomalyRecord,
+} from '../types/procurementAnomaly'
+
+import {
+    isBlockingAwardAnomaly,
+} from '../types/procurementAnomaly'
 
 import type {
     EvaluationProgress,
@@ -129,7 +142,10 @@ export function AdjudicationWorkspacePage() {
     const [
         pendingAwardBid,
         setPendingAwardBid,
-    ] = useState<BidRanking | null>(null)
+    ] =
+        useState<BidRanking | null>(
+            null
+        )
 
     const [
         assignment,
@@ -139,6 +155,22 @@ export function AdjudicationWorkspacePage() {
             CurrentUserCommitteeAssignment
             | null
         >(null)
+
+    const [
+        anomalies,
+        setAnomalies,
+    ] =
+        useState<ProcurementAnomalyRecord[]>(
+            []
+        )
+
+    const [
+        anomalyLoadError,
+        setAnomalyLoadError,
+    ] =
+        useState<string | null>(
+            null
+        )
 
     const [
         rankings,
@@ -207,6 +239,57 @@ export function AdjudicationWorkspacePage() {
             null
         )
 
+    const loadAnomalyRecords =
+        useCallback(
+            async (
+                fallbackMessage:
+                string = (
+                    'Unable to verify whether '
+                    + 'blocking procurement '
+                    + 'anomalies remain open.'
+                ),
+            ): Promise<boolean> => {
+                if (tenderId === null) {
+                    setAnomalies([])
+
+                    setAnomalyLoadError(
+                        'A valid tender ID is required.'
+                    )
+
+                    return false
+                }
+
+                try {
+                    const anomalyResponse =
+                        await getTenderAnomalyRecords(
+                            tenderId
+                        )
+
+                    setAnomalies(
+                        anomalyResponse.content
+                    )
+
+                    setAnomalyLoadError(null)
+
+                    return true
+                } catch (error) {
+                    setAnomalies([])
+
+                    setAnomalyLoadError(
+                        getProcurementAnomalyApiErrorMessage(
+                            error,
+                            fallbackMessage
+                        )
+                    )
+
+                    return false
+                }
+            },
+            [
+                tenderId,
+            ]
+        )
+
     const loadWorkspace =
         useCallback(
             async (
@@ -232,6 +315,7 @@ export function AdjudicationWorkspacePage() {
                 }
 
                 setPageError(null)
+                setAnomalyLoadError(null)
 
                 try {
                     const [
@@ -266,6 +350,8 @@ export function AdjudicationWorkspacePage() {
                     ) {
                         setRankings([])
                         setEvaluationProgress(null)
+                        setAnomalies([])
+                        setAnomalyLoadError(null)
 
                         setPageError(
                             'The authenticated user '
@@ -292,6 +378,9 @@ export function AdjudicationWorkspacePage() {
                         )
 
                         setRankings([])
+                        setAnomalies([])
+                        setAnomalyLoadError(null)
+
                         return
                     }
 
@@ -304,22 +393,42 @@ export function AdjudicationWorkspacePage() {
                         !== 'AWARDED'
                     ) {
                         setRankings([])
+                        setAnomalies([])
+                        setAnomalyLoadError(null)
 
                         setPageError(
-                            'The adjudication summary '
-                            + 'is available only '
-                            + 'when the tender is '
-                            + 'in Adjudication or '
-                            + 'Awarded status.'
+                            'The adjudication workspace '
+                            + 'is available only when '
+                            + 'the tender is in Evaluation, '
+                            + 'Adjudication or Awarded '
+                            + 'status.'
                         )
 
                         return
                     }
 
+                    const [
+                        rankingResult,
+                    ] =
+                        await Promise.allSettled([
+                            getAdjudicationSummary(
+                                tenderId
+                            ),
+
+                            loadAnomalyRecords(),
+                        ])
+
+                    if (
+                        rankingResult.status
+                        === 'rejected'
+                    ) {
+                        setRankings([])
+
+                        throw rankingResult.reason
+                    }
+
                     const rankingResponse =
-                        await getAdjudicationSummary(
-                            tenderId
-                        )
+                        rankingResult.value
 
                     setRankings(
                         rankingResponse
@@ -383,35 +492,36 @@ export function AdjudicationWorkspacePage() {
                 }
             },
             [
+                loadAnomalyRecords,
                 tenderId,
             ]
         )
 
-        useEffect(
-            () => {
-                const dialog =
-                    awardConfirmationDialogRef.current
+    useEffect(
+        () => {
+            const dialog =
+                awardConfirmationDialogRef.current
 
-                if (dialog === null) {
-                    return
-                }
+            if (dialog === null) {
+                return
+            }
 
-                if (
-                    isAwardConfirmationOpen
-                    && !dialog.open
-                ) {
-                    dialog.showModal()
-                } else if (
-                    !isAwardConfirmationOpen
-                    && dialog.open
-                ) {
-                    dialog.close()
-                }
-            },
-            [
-                isAwardConfirmationOpen,
-            ]
-        )
+            if (
+                isAwardConfirmationOpen
+                && !dialog.open
+            ) {
+                dialog.showModal()
+            } else if (
+                !isAwardConfirmationOpen
+                && dialog.open
+            ) {
+                dialog.close()
+            }
+        },
+        [
+            isAwardConfirmationOpen,
+        ]
+    )
 
     useEffect(
         () => {
@@ -492,11 +602,24 @@ export function AdjudicationWorkspacePage() {
             ]
         )
 
+    const blockingAnomalies =
+        useMemo(
+            () =>
+                anomalies.filter(
+                    isBlockingAwardAnomaly
+                ),
+            [
+                anomalies,
+            ]
+        )
+
     const isReadOnly =
         tender === null
         || assignment === null
         || tender.status !== 'ADJUDICATION'
         || awardResult !== null
+        || anomalyLoadError !== null
+        || blockingAnomalies.length > 0
 
     async function handleStartAdjudication():
         Promise<void> {
@@ -526,6 +649,8 @@ export function AdjudicationWorkspacePage() {
             setTender(updatedTender)
             setEvaluationProgress(null)
             setRankings([])
+            setAnomalies([])
+            setAnomalyLoadError(null)
 
             setSuccessMessage(
                 'Adjudication started for '
@@ -534,38 +659,31 @@ export function AdjudicationWorkspacePage() {
                 + '.'
             )
 
-            try {
-                const rankingResponse =
-                    await getAdjudicationSummary(
+            const [
+                rankingResult,
+            ] =
+                await Promise.allSettled([
+                    getAdjudicationSummary(
                         tenderId
-                    )
+                    ),
 
-                setRankings(rankingResponse)
+                    loadAnomalyRecords(
+                        'Adjudication started, but '
+                        + 'the anomaly gate could '
+                        + 'not be verified. Refresh '
+                        + 'the workspace.'
+                    ),
+                ])
 
-                setForm(
-                    (currentForm) => {
-                        const highestRankedBid =
-                            getHighestRankedBid(
-                                rankingResponse
-                            )
+            if (
+                rankingResult.status
+                === 'rejected'
+            ) {
+                setRankings([])
 
-                        return {
-                            ...currentForm,
-
-                            selectedBidId:
-                                highestRankedBid
-                                === null
-                                    ? ''
-                                    : highestRankedBid
-                                        .bidId
-                                        .toString(),
-                        }
-                    }
-                )
-            } catch (rankingError) {
                 setPageError(
                     getAdjudicationApiErrorMessage(
-                        rankingError,
+                        rankingResult.reason,
                         'Adjudication started, but '
                         + 'the ranked evaluation '
                         + 'evidence could not be '
@@ -573,7 +691,36 @@ export function AdjudicationWorkspacePage() {
                         + 'workspace.'
                     )
                 )
+
+                return
             }
+
+            const rankingResponse =
+                rankingResult.value
+
+            setRankings(
+                rankingResponse
+            )
+
+            setForm(
+                (currentForm) => {
+                    const highestBid =
+                        getHighestRankedBid(
+                            rankingResponse
+                        )
+
+                    return {
+                        ...currentForm,
+
+                        selectedBidId:
+                            highestBid === null
+                                ? ''
+                                : highestBid
+                                    .bidId
+                                    .toString(),
+                    }
+                }
+            )
         } catch (transitionError) {
             setPageError(
                 getProcurementTenderApiErrorMessage(
@@ -728,6 +875,49 @@ export function AdjudicationWorkspacePage() {
         setSuccessMessage(null)
 
         try {
+            const anomalyResponse =
+                await getTenderAnomalyRecords(
+                    tenderId
+                )
+
+            const currentAnomalies =
+                anomalyResponse.content
+
+            const currentBlockingAnomalies =
+                currentAnomalies.filter(
+                    isBlockingAwardAnomaly
+                )
+
+            setAnomalies(
+                currentAnomalies
+            )
+
+            setAnomalyLoadError(null)
+
+            if (
+                currentBlockingAnomalies.length
+                > 0
+            ) {
+                setIsAwardConfirmationOpen(false)
+                setPendingAwardBid(null)
+
+                setFormErrors({
+                    form:
+                        'Awarding is blocked while '
+                        + currentBlockingAnomalies.length
+                        + ' HIGH or CRITICAL '
+                        + (
+                            currentBlockingAnomalies.length
+                            === 1
+                                ? 'anomaly remains'
+                                : 'anomalies remain'
+                        )
+                        + ' open.',
+                })
+
+                return
+            }
+
             const request =
                 buildAwardTenderRequest(
                     form,
@@ -781,6 +971,30 @@ export function AdjudicationWorkspacePage() {
                         + 'tender award.'
                     ),
             })
+
+            try {
+                const anomalyResponse =
+                    await getTenderAnomalyRecords(
+                        tenderId
+                    )
+
+                setAnomalies(
+                    anomalyResponse.content
+                )
+
+                setAnomalyLoadError(null)
+            } catch (anomalyError) {
+                setAnomalies([])
+
+                setAnomalyLoadError(
+                    getProcurementAnomalyApiErrorMessage(
+                        anomalyError,
+                        'The award failed and the '
+                        + 'anomaly gate could not '
+                        + 'be refreshed.'
+                    )
+                )
+            }
         } finally {
             setIsAwarding(false)
         }
@@ -868,12 +1082,34 @@ export function AdjudicationWorkspacePage() {
                         }
                     />
 
+                    {assignment !== null
+                        && (
+                            tender.status
+                            === 'ADJUDICATION'
+                            || tender.status
+                            === 'AWARDED'
+                        ) && (
+                            <AdjudicationAnomalyGatePanel
+                                anomalies={
+                                    anomalies
+                                }
+                                blockingAnomalies={
+                                    blockingAnomalies
+                                }
+                                loadError={
+                                    anomalyLoadError
+                                }
+                            />
+                        )}
+
                     {assignment === null ? (
                         <AdjudicatorAssignmentNotice />
                     ) : tender.status === 'EVALUATION' ? (
                         <EvaluationReadinessPanel
                             tender={tender}
-                            progress={evaluationProgress}
+                            progress={
+                                evaluationProgress
+                            }
                             isStarting={
                                 isStartingAdjudication
                             }
@@ -939,11 +1175,11 @@ export function AdjudicationWorkspacePage() {
                                                 + 'leader-summary'
                                             }
                                         >
-                                        <span>
-                                            Highest
-                                            evaluated
-                                            bid
-                                        </span>
+                                            <span>
+                                                Highest
+                                                evaluated
+                                                bid
+                                            </span>
 
                                             <strong>
                                                 {
@@ -1023,6 +1259,13 @@ export function AdjudicationWorkspacePage() {
                                     }
                                     isReadOnly={
                                         isReadOnly
+                                    }
+                                    blockingAnomalyCount={
+                                        blockingAnomalies
+                                            .length
+                                    }
+                                    anomalyLoadError={
+                                        anomalyLoadError
                                     }
                                     onAwardReasonChange={
                                         handleAwardReasonChange
@@ -1120,9 +1363,10 @@ export function AdjudicationWorkspacePage() {
                         </strong>
 
                         <span>
-                            Other eligible bids will be rejected
-                            and the selected bid will be recorded
-                            as awarded.
+                            Other eligible bids will be
+                            rejected and the selected
+                            bid will be recorded as
+                            awarded.
                         </span>
                     </div>
 
@@ -1144,7 +1388,10 @@ export function AdjudicationWorkspacePage() {
                                 + 'adjudication-confirm-award-button'
                             }
                             type="button"
-                            disabled={isAwarding}
+                            disabled={
+                                isAwarding
+                                || isReadOnly
+                            }
                             onClick={
                                 () => {
                                     void confirmAward()
@@ -1185,10 +1432,9 @@ function AdjudicationWorkspaceHeader({
                 </h1>
 
                 <p>
-                    Review ranked evaluation
-                    evidence and record the final
-                    tender award as an assigned
-                    Adjudicator.
+                    Review ranked evaluation evidence
+                    and record the final tender award
+                    as an assigned Adjudicator.
                 </p>
             </div>
 
@@ -1282,9 +1528,7 @@ function AdjudicationTenderSummary({
             >
                 <AdjudicationDetailItem
                     label="Buyer organisation"
-                    value={
-                        tender.buyerOrgId
-                    }
+                    value={tender.buyerOrgId}
                 />
 
                 <AdjudicationDetailItem
@@ -1298,16 +1542,13 @@ function AdjudicationTenderSummary({
 
                 <AdjudicationDetailItem
                     label="Service area"
-                    value={
-                        tender.serviceArea
-                    }
+                    value={tender.serviceArea}
                 />
 
                 <AdjudicationDetailItem
                     label="Business type"
                     value={
-                        tender
-                            .requiredBusinessType
+                        tender.requiredBusinessType
                     }
                 />
 
@@ -1328,8 +1569,7 @@ function AdjudicationTenderSummary({
                         assignment === null
                             ? 'No active assignment'
                             : formatDateTime(
-                                assignment
-                                    .assignedAt
+                                assignment.assignedAt
                             )
                     }
                 />
@@ -1351,8 +1591,7 @@ function AdjudicationTenderSummary({
                                 .assignmentReason
                             ?? (
                                 'No assignment '
-                                + 'reason was '
-                                + 'recorded.'
+                                + 'reason was recorded.'
                             )
                         }
                     </p>
@@ -1379,6 +1618,144 @@ function AdjudicationDetailItem({
     )
 }
 
+interface AdjudicationAnomalyGatePanelProps {
+    anomalies: ProcurementAnomalyRecord[]
+    blockingAnomalies:
+        ProcurementAnomalyRecord[]
+    loadError: string | null
+}
+
+function AdjudicationAnomalyGatePanel({
+                                          anomalies,
+                                          blockingAnomalies,
+                                          loadError,
+                                      }: AdjudicationAnomalyGatePanelProps) {
+    const hasBlockingAnomalies =
+        blockingAnomalies.length > 0
+
+    return (
+        <section
+            className={
+                'content-card '
+                + 'adjudication-anomaly-gate '
+                + (
+                    loadError !== null
+                    || hasBlockingAnomalies
+                        ? 'is-blocked'
+                        : 'is-clear'
+                )
+            }
+            aria-labelledby={
+                'adjudication-anomaly-gate-heading'
+            }
+        >
+            <div>
+                <span className="eyebrow">
+                    Integrity gate
+                </span>
+
+                <h2
+                    id={
+                        'adjudication-anomaly-gate-heading'
+                    }
+                >
+                    {loadError !== null
+                        ? 'Anomaly status unavailable'
+                        : hasBlockingAnomalies
+                            ? (
+                                'Award blocked by '
+                                + 'open anomalies'
+                            )
+                            : 'No blocking anomalies'}
+                </h2>
+
+                <p>
+                    Open HIGH or CRITICAL procurement
+                    anomalies must be reviewed or
+                    dismissed before an award can be
+                    recorded.
+                </p>
+            </div>
+
+            {loadError !== null ? (
+                <p
+                    className="form-error-message"
+                    role="alert"
+                >
+                    {loadError}
+                </p>
+            ) : hasBlockingAnomalies ? (
+                <div
+                    className={
+                        'adjudication-blocking-'
+                        + 'anomaly-list'
+                    }
+                >
+                    {blockingAnomalies.map(
+                        (anomaly) => (
+                            <article
+                                key={anomaly.id}
+                                className={
+                                    'adjudication-'
+                                    + 'blocking-anomaly'
+                                }
+                            >
+                                <div>
+                                    <strong>
+                                        {
+                                            anomaly
+                                                .anomalyReference
+                                        }
+                                    </strong>
+
+                                    <span>
+                                        {
+                                            formatStatus(
+                                                anomaly
+                                                    .severity
+                                            )
+                                        }
+                                        {' · '}
+                                        {
+                                            formatStatus(
+                                                anomaly
+                                                    .type
+                                            )
+                                        }
+                                    </span>
+                                </div>
+
+                                <p>
+                                    {anomaly.message}
+                                </p>
+                            </article>
+                        )
+                    )}
+                </div>
+            ) : (
+                <p
+                    className={
+                        'adjudication-anomaly-'
+                        + 'clear-message'
+                    }
+                    role="status"
+                >
+                    {anomalies.length === 0
+                        ? (
+                            'No persisted procurement '
+                            + 'anomalies were found.'
+                        )
+                        : (
+                            'Persisted anomalies exist, '
+                            + 'but none currently meet '
+                            + 'the award-blocking rule.'
+                        )}
+                </p>
+            )}
+        </section>
+    )
+}
+
 interface AwardDecisionPanelProps {
     tender: ProcurementTender
     form:
@@ -1389,12 +1766,12 @@ interface AwardDecisionPanelProps {
         BidRanking | null
     isAwarding: boolean
     isReadOnly: boolean
+    blockingAnomalyCount: number
+    anomalyLoadError: string | null
     onAwardReasonChange:
         (
             event:
-            ChangeEvent<
-                HTMLTextAreaElement
-            >,
+            ChangeEvent<HTMLTextAreaElement>,
         ) => void
     onSubmit:
         (
@@ -1410,6 +1787,8 @@ function AwardDecisionPanel({
                                 selectedBid,
                                 isAwarding,
                                 isReadOnly,
+                                blockingAnomalyCount,
+                                anomalyLoadError,
                                 onAwardReasonChange,
                                 onSubmit,
                             }: AwardDecisionPanelProps) {
@@ -1460,16 +1839,11 @@ function AwardDecisionPanel({
                         </span>
 
                         <strong>
-                            {
-                                selectedBid
-                                    .bidderAlias
-                            }
+                            {selectedBid.bidderAlias}
                         </strong>
 
                         <small>
-                            Rank
-                            {' '}
-                            {selectedBid.rank}
+                            Rank {selectedBid.rank}
                             {' • '}
                             {
                                 selectedBid
@@ -1495,15 +1869,10 @@ function AwardDecisionPanel({
             >
                 {errors.selectedBidId && (
                     <p
-                        className={
-                            'field-error'
-                        }
+                        className="field-error"
                         role="alert"
                     >
-                        {
-                            errors
-                                .selectedBidId
-                        }
+                        {errors.selectedBidId}
                     </p>
                 )}
 
@@ -1523,9 +1892,7 @@ function AwardDecisionPanel({
                         rows={6}
                         minLength={10}
                         maxLength={1000}
-                        value={
-                            form.awardReason
-                        }
+                        value={form.awardReason}
                         onChange={
                             onAwardReasonChange
                         }
@@ -1576,10 +1943,7 @@ function AwardDecisionPanel({
                         </small>
 
                         <small>
-                            {
-                                form.awardReason
-                                    .length
-                            }
+                            {form.awardReason.length}
                             {' / 1000'}
                         </small>
                     </div>
@@ -1590,15 +1954,10 @@ function AwardDecisionPanel({
                                 'adjudication-award-'
                                 + 'reason-error'
                             }
-                            className={
-                                'field-error'
-                            }
+                            className="field-error"
                             role="alert"
                         >
-                            {
-                                errors
-                                    .awardReason
-                            }
+                            {errors.awardReason}
                         </p>
                     )}
                 </div>
@@ -1614,6 +1973,34 @@ function AwardDecisionPanel({
                     </p>
                 )}
 
+                {anomalyLoadError !== null ? (
+                    <p
+                        className={
+                            'form-error-message'
+                        }
+                        role="alert"
+                    >
+                        Awarding is disabled because
+                        the anomaly gate could not be
+                        verified.
+                    </p>
+                ) : blockingAnomalyCount > 0 ? (
+                    <p
+                        className={
+                            'form-error-message'
+                        }
+                        role="alert"
+                    >
+                        Awarding is disabled while{' '}
+                        {blockingAnomalyCount}{' '}
+                        blocking procurement{' '}
+                        {blockingAnomalyCount === 1
+                            ? 'anomaly remains'
+                            : 'anomalies remain'}{' '}
+                        open.
+                    </p>
+                ) : null}
+
                 <div
                     className={
                         'adjudication-consequential-'
@@ -1625,10 +2012,8 @@ function AwardDecisionPanel({
                     </strong>
 
                     <p>
-                        Awarding
-                        {' '}
-                        {tender.tenderReference}
-                        {' '}
+                        Awarding{' '}
+                        {tender.tenderReference}{' '}
                         marks the selected bid as
                         awarded, rejects other
                         eligible bids and completes
@@ -1637,9 +2022,7 @@ function AwardDecisionPanel({
                     </p>
                 </div>
 
-                <div
-                    className="form-actions"
-                >
+                <div className="form-actions">
                     <button
                         className="primary-button"
                         type="submit"
@@ -1691,9 +2074,8 @@ function AwardResultPanel({
 
                 <p>
                     The final decision has been
-                    persisted and the winning
-                    Trader notification has been
-                    queued.
+                    persisted and the winning Trader
+                    notification has been queued.
                 </p>
             </div>
 
@@ -1704,25 +2086,17 @@ function AwardResultPanel({
             >
                 <AdjudicationDetailItem
                     label="Tender reference"
-                    value={
-                        result.tenderReference
-                    }
+                    value={result.tenderReference}
                 />
 
                 <AdjudicationDetailItem
                     label="Winning bid"
-                    value={
-                        result
-                            .winningBidderAlias
-                    }
+                    value={result.winningBidderAlias}
                 />
 
                 <AdjudicationDetailItem
                     label="Winning bid reference"
-                    value={
-                        result
-                            .winningBidReference
-                    }
+                    value={result.winningBidReference}
                 />
 
                 <AdjudicationDetailItem
@@ -1781,15 +2155,13 @@ function AdjudicationLoadingState() {
         >
             <div className="empty-state">
                 <h1>
-                    Loading adjudication
-                    workspace
+                    Loading adjudication workspace
                 </h1>
 
                 <p>
-                    Verifying the active
-                    Adjudicator assignment and
-                    retrieving ranked evaluation
-                    evidence.
+                    Verifying the active Adjudicator
+                    assignment and retrieving ranked
+                    evaluation evidence.
                 </p>
             </div>
         </section>
@@ -2055,22 +2427,18 @@ function AdjudicationStateNotice({
             </h2>
 
             <p>
-                Tender
-                {' '}
+                Tender{' '}
                 <strong>
                     {tender.tenderReference}
-                </strong>
-                {' '}
-                is currently in
-                {' '}
+                </strong>{' '}
+                is currently in{' '}
                 <strong>
                     {
                         formatStatus(
                             tender.status
                         )
                     }
-                </strong>
-                {' '}
+                </strong>{' '}
                 status.
             </p>
         </section>
@@ -2086,9 +2454,8 @@ function NoAdjudicationRankingsState() {
                 </h2>
 
                 <p>
-                    No completed evaluation
-                    results are available for this
-                    tender.
+                    No completed evaluation results
+                    are available for this tender.
                 </p>
             </div>
         </section>
@@ -2134,6 +2501,12 @@ function AdjudicationGovernanceNotice() {
 
                 <li>
                     Do not alter Evaluator scores.
+                </li>
+
+                <li>
+                    Resolve open HIGH or CRITICAL
+                    procurement anomalies before
+                    recording an award.
                 </li>
 
                 <li>
