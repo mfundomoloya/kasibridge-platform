@@ -3,7 +3,6 @@ package com.kasibridge.procurement.service;
 import com.kasibridge.procurement.dto.AwardTenderRequest;
 import com.kasibridge.procurement.dto.AwardTenderResponse;
 import com.kasibridge.procurement.dto.BidRankingResponse;
-import com.kasibridge.procurement.dto.EvaluationProgressResponse;
 import com.kasibridge.procurement.entity.Bid;
 import com.kasibridge.procurement.entity.ProcurementAuditEvent;
 import com.kasibridge.procurement.entity.Tender;
@@ -16,6 +15,8 @@ import com.kasibridge.procurement.repository.BidEvaluationScoreRepository;
 import com.kasibridge.procurement.repository.BidRepository;
 import com.kasibridge.procurement.repository.TenderCommitteeAssignmentRepository;
 import com.kasibridge.procurement.repository.TenderRepository;
+import com.kasibridge.procurement.entity.ProcurementAnomaly;
+import com.kasibridge.procurement.repository.ProcurementAnomalyRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -47,6 +48,8 @@ public class AdjudicationServiceImpl
     private final CurrentUserService currentUserService;
 
     private final TenderCommitteeAssignmentRepository assignmentRepository;
+
+    private final ProcurementAnomalyRepository anomalyRepository;
 
     private final ProcurementNotificationService procurementNotificationService;
 
@@ -260,6 +263,43 @@ public class AdjudicationServiceImpl
                     "Tender can only be awarded "
                             + "when it is in "
                             + "ADJUDICATION status."
+            );
+        }
+
+        boolean hasBlockingAnomaly =
+                anomalyRepository
+                        .existsByTenderIdAndStatusAndSeverityIn(
+                                tenderId,
+                                ProcurementAnomaly
+                                        .AnomalyStatus
+                                        .OPEN,
+                                Set.of(
+                                        ProcurementAnomaly
+                                                .Severity
+                                                .HIGH,
+                                        ProcurementAnomaly
+                                                .Severity
+                                                .CRITICAL
+                                )
+                        );
+
+        if (hasBlockingAnomaly) {
+            String rejectionDetails =
+                    "Tender has an unresolved HIGH "
+                            + "or CRITICAL procurement anomaly";
+
+            recordRejectedAward(
+                    tenderId,
+                    request.getWinningBidId(),
+                    adjudicatorUserId,
+                    rejectionDetails
+            );
+
+            throw new AdjudicationException(
+                    "Tender cannot be awarded while "
+                            + "a HIGH or CRITICAL "
+                            + "procurement anomaly "
+                            + "remains open."
             );
         }
 

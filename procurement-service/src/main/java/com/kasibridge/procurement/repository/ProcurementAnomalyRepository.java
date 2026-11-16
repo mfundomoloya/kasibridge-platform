@@ -5,6 +5,9 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.Collection;
+
+
 public interface ProcurementAnomalyRepository extends JpaRepository<ProcurementAnomaly, Long> {
 
     Page<ProcurementAnomaly> findByTenderId(Long tenderId, Pageable pageable);
@@ -19,4 +22,11 @@ public interface ProcurementAnomalyRepository extends JpaRepository<ProcurementA
             ProcurementAnomaly.AnomalyType type,
             String evidence
     );
+
+    boolean existsByTenderIdAndStatusAndSeverityIn(
+            Long tenderId,
+            ProcurementAnomaly.AnomalyStatus status,
+            Collection<ProcurementAnomaly.Severity> severities
+    );
+
 }

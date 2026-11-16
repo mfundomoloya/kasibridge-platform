@@ -2,14 +2,12 @@ package com.kasibridge.procurement.service;
 
 import com.kasibridge.procurement.dto.AwardTenderRequest;
 import com.kasibridge.procurement.dto.AwardTenderResponse;
-import com.kasibridge.procurement.entity.Bid;
-import com.kasibridge.procurement.entity.ProcurementAuditEvent;
-import com.kasibridge.procurement.entity.Tender;
-import com.kasibridge.procurement.entity.TenderCommitteeAssignment;
+import com.kasibridge.procurement.entity.*;
 import com.kasibridge.procurement.exception.AdjudicationException;
 import com.kasibridge.procurement.exception.ProcurementAuthorizationException;
 import com.kasibridge.procurement.repository.BidEvaluationScoreRepository;
 import com.kasibridge.procurement.repository.BidRepository;
+import com.kasibridge.procurement.repository.ProcurementAnomalyRepository;
 import com.kasibridge.procurement.repository.TenderCommitteeAssignmentRepository;
 import com.kasibridge.procurement.repository.TenderRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -33,6 +31,7 @@ import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.argThat;
 
 @ExtendWith(MockitoExtension.class)
 class AdjudicationServiceImplTest {
@@ -65,6 +64,9 @@ class AdjudicationServiceImplTest {
     private ProcurementNotificationService
             procurementNotificationService;
 
+    @Mock
+    private ProcurementAnomalyRepository anomalyRepository;
+
     private AdjudicationServiceImpl adjudicationService;
 
     @BeforeEach
@@ -77,12 +79,13 @@ class AdjudicationServiceImplTest {
                         auditService,
                         currentUserService,
                         assignmentRepository,
+                        anomalyRepository,
                         procurementNotificationService
                 );
     }
 
     @Test
-    void shouldAwardEligibleEvaluatedBidAndRejectOtherEligibleBids() {
+    void shouldAwardWhenNoBlockingAnomalyExistsAndRejectOtherEligibleBids() {
         Tender tender =
                 Tender.builder()
                         .id(TENDER_ID)
@@ -184,6 +187,19 @@ class AdjudicationServiceImplTest {
 
         when(tenderRepository.save(tender))
                 .thenReturn(tender);
+
+        when(
+                anomalyRepository
+                        .existsByTenderIdAndStatusAndSeverityIn(
+                                eq(TENDER_ID),
+                                eq(
+                                        ProcurementAnomaly
+                                                .AnomalyStatus
+                                                .OPEN
+                                ),
+                                anyCollection()
+                        )
+        ).thenReturn(false);
 
         AwardTenderResponse response =
                 adjudicationService.awardTender(
@@ -309,6 +325,153 @@ class AdjudicationServiceImplTest {
                 List.of(losingBid),
                 persistedEligibleBids
         );
+    }
+
+    @Test
+    void shouldAllowAwardWhenNoBlockingAnomalyExists() {
+        Tender tender =
+                Tender.builder()
+                        .id(TENDER_ID)
+                        .tenderReference(
+                                "KB-TENDER-00000011"
+                        )
+                        .status(
+                                Tender.TenderStatus
+                                        .ADJUDICATION
+                        )
+                        .build();
+
+        Bid winningBid =
+                Bid.builder()
+                        .id(WINNING_BID_ID)
+                        .tenderId(TENDER_ID)
+                        .bidReference(
+                                "KB-BID-00000101"
+                        )
+                        .bidderAlias(
+                                "Bidder Alpha"
+                        )
+                        .status(
+                                Bid.BidStatus
+                                        .RECOMMENDED
+                        )
+                        .build();
+
+        AwardTenderRequest request =
+                awardRequest();
+
+        when(currentUserService.getCurrentUserId())
+                .thenReturn(ADJUDICATOR_USER_ID);
+
+        when(tenderRepository.findById(TENDER_ID))
+                .thenReturn(Optional.of(tender));
+
+        when(
+                assignmentRepository
+                        .existsByTenderIdAndUserIdAndCommitteeRoleAndActiveTrue(
+                                TENDER_ID,
+                                ADJUDICATOR_USER_ID,
+                                TenderCommitteeAssignment
+                                        .CommitteeRole
+                                        .ADJUDICATOR
+                        )
+        ).thenReturn(true);
+
+        /*
+         * False means there is no anomaly matching:
+         * OPEN + (HIGH or CRITICAL).
+         *
+         * This includes reviewed/dismissed high-severity
+         * anomalies and open low/medium anomalies.
+         */
+        when(
+                anomalyRepository
+                        .existsByTenderIdAndStatusAndSeverityIn(
+                                eq(TENDER_ID),
+                                eq(
+                                        ProcurementAnomaly
+                                                .AnomalyStatus
+                                                .OPEN
+                                ),
+                                anyCollection()
+                        )
+        ).thenReturn(false);
+
+        when(bidRepository.findById(WINNING_BID_ID))
+                .thenReturn(Optional.of(winningBid));
+
+        when(
+                scoreRepository
+                        .existsByTenderIdAndBidId(
+                                TENDER_ID,
+                                WINNING_BID_ID
+                        )
+        ).thenReturn(true);
+
+        when(
+                bidRepository
+                        .findByTenderIdAndStatusIn(
+                                eq(TENDER_ID),
+                                anyCollection()
+                        )
+        ).thenReturn(List.of(winningBid));
+
+        when(bidRepository.save(winningBid))
+                .thenReturn(winningBid);
+
+        when(tenderRepository.save(tender))
+                .thenReturn(tender);
+
+        AwardTenderResponse response =
+                adjudicationService.awardTender(
+                        TENDER_ID,
+                        request
+                );
+
+        assertEquals(
+                Tender.TenderStatus.AWARDED,
+                tender.getStatus()
+        );
+
+        assertEquals(
+                Bid.BidStatus.AWARDED,
+                winningBid.getStatus()
+        );
+
+        assertEquals(
+                Tender.TenderStatus.AWARDED,
+                response.getTenderStatus()
+        );
+
+        verify(anomalyRepository)
+                .existsByTenderIdAndStatusAndSeverityIn(
+                        eq(TENDER_ID),
+                        eq(
+                                ProcurementAnomaly
+                                        .AnomalyStatus
+                                        .OPEN
+                        ),
+                        argThat(
+                                severities ->
+                                        severities.size() == 2
+                                                && severities.contains(
+                                                ProcurementAnomaly
+                                                        .Severity
+                                                        .HIGH
+                                        )
+                                                && severities.contains(
+                                                ProcurementAnomaly
+                                                        .Severity
+                                                        .CRITICAL
+                                        )
+                        )
+                );
+
+        verify(procurementNotificationService)
+                .queueTenderAwarded(
+                        winningBid,
+                        tender
+                );
     }
 
     @Test
@@ -893,6 +1056,142 @@ class AdjudicationServiceImplTest {
                 ADJUDICATOR_USER_ID,
                 "Tender award rejected",
                 "Tender has already been awarded"
+        );
+
+        verify(bidRepository, never())
+                .findById(anyLong());
+
+        verify(bidRepository, never())
+                .save(any(Bid.class));
+
+        verify(bidRepository, never())
+                .saveAll(anyCollection());
+
+        verify(tenderRepository, never())
+                .save(any(Tender.class));
+
+        verify(
+                auditService,
+                never()
+        ).recordSuccess(
+                any(),
+                any(),
+                any(),
+                any(),
+                any(),
+                any()
+        );
+
+        verifyNoInteractions(
+                procurementNotificationService
+        );
+    }
+
+    @Test
+    void shouldRejectAwardWhenHighOrCriticalAnomalyIsOpen() {
+        Tender tender =
+                Tender.builder()
+                        .id(TENDER_ID)
+                        .tenderReference(
+                                "KB-TENDER-00000011"
+                        )
+                        .status(
+                                Tender.TenderStatus
+                                        .ADJUDICATION
+                        )
+                        .build();
+
+        AwardTenderRequest request =
+                awardRequest();
+
+        when(currentUserService.getCurrentUserId())
+                .thenReturn(ADJUDICATOR_USER_ID);
+
+        when(tenderRepository.findById(TENDER_ID))
+                .thenReturn(Optional.of(tender));
+
+        when(
+                assignmentRepository
+                        .existsByTenderIdAndUserIdAndCommitteeRoleAndActiveTrue(
+                                TENDER_ID,
+                                ADJUDICATOR_USER_ID,
+                                TenderCommitteeAssignment
+                                        .CommitteeRole
+                                        .ADJUDICATOR
+                        )
+        ).thenReturn(true);
+
+        when(
+                anomalyRepository
+                        .existsByTenderIdAndStatusAndSeverityIn(
+                                eq(TENDER_ID),
+                                eq(
+                                        ProcurementAnomaly
+                                                .AnomalyStatus
+                                                .OPEN
+                                ),
+                                anyCollection()
+                        )
+        ).thenReturn(true);
+
+        AdjudicationException exception =
+                assertThrows(
+                        AdjudicationException.class,
+                        () ->
+                                adjudicationService
+                                        .awardTender(
+                                                TENDER_ID,
+                                                request
+                                        )
+                );
+
+        assertEquals(
+                "Tender cannot be awarded while "
+                        + "a HIGH or CRITICAL "
+                        + "procurement anomaly "
+                        + "remains open.",
+                exception.getMessage()
+        );
+
+        assertEquals(
+                Tender.TenderStatus.ADJUDICATION,
+                tender.getStatus()
+        );
+
+        verify(anomalyRepository)
+                .existsByTenderIdAndStatusAndSeverityIn(
+                        eq(TENDER_ID),
+                        eq(
+                                ProcurementAnomaly
+                                        .AnomalyStatus
+                                        .OPEN
+                        ),
+                        argThat(
+                                severities ->
+                                        severities.contains(
+                                                ProcurementAnomaly
+                                                        .Severity
+                                                        .HIGH
+                                        )
+                                                && severities.contains(
+                                                ProcurementAnomaly
+                                                        .Severity
+                                                        .CRITICAL
+                                        )
+                                                && severities.size() == 2
+                        )
+                );
+
+        verify(auditService).recordFailure(
+                ProcurementAuditEvent
+                        .AuditEventType
+                        .TENDER_AWARD_REJECTED,
+                TENDER_ID,
+                WINNING_BID_ID,
+                ADJUDICATOR_USER_ID,
+                "Tender award rejected",
+                "Tender has an unresolved HIGH "
+                        + "or CRITICAL procurement anomaly"
         );
 
         verify(bidRepository, never())

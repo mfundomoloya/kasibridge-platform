@@ -19,8 +19,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDateTime;
 
-import static org.mockito.ArgumentMatchers.argThat;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -257,8 +256,7 @@ class AdjudicationControllerTest {
                 never()
         ).awardTender(
                 eq(TENDER_ID),
-                org.mockito.ArgumentMatchers
-                        .any(AwardTenderRequest.class)
+                any(AwardTenderRequest.class)
         );
     }
 
@@ -275,8 +273,7 @@ class AdjudicationControllerTest {
         when(
                 adjudicationService.awardTender(
                         eq(TENDER_ID),
-                        org.mockito.ArgumentMatchers
-                                .any(AwardTenderRequest.class)
+                        any(AwardTenderRequest.class)
                 )
         ).thenThrow(
                 new AdjudicationException(
@@ -327,8 +324,7 @@ class AdjudicationControllerTest {
         when(
                 adjudicationService.awardTender(
                         eq(TENDER_ID),
-                        org.mockito.ArgumentMatchers
-                                .any(AwardTenderRequest.class)
+                        any(AwardTenderRequest.class)
                 )
         ).thenThrow(
                 new ProcurementAuthorizationException(
@@ -362,6 +358,65 @@ class AdjudicationControllerTest {
                 )
                 .andExpect(
                         jsonPath("$.timestamp").exists()
+                );
+    }
+
+    @Test
+    void shouldReturnBadRequestWhenBlockingAnomalyIsOpen()
+            throws Exception {
+
+        AwardTenderRequest request =
+                validAwardRequest();
+
+        String rejectionReason =
+                "Tender cannot be awarded while "
+                        + "a HIGH or CRITICAL "
+                        + "procurement anomaly "
+                        + "remains open.";
+
+        when(
+                adjudicationService.awardTender(
+                        eq(TENDER_ID),
+                        any(AwardTenderRequest.class)
+                )
+        ).thenThrow(
+                new AdjudicationException(
+                        rejectionReason
+                )
+        );
+
+        mockMvc.perform(
+                        post(
+                                "/api/v1/tenders/{tenderId}"
+                                        + "/adjudication/award",
+                                TENDER_ID
+                        )
+                                .contentType(
+                                        MediaType.APPLICATION_JSON
+                                )
+                                .content(
+                                        objectMapper.writeValueAsString(
+                                                request
+                                        )
+                                )
+                )
+                .andExpect(status().isBadRequest())
+                .andExpect(
+                        jsonPath("$.status")
+                                .value(400)
+                )
+                .andExpect(
+                        jsonPath("$.message")
+                                .value(rejectionReason)
+                )
+                .andExpect(
+                        jsonPath("$.timestamp").exists()
+                );
+
+        verify(adjudicationService)
+                .awardTender(
+                        eq(TENDER_ID),
+                        any(AwardTenderRequest.class)
                 );
     }
 
