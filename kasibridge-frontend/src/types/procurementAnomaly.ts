@@ -44,6 +44,10 @@ export interface ProcurementAnomalyPage {
     page: ProcurementAnomalyPageMetadata
 }
 
+export interface ReviewProcurementAnomalyRequest {
+    reviewNotes: string
+}
+
 export function isBlockingAwardAnomaly(
     anomaly: ProcurementAnomalyRecord,
 ): boolean {
@@ -54,4 +58,10 @@ export function isBlockingAwardAnomaly(
             || anomaly.severity === 'CRITICAL'
         )
     )
+}
+
+export function canResolveProcurementAnomaly(
+    anomaly: ProcurementAnomalyRecord,
+): boolean {
+    return anomaly.status === 'OPEN'
 }
