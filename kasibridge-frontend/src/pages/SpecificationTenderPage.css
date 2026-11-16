@@ -2156,6 +2156,7 @@ span {
 .adjudication-tender-summary,
 .adjudication-summary-introduction,
 .adjudication-readiness-panel,
+.adjudication-anomaly-gate,
 .adjudication-award-panel,
 .adjudication-award-result,
 .adjudication-governance-notice {
@@ -2193,6 +2194,97 @@ span {
     margin: 12px 0 0;
     color: #526158;
     line-height: 1.6;
+}
+
+.adjudication-anomaly-gate {
+    padding: 30px;
+    border: 1px solid #cfe0d5;
+}
+
+.adjudication-anomaly-gate.is-clear {
+    background:
+        linear-gradient(
+            145deg,
+            #ffffff 0%,
+            #f3faf6 100%
+        );
+}
+
+.adjudication-anomaly-gate.is-blocked {
+    border-color: #e6b8b8;
+    background:
+        linear-gradient(
+            145deg,
+            #ffffff 0%,
+            #fff6f6 100%
+        );
+}
+
+.adjudication-anomaly-gate h2 {
+    margin: 8px 0 0;
+    color: #172b20;
+    font-size: clamp(
+        1.35rem,
+        2.2vw,
+        1.7rem
+    );
+    line-height: 1.25;
+}
+
+.adjudication-anomaly-gate > div:first-child > p {
+    max-width: 780px;
+    margin: 12px 0 0;
+    color: #526158;
+    line-height: 1.6;
+}
+
+.adjudication-blocking-anomaly-list {
+    display: grid;
+    gap: 12px;
+    margin-top: 24px;
+}
+
+.adjudication-blocking-anomaly {
+    padding: 16px 18px;
+    border: 1px solid #e4bbbb;
+    border-left: 4px solid #b42318;
+    border-radius: 0 12px 12px 0;
+    background: #fffafa;
+}
+
+.adjudication-blocking-anomaly > div {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 18px;
+}
+
+.adjudication-blocking-anomaly strong {
+    color: #751d18;
+    overflow-wrap: anywhere;
+}
+
+.adjudication-blocking-anomaly span {
+    flex-shrink: 0;
+    color: #8f2d25;
+    font-size: 0.8rem;
+    font-weight: 750;
+}
+
+.adjudication-blocking-anomaly p {
+    margin: 10px 0 0;
+    color: #63312d;
+    line-height: 1.55;
+}
+
+.adjudication-anomaly-clear-message {
+    margin: 24px 0 0;
+    padding: 16px 18px;
+    border-left: 4px solid #0b7652;
+    border-radius: 0 12px 12px 0;
+    color: #245943;
+    background: #eff9f3;
+    line-height: 1.55;
 }
 
 .adjudication-readiness-panel
@@ -2581,10 +2673,20 @@ span {
     .adjudication-tender-summary,
     .adjudication-summary-introduction,
     .adjudication-readiness-panel,
+    .adjudication-anomaly-gate,
     .adjudication-award-panel,
     .adjudication-award-result,
     .adjudication-governance-notice {
         padding: 22px;
+    }
+
+    .adjudication-blocking-anomaly > div {
+        flex-direction: column;
+        gap: 6px;
+    }
+
+    .adjudication-blocking-anomaly span {
+        flex-shrink: 1;
     }
 
     .adjudication-tender-details,
