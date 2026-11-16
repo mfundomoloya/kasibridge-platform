@@ -403,20 +403,57 @@ public class SecurityConfig {
                                         )
 
                                         /*
-                                         * Procurement anomaly endpoints.
+                                         * Persisted anomaly records.
                                          */
                                         .requestMatchers(
+                                                HttpMethod.GET,
                                                 "/api/v1/procurement/anomalies",
-                                                "/api/v1/procurement/anomalies/{anomalyId}",
-                                                "/api/v1/tenders/{id}/anomalies",
-                                                "/api/v1/tenders/{id}/anomalies/{anomalyId}",
-                                                "/api/v1/tenders/{id}/anomaly-records"
+                                                "/api/v1/procurement/anomalies/status/{status}",
+                                                "/api/v1/tenders/{tenderId}/anomaly-records"
                                         )
                                         .hasAnyRole(
                                                 "PLATFORM_ADMIN",
                                                 "ADJUDICATOR",
                                                 "SPECIFICATION_OFFICER"
                                         )
+
+/*
+ * Live anomaly calculation without persistence.
+ */
+                                        .requestMatchers(
+                                                HttpMethod.GET,
+                                                "/api/v1/tenders/{tenderId}/anomalies"
+                                        )
+                                        .hasAnyRole(
+                                                "PLATFORM_ADMIN",
+                                                "ADJUDICATOR",
+                                                "SPECIFICATION_OFFICER"
+                                        )
+
+/*
+ * Detection and persistence.
+ */
+                                        .requestMatchers(
+                                                HttpMethod.POST,
+                                                "/api/v1/tenders/{tenderId}/anomalies/detect"
+                                        )
+                                        .hasAnyRole(
+                                                "PLATFORM_ADMIN",
+                                                "ADJUDICATOR"
+                                        )
+
+/*
+ * Anomaly review decisions.
+ */
+                                        .requestMatchers(
+                                                HttpMethod.PATCH,
+                                                "/api/v1/procurement/anomalies/{anomalyId}/review",
+                                                "/api/v1/procurement/anomalies/{anomalyId}/dismiss"
+                                        )
+                                        .hasAnyRole(
+                                                "PLATFORM_ADMIN",
+                                                "ADJUDICATOR"
+                                        )   
 
                                         /*
                                          * Ticket assignment.
