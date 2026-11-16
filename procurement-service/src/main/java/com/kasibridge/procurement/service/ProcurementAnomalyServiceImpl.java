@@ -11,6 +11,9 @@ import com.kasibridge.procurement.exception.AnomalyStateException;
 import com.kasibridge.procurement.exception.TenderNotFoundException;
 import com.kasibridge.procurement.repository.ProcurementAnomalyRepository;
 import com.kasibridge.procurement.repository.TenderRepository;
+import com.kasibridge.procurement.entity.TenderCommitteeAssignment;
+import com.kasibridge.procurement.exception.ProcurementAuthorizationException;
+import com.kasibridge.procurement.repository.TenderCommitteeAssignmentRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -34,7 +37,7 @@ public class ProcurementAnomalyServiceImpl implements ProcurementAnomalyService 
     private final ProcurementAuditService auditService;
     private final CurrentUserService currentUserService;
     private final ProcurementNotificationService procurementNotificationService;
-
+    private final TenderCommitteeAssignmentRepository assignmentRepository;
     private static final long RAPID_AWARD_THRESHOLD_MINUTES = 10;
 
     @Override
@@ -83,66 +86,168 @@ public class ProcurementAnomalyServiceImpl implements ProcurementAnomalyService 
     }
 
     @Override
-    public ProcurementAnomalyRecordResponse markReviewed(Long anomalyId, ReviewProcurementAnomalyRequest request) {
-        Long reviewerUserId = currentUserService.getCurrentUserId();
+    public ProcurementAnomalyRecordResponse markReviewed(Long anomalyId, ReviewProcurementAnomalyRequest request
+    ) {
+        Long reviewerUserId =
+                currentUserService.getCurrentUserId();
 
-        ProcurementAnomaly anomaly = anomalyRepository.findById(anomalyId)
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "Procurement anomaly not found with ID: " + anomalyId
-                ));
+        ProcurementAnomaly anomaly =
+                findAnomaly(
+                        anomalyId
+                );
 
-        assertAnomalyIsOpen(anomaly);
+        assertAssignedAdjudicator(
+                anomaly,
+                reviewerUserId
+        );
 
-        anomaly.setStatus(ProcurementAnomaly.AnomalyStatus.REVIEWED);
-        anomaly.setReviewedByUserId(reviewerUserId);
-        anomaly.setReviewNotes(request.getReviewNotes().trim());
-        anomaly.setReviewedAt(LocalDateTime.now());
+        assertAnomalyIsOpen(
+                anomaly
+        );
 
-        ProcurementAnomaly saved = anomalyRepository.save(anomaly);
+        String reviewNotes =
+                requireReviewNotes(
+                        request
+                );
+
+        LocalDateTime reviewedAt =
+                LocalDateTime.now();
+
+        anomaly.setStatus(
+                ProcurementAnomaly
+                        .AnomalyStatus
+                        .REVIEWED
+        );
+
+        anomaly.setReviewedByUserId(
+                reviewerUserId
+        );
+
+        anomaly.setReviewNotes(
+                reviewNotes
+        );
+
+        anomaly.setReviewedAt(
+                reviewedAt
+        );
+
+        ProcurementAnomaly saved =
+                anomalyRepository.save(
+                        anomaly
+                );
 
         auditService.recordSuccess(
-                ProcurementAuditEvent.AuditEventType.PROCUREMENT_ANOMALY_REVIEWED,
+                ProcurementAuditEvent
+                        .AuditEventType
+                        .PROCUREMENT_ANOMALY_REVIEWED,
                 saved.getTenderId(),
                 saved.getBidId(),
                 reviewerUserId,
                 "Procurement anomaly reviewed",
-                "Anomaly reference=" + saved.getAnomalyReference()
+                "Anomaly reference="
+                        + saved.getAnomalyReference()
+                        + ", reviewNotes="
+                        + saved.getReviewNotes()
         );
 
-        return ProcurementAnomalyRecordResponse.from(saved);
+        log.info(
+                "Procurement anomaly reviewed: "
+                        + "anomalyId={} reference={} "
+                        + "tenderId={} reviewerUserId={}",
+                saved.getId(),
+                saved.getAnomalyReference(),
+                saved.getTenderId(),
+                reviewerUserId
+        );
+
+        return ProcurementAnomalyRecordResponse.from(
+                saved
+        );
     }
 
     @Override
-    public ProcurementAnomalyRecordResponse dismiss(Long anomalyId, ReviewProcurementAnomalyRequest request) {
-        Long reviewerUserId = currentUserService.getCurrentUserId();
+    public ProcurementAnomalyRecordResponse dismiss(
+            Long anomalyId,
+            ReviewProcurementAnomalyRequest request
+    ) {
+        Long reviewerUserId =
+                currentUserService.getCurrentUserId();
 
-        ProcurementAnomaly anomaly = anomalyRepository.findById(anomalyId)
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "Procurement anomaly not found with ID: " + anomalyId
-                ));
+        ProcurementAnomaly anomaly =
+                findAnomaly(
+                        anomalyId
+                );
 
-        assertAnomalyIsOpen(anomaly);
+        assertAssignedAdjudicator(
+                anomaly,
+                reviewerUserId
+        );
 
-        anomaly.setStatus(ProcurementAnomaly.AnomalyStatus.DISMISSED);
-        anomaly.setReviewedByUserId(reviewerUserId);
-        anomaly.setReviewNotes(request.getReviewNotes().trim());
-        anomaly.setReviewedAt(LocalDateTime.now());
+        assertAnomalyIsOpen(
+                anomaly
+        );
 
-        ProcurementAnomaly saved = anomalyRepository.save(anomaly);
+        String reviewNotes =
+                requireReviewNotes(
+                        request
+                );
+
+        LocalDateTime reviewedAt =
+                LocalDateTime.now();
+
+        anomaly.setStatus(
+                ProcurementAnomaly
+                        .AnomalyStatus
+                        .DISMISSED
+        );
+
+        anomaly.setReviewedByUserId(
+                reviewerUserId
+        );
+
+        anomaly.setReviewNotes(
+                reviewNotes
+        );
+
+        anomaly.setReviewedAt(
+                reviewedAt
+        );
+
+        ProcurementAnomaly saved =
+                anomalyRepository.save(
+                        anomaly
+                );
 
         auditService.recordSuccess(
-                ProcurementAuditEvent.AuditEventType.PROCUREMENT_ANOMALY_DISMISSED,
+                ProcurementAuditEvent
+                        .AuditEventType
+                        .PROCUREMENT_ANOMALY_DISMISSED,
                 saved.getTenderId(),
                 saved.getBidId(),
                 reviewerUserId,
                 "Procurement anomaly dismissed",
-                "Anomaly reference=" + saved.getAnomalyReference()
+                "Anomaly reference="
+                        + saved.getAnomalyReference()
+                        + ", reviewNotes="
+                        + saved.getReviewNotes()
         );
 
-        return ProcurementAnomalyRecordResponse.from(saved);
+        log.info(
+                "Procurement anomaly dismissed: "
+                        + "anomalyId={} reference={} "
+                        + "tenderId={} reviewerUserId={}",
+                saved.getId(),
+                saved.getAnomalyReference(),
+                saved.getTenderId(),
+                reviewerUserId
+        );
+
+        return ProcurementAnomalyRecordResponse.from(
+                saved
+        );
     }
 
-        private void detectHighestScoreBypass(Tender tender, List<ProcurementAnomalyResponse> anomalies) {
+    private void detectHighestScoreBypass(Tender tender, List<ProcurementAnomalyResponse> anomalies) {
 
             if (tender.getAwardedBidId() == null) {
                 return;
@@ -290,6 +395,109 @@ public class ProcurementAnomalyServiceImpl implements ProcurementAnomalyService 
                 .replace("-", "")
                 .substring(0, 8)
                 .toUpperCase();
+    }
+
+    private ProcurementAnomaly findAnomaly(
+            Long anomalyId
+    ) {
+        if (
+                anomalyId == null
+                        || anomalyId <= 0
+        ) {
+            throw new IllegalArgumentException(
+                    "A valid procurement anomaly ID "
+                            + "is required."
+            );
+        }
+
+        return anomalyRepository
+                .findById(
+                        anomalyId
+                )
+                .orElseThrow(
+                        () ->
+                                new IllegalArgumentException(
+                                        "Procurement anomaly "
+                                                + "not found with ID: "
+                                                + anomalyId
+                                )
+                );
+    }
+
+    private void assertAssignedAdjudicator(
+            ProcurementAnomaly anomaly,
+            Long reviewerUserId
+    ) {
+        if (
+                reviewerUserId == null
+                        || reviewerUserId <= 0
+        ) {
+            throw new ProcurementAuthorizationException(
+                    "An authenticated adjudicator "
+                            + "user ID is required."
+            );
+        }
+
+        boolean assigned =
+                assignmentRepository
+                        .existsByTenderIdAndUserIdAndCommitteeRoleAndActiveTrue(
+                                anomaly.getTenderId(),
+                                reviewerUserId,
+                                TenderCommitteeAssignment
+                                        .CommitteeRole
+                                        .ADJUDICATOR
+                        );
+
+        if (assigned) {
+            return;
+        }
+
+        auditService.recordFailure(
+                ProcurementAuditEvent
+                        .AuditEventType
+                        .PROCUREMENT_ANOMALY_TRANSITION_REJECTED,
+                anomaly.getTenderId(),
+                anomaly.getBidId(),
+                reviewerUserId,
+                "Procurement anomaly transition rejected",
+                "User is not assigned as adjudicator "
+                        + "to tenderId="
+                        + anomaly.getTenderId()
+                        + ", anomalyReference="
+                        + anomaly.getAnomalyReference()
+        );
+
+        throw new ProcurementAuthorizationException(
+                "User is not assigned as adjudicator "
+                        + "to this anomaly's tender."
+        );
+    }
+
+    private String requireReviewNotes(ReviewProcurementAnomalyRequest request
+    ) {
+        if (
+                request == null
+                        || request.getReviewNotes() == null
+                        || request.getReviewNotes()
+                        .isBlank()
+        ) {
+            throw new IllegalArgumentException(
+                    "Review notes are required."
+            );
+        }
+
+        String reviewNotes =
+                request.getReviewNotes()
+                        .trim();
+
+        if (reviewNotes.length() > 1000) {
+            throw new IllegalArgumentException(
+                    "Review notes cannot exceed "
+                            + "1000 characters."
+            );
+        }
+
+        return reviewNotes;
     }
 
     private void assertAnomalyIsOpen(ProcurementAnomaly anomaly) {
