@@ -25,8 +25,10 @@ import {
 } from '../api/committeeAssignmentApi'
 
 import {
+    dismissProcurementAnomaly,
     getProcurementAnomalyApiErrorMessage,
     getTenderAnomalyRecords,
+    markProcurementAnomalyReviewed,
 } from '../api/procurementAnomalyApi'
 
 import {
@@ -101,6 +103,10 @@ const dateTimeFormatter =
         }
     )
 
+type AnomalyResolutionAction =
+    | 'REVIEW'
+    | 'DISMISS'
+
 export function AdjudicationWorkspacePage() {
     const routeParameters =
         useParams()
@@ -132,6 +138,9 @@ export function AdjudicationWorkspacePage() {
     ] = useState(false)
 
     const awardConfirmationDialogRef =
+        useRef<HTMLDialogElement>(null)
+
+    const anomalyResolutionDialogRef =
         useRef<HTMLDialogElement>(null)
 
     const [
@@ -171,6 +180,40 @@ export function AdjudicationWorkspacePage() {
         useState<string | null>(
             null
         )
+
+    const [
+        selectedAnomaly,
+        setSelectedAnomaly,
+    ] =
+        useState<ProcurementAnomalyRecord | null>(
+            null
+        )
+
+    const [
+        anomalyResolutionAction,
+        setAnomalyResolutionAction,
+    ] =
+        useState<AnomalyResolutionAction | null>(
+            null
+        )
+
+    const [
+        anomalyReviewNotes,
+        setAnomalyReviewNotes,
+    ] = useState('')
+
+    const [
+        anomalyActionError,
+        setAnomalyActionError,
+    ] =
+        useState<string | null>(
+            null
+        )
+
+    const [
+        isResolvingAnomaly,
+        setIsResolvingAnomaly,
+    ] = useState(false)
 
     const [
         rankings,
@@ -525,6 +568,37 @@ export function AdjudicationWorkspacePage() {
 
     useEffect(
         () => {
+            const dialog =
+                anomalyResolutionDialogRef.current
+
+            if (dialog === null) {
+                return
+            }
+
+            const shouldOpen =
+                selectedAnomaly !== null
+                && anomalyResolutionAction !== null
+
+            if (
+                shouldOpen
+                && !dialog.open
+            ) {
+                dialog.showModal()
+            } else if (
+                !shouldOpen
+                && dialog.open
+            ) {
+                dialog.close()
+            }
+        },
+        [
+            anomalyResolutionAction,
+            selectedAnomaly,
+        ]
+    )
+
+    useEffect(
+        () => {
             queueMicrotask(
                 () => {
                     void loadWorkspace()
@@ -743,6 +817,177 @@ export function AdjudicationWorkspacePage() {
             }
         } finally {
             setIsStartingAdjudication(false)
+        }
+    }
+
+    function openAnomalyResolution(
+        anomaly: ProcurementAnomalyRecord,
+        action: AnomalyResolutionAction,
+    ): void {
+        if (
+            anomaly.status !== 'OPEN'
+            || isResolvingAnomaly
+        ) {
+            return
+        }
+
+        setSelectedAnomaly(anomaly)
+        setAnomalyResolutionAction(action)
+        setAnomalyReviewNotes('')
+        setAnomalyActionError(null)
+    }
+
+    function cancelAnomalyResolution(): void {
+        if (isResolvingAnomaly) {
+            return
+        }
+
+        setSelectedAnomaly(null)
+        setAnomalyResolutionAction(null)
+        setAnomalyReviewNotes('')
+        setAnomalyActionError(null)
+    }
+
+    async function confirmAnomalyResolution():
+        Promise<void> {
+        if (
+            selectedAnomaly === null
+            || anomalyResolutionAction === null
+            || isResolvingAnomaly
+        ) {
+            return
+        }
+
+        const normalizedNotes =
+            anomalyReviewNotes.trim()
+
+        if (normalizedNotes.length === 0) {
+            setAnomalyActionError(
+                'Review notes are required.'
+            )
+
+            return
+        }
+
+        if (normalizedNotes.length > 1000) {
+            setAnomalyActionError(
+                'Review notes cannot exceed '
+                + '1000 characters.'
+            )
+
+            return
+        }
+
+        setIsResolvingAnomaly(true)
+        setAnomalyActionError(null)
+        setPageError(null)
+        setSuccessMessage(null)
+
+        try {
+            const request = {
+                reviewNotes:
+                normalizedNotes,
+            }
+
+            const updatedAnomaly =
+                anomalyResolutionAction
+                === 'REVIEW'
+                    ? await markProcurementAnomalyReviewed(
+                        selectedAnomaly.id,
+                        request
+                    )
+                    : await dismissProcurementAnomaly(
+                        selectedAnomaly.id,
+                        request
+                    )
+
+            setAnomalies(
+                (currentAnomalies) =>
+                    currentAnomalies.map(
+                        (anomaly) =>
+                            anomaly.id
+                            === updatedAnomaly.id
+                                ? updatedAnomaly
+                                : anomaly
+                    )
+            )
+
+            const completedAction =
+                anomalyResolutionAction
+
+            setSelectedAnomaly(null)
+            setAnomalyResolutionAction(null)
+            setAnomalyReviewNotes('')
+            setAnomalyActionError(null)
+
+            setSuccessMessage(
+                'Procurement anomaly '
+                + updatedAnomaly.anomalyReference
+                + (
+                    completedAction === 'REVIEW'
+                        ? ' was marked as reviewed.'
+                        : ' was dismissed.'
+                )
+            )
+
+            /*
+             * Refresh from the server so the award
+             * gate uses the authoritative persisted
+             * anomaly state.
+             */
+            const refreshed =
+                await loadAnomalyRecords(
+                    'The anomaly was updated, but '
+                    + 'the integrity gate could not '
+                    + 'be refreshed. Refresh the '
+                    + 'workspace before awarding.'
+                )
+
+            if (!refreshed) {
+                setPageError(
+                    'The anomaly decision was recorded, '
+                    + 'but the integrity gate could not '
+                    + 'be refreshed.'
+                )
+            }
+        } catch (error) {
+            setAnomalyActionError(
+                getProcurementAnomalyApiErrorMessage(
+                    error,
+                    anomalyResolutionAction
+                    === 'REVIEW'
+                        ? (
+                            'Unable to mark the '
+                            + 'procurement anomaly '
+                            + 'as reviewed.'
+                        )
+                        : (
+                            'Unable to dismiss the '
+                            + 'procurement anomaly.'
+                        )
+                )
+            )
+
+            /*
+             * Another adjudicator may have resolved
+             * the record. Refresh without discarding
+             * the mutation error shown in the dialog.
+             */
+            try {
+                const anomalyResponse =
+                    await getTenderAnomalyRecords(
+                        selectedAnomaly.tenderId
+                    )
+
+                setAnomalies(
+                    anomalyResponse.content
+                )
+                setAnomalyLoadError(null)
+            } catch {
+                // Preserve the mutation error.
+            }
+        } finally {
+            setIsResolvingAnomaly(false)
         }
     }
 
@@ -1099,6 +1344,12 @@ export function AdjudicationWorkspacePage() {
                                 loadError={
                                     anomalyLoadError
                                 }
+                                isResolving={
+                                    isResolvingAnomaly
+                                }
+                                onResolve={
+                                    openAnomalyResolution
+                                }
                             />
                         )}
 
@@ -1281,6 +1532,269 @@ export function AdjudicationWorkspacePage() {
                     <AdjudicationGovernanceNotice />
                 </>
             )}
+
+            <dialog
+                ref={anomalyResolutionDialogRef}
+                className={
+                    'confirmation-dialog '
+                    + 'adjudication-confirmation-dialog'
+                }
+                aria-labelledby={
+                    'anomaly-resolution-title'
+                }
+                aria-describedby={
+                    'anomaly-resolution-description'
+                }
+                onClose={
+                    () => {
+                        if (isResolvingAnomaly) {
+                            return
+                        }
+
+                        setSelectedAnomaly(null)
+                        setAnomalyResolutionAction(null)
+                        setAnomalyReviewNotes('')
+                        setAnomalyActionError(null)
+                    }
+                }
+                onCancel={
+                    (event) => {
+                        if (isResolvingAnomaly) {
+                            event.preventDefault()
+                            return
+                        }
+
+                        setSelectedAnomaly(null)
+                        setAnomalyResolutionAction(null)
+                        setAnomalyReviewNotes('')
+                        setAnomalyActionError(null)
+                    }
+                }
+            >
+                <div
+                    className={
+                        'confirmation-dialog-content'
+                    }
+                >
+                    <div
+                        className={
+                            'adjudication-confirmation-icon'
+                        }
+                        aria-hidden="true"
+                    >
+                        !
+                    </div>
+
+                    <span className="eyebrow">
+            Integrity decision
+        </span>
+
+                    <h2 id="anomaly-resolution-title">
+                        {anomalyResolutionAction
+                        === 'REVIEW'
+                            ? 'Mark anomaly as reviewed?'
+                            : 'Dismiss anomaly?'}
+                    </h2>
+
+                    <p id="anomaly-resolution-description">
+                        Record the adjudication decision for{' '}
+                        <strong>
+                            {
+                                selectedAnomaly
+                                    ?.anomalyReference
+                            }
+                        </strong>
+                        .
+                    </p>
+
+                    {selectedAnomaly !== null && (
+                        <div
+                            className={
+                                'adjudication-confirmation-warning'
+                            }
+                        >
+                            <strong>
+                                {
+                                    formatStatus(
+                                        selectedAnomaly.severity
+                                    )
+                                }
+                                {' '}
+                                anomaly
+                            </strong>
+
+                            <span>
+                    {
+                        formatStatus(
+                            selectedAnomaly.type
+                        )
+                    }
+                                {': '}
+                                {selectedAnomaly.message}
+                </span>
+                        </div>
+                    )}
+
+                    <div className="form-field">
+                        <label
+                            htmlFor={
+                                'anomaly-resolution-notes'
+                            }
+                        >
+                            Review notes
+                        </label>
+
+                        <textarea
+                            id={
+                                'anomaly-resolution-notes'
+                            }
+                            rows={6}
+                            minLength={1}
+                            maxLength={1000}
+                            value={anomalyReviewNotes}
+                            disabled={isResolvingAnomaly}
+                            aria-invalid={
+                                anomalyActionError !== null
+                            }
+                            aria-describedby={
+                                anomalyActionError !== null
+                                    ? (
+                                        'anomaly-resolution-error'
+                                    )
+                                    : (
+                                        'anomaly-resolution-help'
+                                    )
+                            }
+                            placeholder={
+                                anomalyResolutionAction
+                                === 'REVIEW'
+                                    ? (
+                                        'Explain the evidence '
+                                        + 'reviewed and why the '
+                                        + 'anomaly may be marked '
+                                        + 'as reviewed.'
+                                    )
+                                    : (
+                                        'Explain why this anomaly '
+                                        + 'is a false positive or '
+                                        + 'does not require further '
+                                        + 'action.'
+                                    )
+                            }
+                            onChange={
+                                (event) => {
+                                    setAnomalyReviewNotes(
+                                        event.target.value
+                                    )
+                                    setAnomalyActionError(null)
+                                }
+                            }
+                        />
+
+                        <div
+                            className={
+                                'adjudication-award-field-help'
+                            }
+                        >
+                            <small
+                                id={
+                                    'anomaly-resolution-help'
+                                }
+                            >
+                                Required. These notes become
+                                part of the immutable
+                                procurement record.
+                            </small>
+
+                            <small>
+                                {anomalyReviewNotes.length}
+                                {' / 1000'}
+                            </small>
+                        </div>
+
+                        {anomalyActionError !== null && (
+                            <p
+                                id={
+                                    'anomaly-resolution-error'
+                                }
+                                className={
+                                    'form-error-message'
+                                }
+                                role="alert"
+                            >
+                                {anomalyActionError}
+                            </p>
+                        )}
+                    </div>
+
+                    <div
+                        className={
+                            'adjudication-consequential-notice'
+                        }
+                    >
+                        <strong>
+                            Consequential action
+                        </strong>
+
+                        <p>
+                            Resolving this anomaly changes the
+                            persisted integrity record and may
+                            remove an award blocker. The backend
+                            will verify your active Adjudicator
+                            assignment before accepting the
+                            decision.
+                        </p>
+                    </div>
+
+                    <div className="form-actions">
+                        <button
+                            className="secondary-button"
+                            type="button"
+                            disabled={isResolvingAnomaly}
+                            onClick={
+                                cancelAnomalyResolution
+                            }
+                        >
+                            Cancel
+                        </button>
+
+                        <button
+                            className={
+                                anomalyResolutionAction
+                                === 'DISMISS'
+                                    ? (
+                                        'primary-button '
+                                        + 'adjudication-confirm-'
+                                        + 'award-button'
+                                    )
+                                    : 'primary-button'
+                            }
+                            type="button"
+                            disabled={
+                                isResolvingAnomaly
+                                || anomalyReviewNotes
+                                    .trim()
+                                    .length === 0
+                                || anomalyReviewNotes
+                                    .trim()
+                                    .length > 1000
+                            }
+                            onClick={
+                                () => {
+                                    void confirmAnomalyResolution()
+                                }
+                            }
+                        >
+                            {isResolvingAnomaly
+                                ? 'Saving decision...'
+                                : anomalyResolutionAction
+                                === 'REVIEW'
+                                    ? 'Confirm reviewed'
+                                    : 'Confirm dismissal'}
+                        </button>
+                    </div>
+                </div>
+            </dialog>
 
             <dialog
                 ref={awardConfirmationDialogRef}
@@ -1623,12 +2137,20 @@ interface AdjudicationAnomalyGatePanelProps {
     blockingAnomalies:
         ProcurementAnomalyRecord[]
     loadError: string | null
+    isResolving: boolean
+    onResolve:
+        (
+            anomaly: ProcurementAnomalyRecord,
+            action: AnomalyResolutionAction,
+        ) => void
 }
 
 function AdjudicationAnomalyGatePanel({
                                           anomalies,
                                           blockingAnomalies,
                                           loadError,
+                                          isResolving,
+                                          onResolve,
                                       }: AdjudicationAnomalyGatePanelProps) {
     const hasBlockingAnomalies =
         blockingAnomalies.length > 0
@@ -1656,83 +2178,44 @@ function AdjudicationAnomalyGatePanel({
 
                 <h2
                     id={
-                        'adjudication-anomaly-gate-heading'
+                        'adjudication-anomaly-'
+                        + 'gate-heading'
                     }
                 >
                     {loadError !== null
-                        ? 'Anomaly status unavailable'
+                        ? (
+                            'Anomaly status '
+                            + 'unavailable'
+                        )
                         : hasBlockingAnomalies
                             ? (
                                 'Award blocked by '
                                 + 'open anomalies'
                             )
-                            : 'No blocking anomalies'}
+                            : (
+                                'No blocking '
+                                + 'anomalies'
+                            )}
                 </h2>
 
                 <p>
-                    Open HIGH or CRITICAL procurement
-                    anomalies must be reviewed or
-                    dismissed before an award can be
-                    recorded.
+                    Open HIGH or CRITICAL
+                    procurement anomalies must be
+                    reviewed or dismissed before an
+                    award can be recorded.
                 </p>
             </div>
 
             {loadError !== null ? (
                 <p
-                    className="form-error-message"
+                    className={
+                        'form-error-message'
+                    }
                     role="alert"
                 >
                     {loadError}
                 </p>
-            ) : hasBlockingAnomalies ? (
-                <div
-                    className={
-                        'adjudication-blocking-'
-                        + 'anomaly-list'
-                    }
-                >
-                    {blockingAnomalies.map(
-                        (anomaly) => (
-                            <article
-                                key={anomaly.id}
-                                className={
-                                    'adjudication-'
-                                    + 'blocking-anomaly'
-                                }
-                            >
-                                <div>
-                                    <strong>
-                                        {
-                                            anomaly
-                                                .anomalyReference
-                                        }
-                                    </strong>
-
-                                    <span>
-                                        {
-                                            formatStatus(
-                                                anomaly
-                                                    .severity
-                                            )
-                                        }
-                                        {' · '}
-                                        {
-                                            formatStatus(
-                                                anomaly
-                                                    .type
-                                            )
-                                        }
-                                    </span>
-                                </div>
-
-                                <p>
-                                    {anomaly.message}
-                                </p>
-                            </article>
-                        )
-                    )}
-                </div>
-            ) : (
+            ) : anomalies.length === 0 ? (
                 <p
                     className={
                         'adjudication-anomaly-'
@@ -1740,18 +2223,280 @@ function AdjudicationAnomalyGatePanel({
                     }
                     role="status"
                 >
-                    {anomalies.length === 0
-                        ? (
-                            'No persisted procurement '
-                            + 'anomalies were found.'
-                        )
-                        : (
-                            'Persisted anomalies exist, '
-                            + 'but none currently meet '
-                            + 'the award-blocking rule.'
-                        )}
+                    No persisted procurement
+                    anomalies were found.
                 </p>
+            ) : (
+                <div
+                    className={
+                        'adjudication-blocking-'
+                        + 'anomaly-list'
+                    }
+                >
+                    {anomalies.map(
+                        (anomaly) => {
+                            const isBlocking =
+                                isBlockingAwardAnomaly(
+                                    anomaly
+                                )
+
+                            return (
+                                <article
+                                    key={anomaly.id}
+                                    className={
+                                        'adjudication-'
+                                        + 'blocking-anomaly '
+                                        + (
+                                            isBlocking
+                                                ? (
+                                                    'is-open '
+                                                    + 'is-blocking'
+                                                )
+                                                : (
+                                                    'is-resolved'
+                                                )
+                                        )
+                                    }
+                                >
+                                    <div>
+                                        <div>
+                                            <strong>
+                                                {
+                                                    anomaly
+                                                        .anomalyReference
+                                                }
+                                            </strong>
+
+                                            <span>
+                                                {
+                                                    formatStatus(
+                                                        anomaly
+                                                            .severity
+                                                    )
+                                                }
+                                                {' · '}
+                                                {
+                                                    formatStatus(
+                                                        anomaly
+                                                            .type
+                                                    )
+                                                }
+                                                {' · '}
+                                                {
+                                                    formatStatus(
+                                                        anomaly
+                                                            .status
+                                                    )
+                                                }
+                                            </span>
+                                        </div>
+
+                                        <span
+                                            className={
+                                                'adjudication-'
+                                                + 'evidence-badge'
+                                            }
+                                        >
+                                            {isBlocking
+                                                ? (
+                                                    'Award '
+                                                    + 'blocker'
+                                                )
+                                                : (
+                                                    formatStatus(
+                                                        anomaly
+                                                            .status
+                                                    )
+                                                )}
+                                        </span>
+                                    </div>
+
+                                    <p>
+                                        {anomaly.message}
+                                    </p>
+
+                                    <div
+                                        className={
+                                            'adjudication-'
+                                            + 'anomaly-evidence'
+                                        }
+                                    >
+                                        <span>
+                                            Evidence
+                                        </span>
+
+                                        <p>
+                                            {
+                                                anomaly
+                                                    .evidence
+                                            }
+                                        </p>
+                                    </div>
+
+                                    <dl
+                                        className={
+                                            'adjudication-'
+                                            + 'tender-details'
+                                        }
+                                    >
+                                        <AdjudicationDetailItem
+                                            label="Detected"
+                                            value={
+                                                formatDateTime(
+                                                    anomaly
+                                                        .detectedAt
+                                                )
+                                            }
+                                        />
+
+                                        <AdjudicationDetailItem
+                                            label="Related bid"
+                                            value={
+                                                anomaly.bidId
+                                                === null
+                                                    ? (
+                                                        'Tender '
+                                                        + 'level'
+                                                    )
+                                                    : (
+                                                        'Bid ID '
+                                                        + anomaly
+                                                            .bidId
+                                                    )
+                                            }
+                                        />
+
+                                        <AdjudicationDetailItem
+                                            label="Reviewed"
+                                            value={
+                                                anomaly.reviewedAt
+                                                === null
+                                                    ? (
+                                                        'Not '
+                                                        + 'reviewed'
+                                                    )
+                                                    : (
+                                                        formatDateTime(
+                                                            anomaly
+                                                                .reviewedAt
+                                                        )
+                                                    )
+                                            }
+                                        />
+
+                                        <AdjudicationDetailItem
+                                            label="Reviewer"
+                                            value={
+                                                anomaly
+                                                    .reviewedByUserId
+                                                === null
+                                                    ? (
+                                                        'Not '
+                                                        + 'recorded'
+                                                    )
+                                                    : (
+                                                        'User '
+                                                        + anomaly
+                                                            .reviewedByUserId
+                                                    )
+                                            }
+                                        />
+                                    </dl>
+
+                                    {anomaly.reviewNotes
+                                        !== null && (
+                                            <div
+                                                className={
+                                                    'adjudication-'
+                                                    + 'assignment-'
+                                                    + 'reason'
+                                                }
+                                            >
+                                            <span>
+                                                Review notes
+                                            </span>
+
+                                                <p>
+                                                    {
+                                                        anomaly
+                                                            .reviewNotes
+                                                    }
+                                                </p>
+                                            </div>
+                                        )}
+
+                                    {anomaly.status
+                                        === 'OPEN' && (
+                                            <div
+                                                className={
+                                                    'form-actions'
+                                                }
+                                            >
+                                                <button
+                                                    className={
+                                                        'secondary-'
+                                                        + 'button'
+                                                    }
+                                                    type="button"
+                                                    disabled={
+                                                        isResolving
+                                                    }
+                                                    onClick={
+                                                        () => {
+                                                            onResolve(
+                                                                anomaly,
+                                                                'REVIEW'
+                                                            )
+                                                        }
+                                                    }
+                                                >
+                                                    Mark reviewed
+                                                </button>
+
+                                                <button
+                                                    className={
+                                                        'secondary-'
+                                                        + 'button'
+                                                    }
+                                                    type="button"
+                                                    disabled={
+                                                        isResolving
+                                                    }
+                                                    onClick={
+                                                        () => {
+                                                            onResolve(
+                                                                anomaly,
+                                                                'DISMISS'
+                                                            )
+                                                        }
+                                                    }
+                                                >
+                                                    Dismiss
+                                                </button>
+                                            </div>
+                                        )}
+                                </article>
+                            )
+                        }
+                    )}
+                </div>
             )}
+
+            {loadError === null
+                && anomalies.length > 0
+                && !hasBlockingAnomalies && (
+                    <p
+                        className={
+                            'adjudication-anomaly-'
+                            + 'clear-message'
+                        }
+                        role="status"
+                    >
+                        Persisted anomalies exist,
+                        but none currently meet the
+                        award-blocking rule.
+                    </p>
+                )}
         </section>
     )
 }
