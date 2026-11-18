@@ -309,7 +309,7 @@ export function KasiBridgeShowcasePage() {
       <div className="showcase-page">
         <section className="showcase-hero">
           <div className="showcase-hero-copy">
-            <span className="showcase-label">Presentation prototype</span>
+            <span className="showcase-label">Procurement integrity platform</span>
 
             <h1>
               Transparent procurement.
@@ -326,9 +326,9 @@ export function KasiBridgeShowcasePage() {
               <div className="showcase-hero-actions">
                   <Link
                       className="showcase-primary-action"
-                      to="/prototype"
+                      to="/portal"
                   >
-                      Launch interactive prototype
+                     Enter KasiBridge
                   </Link>
 
                   <button

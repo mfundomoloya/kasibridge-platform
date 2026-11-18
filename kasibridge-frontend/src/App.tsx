@@ -88,9 +88,6 @@ import {
     KasiBridgeShowcasePage,
 } from './pages/KasiBridgeShowcasePage'
 
-import {
-    KasiBridgePrototypePage,
-} from './pages/KasiBridgePrototypePage'
 
 import {
     FraudAssessmentDashboardPage,
@@ -153,13 +150,6 @@ function App() {
                 path="/showcase"
                 element={
                     <KasiBridgeShowcasePage />
-                }
-            />
-
-            <Route
-                path="/prototype"
-                element={
-                    <KasiBridgePrototypePage />
                 }
             />
 
