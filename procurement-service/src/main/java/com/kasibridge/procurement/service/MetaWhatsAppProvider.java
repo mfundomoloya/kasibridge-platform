@@ -61,8 +61,40 @@ public class MetaWhatsAppProvider implements WhatsAppProvider {
 
 
     @PostConstruct
-    void logProviderActivation() {
-        log.info("Real Meta WhatsApp provider is active.");
+    void validateConfigurationAndLogActivation() {
+        requireConfiguration(
+                apiVersion,
+                "WHATSAPP_API_VERSION"
+        );
+        requireConfiguration(
+                phoneNumberId,
+                "WHATSAPP_PHONE_NUMBER_ID"
+        );
+        requireConfiguration(
+                accessToken,
+                "WHATSAPP_ACCESS_TOKEN"
+        );
+
+        log.info(
+                "Real Meta WhatsApp provider is active."
+        );
+    }
+
+    private void requireConfiguration(
+            String value,
+            String environmentVariable
+    ) {
+        if (
+                value == null
+                        || value.isBlank()
+        ) {
+            throw new IllegalStateException(
+                    environmentVariable
+                            + " is required when the "
+                            + "Meta WhatsApp provider "
+                            + "is enabled."
+            );
+        }
     }
 
     @Override

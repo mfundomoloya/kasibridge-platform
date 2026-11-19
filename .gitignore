@@ -25,6 +25,7 @@ replay_pid*
 
 #secrets
 **/src/main/resources/application.properties
+!procurement-service/src/main/resources/application.properties
 **/src/main/resources/application.yml
 
 #env variables

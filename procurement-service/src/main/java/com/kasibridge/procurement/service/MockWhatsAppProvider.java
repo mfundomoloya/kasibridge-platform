@@ -22,7 +22,7 @@ public class MockWhatsAppProvider implements WhatsAppProvider{
     void logProviderActivation() {
         log.warn("Mock WhatsApp provider is active.");
     }
-    @Value("${kasibridge.notifications.mock-whatsapp.enabled:true}")
+    @Value("${kasibridge.notifications.mock-whatsapp.enabled:false}")
     private boolean enabled;
 
     @Value("${kasibridge.notifications.mock-whatsapp.force-failure:false}")
@@ -38,7 +38,7 @@ public class MockWhatsAppProvider implements WhatsAppProvider{
 
         if(forceFailure) {
             return WhatsAppDeliveryResult.failure(
-                    "Mock WhatsApp provider failure was force by configuration");
+                    "Mock WhatsApp provider failure was forced by configuration");
         }
 
         if(command.getRecipientPhone() == null || command.getRecipientPhone().isBlank()) {
