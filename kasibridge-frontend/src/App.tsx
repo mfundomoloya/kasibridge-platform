@@ -85,11 +85,6 @@ import {
 } from './pages/TicketAiAssessmentsPage'
 
 import {
-    KasiBridgeShowcasePage,
-} from './pages/KasiBridgeShowcasePage'
-
-
-import {
     FraudAssessmentDashboardPage,
 } from './pages/FraudAssessmentDashboardPage'
 
@@ -143,13 +138,6 @@ function App() {
                         to="/portal"
                         replace
                     />
-                }
-            />
-
-            <Route
-                path="/showcase"
-                element={
-                    <KasiBridgeShowcasePage />
                 }
             />
 

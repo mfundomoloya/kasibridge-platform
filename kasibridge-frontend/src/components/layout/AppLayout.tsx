@@ -89,10 +89,6 @@ export function AppLayout({
         NavigationItem[] = [
 
         {
-            label: 'Showcase',
-            path: '/showcase',
-        },
-        {
             label: 'Dashboard',
             path: '/dashboard',
         },

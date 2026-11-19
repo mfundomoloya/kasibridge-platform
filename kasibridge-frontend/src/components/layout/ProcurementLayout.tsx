@@ -17,11 +17,6 @@ interface ProcurementLayoutProps {
 const procurementNavigation:
     NavigationItem[] = [
     {
-        label: 'Showcase',
-        path: '/showcase',
-        end: true,
-    },
-    {
         label: 'Procurement overview',
         path: '/procurement',
         end: true,
