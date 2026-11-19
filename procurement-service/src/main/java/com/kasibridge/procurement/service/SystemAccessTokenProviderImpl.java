@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kasibridge.procurement.dto.SystemLoginRequest;
 import com.kasibridge.procurement.dto.SystemTokenResponse;
 import com.kasibridge.procurement.exception.SupportTicketException;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -25,14 +26,53 @@ public class SystemAccessTokenProviderImpl
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
 
-    @Value("${kasibridge.services.auth.base-url:http://localhost:8084}")
+    @Value("${kasibridge.services.auth.base-url}")
     private String authBaseUrl;
 
-    @Value("${kasibridge.internal.system.username:procurement-system}")
+    @Value("${kasibridge.internal.system.username}")
     private String systemUsername;
 
-    @Value("${kasibridge.internal.system.password:password}")
+    @Value("${kasibridge.internal.system.password}")
     private String systemPassword;
+
+    @PostConstruct
+    void validateConfiguration() {
+        requireConfiguration(
+                authBaseUrl,
+                "kasibridge.services.auth.base-url"
+        );
+        requireConfiguration(
+                systemUsername,
+                "kasibridge.internal.system.username"
+        );
+        requireConfiguration(
+                systemPassword,
+                "kasibridge.internal.system.password"
+        );
+
+        if (tokenRefreshSkewSeconds < 0) {
+            throw new IllegalStateException(
+                    "kasibridge.internal.system."
+                            + "token-refresh-skew-seconds "
+                            + "cannot be negative."
+            );
+        }
+    }
+
+    private void requireConfiguration(
+            String value,
+            String propertyName
+    ) {
+        if (
+                value == null
+                        || value.isBlank()
+        ) {
+            throw new IllegalStateException(
+                    propertyName
+                            + " must be configured."
+            );
+        }
+    }
 
     @Value("${kasibridge.internal.system.token-refresh-skew-seconds:60}")
     private long tokenRefreshSkewSeconds;
