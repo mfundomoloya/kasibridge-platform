@@ -31,8 +31,9 @@ build/
 
 ### VS Code ###
 .vscode/
+
 # Private cryptographic key material
 **/src/test/resources/keys/*.pem
-****rc/test/resources/keys/*.key
-**/**c/main/resources/keys/private*.pe****/src/main/resources/keys/*.key
-**
+**/src/test/resources/keys/*.key
+**/src/main/resources/keys/private*.pem
+**/src/main/resources/keys/private*.key
