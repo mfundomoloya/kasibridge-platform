@@ -10,7 +10,10 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 @SpringBootTest(
 		properties = {
-				"spring.jpa.hibernate.ddl-auto=create-drop"
+				"spring.jpa.hibernate.ddl-auto=create-drop",
+				"spring.flyway.enabled=false",
+				"kasibridge.security.cors.allowed-origins="
+						+ "http://localhost:5173"
 		}
 )
 @Testcontainers

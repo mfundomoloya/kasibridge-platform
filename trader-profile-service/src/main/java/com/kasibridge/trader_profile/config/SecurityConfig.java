@@ -30,9 +30,7 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter
             jwtAuthenticationFilter;
 
-    @Value(
-            "${kasibridge.security.cors.allowed-origins:"
-                    + "http://localhost:5173}"
+    @Value("${kasibridge.security.cors.allowed-origins}"
     )
     private String allowedOrigins;
 
