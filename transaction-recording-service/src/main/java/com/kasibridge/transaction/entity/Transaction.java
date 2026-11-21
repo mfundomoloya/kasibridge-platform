@@ -26,7 +26,6 @@ import java.util.UUID;
                 @Index(name = "idx_transaction_recorded_at", columnList = "recorded_at"),
 
                 //lookup / filtering
-                @Index(name = "idx_transaction_reference", columnList = "reference_number"),
                 @Index(name = "idx_transaction_status", columnList = "status")
         }
 )
