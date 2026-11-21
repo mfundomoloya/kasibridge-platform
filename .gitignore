@@ -27,6 +27,7 @@ replay_pid*
 **/src/main/resources/application.properties
 !procurement-service/src/main/resources/application.properties
 !trader-profile-service/src/main/resources/application.properties
+!transaction-recording-service/src/main/resources/application.properties
 **/src/main/resources/application.yml
 
 #env variables
