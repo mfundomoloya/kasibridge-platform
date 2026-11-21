@@ -22,6 +22,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.security.core.Authentication;
+import com.kasibridge.fraud.dto.AwardIntegrityAssessmentResult;
+import com.kasibridge.fraud.dto.PersistedAwardIntegrityAssessmentResponse;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -95,15 +97,15 @@ public class FraudController {
                     "Assess tender award integrity",
             description =
                     "Runs deterministic, explainable "
-                            + "award-integrity rules. "
-                            + "The response is advisory "
-                            + "and does not alter the "
-                            + "tender or award."
+                            + "award-integrity rules and "
+                            + "persists immutable assessment "
+                            + "evidence. An idempotent repeat "
+                            + "returns the existing assessment."
     )
     @Tag(name = "Fraud Analysis")
     @PostMapping("/awards/assess")
     public ResponseEntity<
-            AwardIntegrityAssessmentResponse
+            PersistedAwardIntegrityAssessmentResponse
             >
     assessAwardIntegrity(
             @Valid
@@ -116,11 +118,18 @@ public class FraudController {
                 request.tenderId()
         );
 
-        return ResponseEntity.ok(
+        AwardIntegrityAssessmentResult result =
                 awardIntegrityAssessmentService
-                        .assess(
-                                request
-                        )
+                        .assess(request);
+
+        if (result.created()) {
+            return ResponseEntity
+                    .status(HttpStatus.CREATED)
+                    .body(result.assessment());
+        }
+
+        return ResponseEntity.ok(
+                result.assessment()
         );
     }
 
