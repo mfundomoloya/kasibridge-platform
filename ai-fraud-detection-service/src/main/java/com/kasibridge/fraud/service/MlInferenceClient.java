@@ -34,10 +34,7 @@ public class MlInferenceClient {
     public MlInferenceClient(
             HttpClient mlInferenceHttpClient,
             ObjectMapper objectMapper,
-            @Value(
-                    "${kasibridge.fraud.ml.base-url:"
-                            + "http://127.0.0.1:8090}"
-            )
+            @Value("${kasibridge.fraud.ml.base-url}")
             String baseUrl,
             @Value(
                     "${kasibridge.fraud.ml.read-timeout-ms:5000}"
