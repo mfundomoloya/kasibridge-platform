@@ -155,7 +155,7 @@ CREATE TABLE fraud.award_integrity_assessments (
             (
                 review_status = 'PENDING_REVIEW'
                 AND reviewed_by IS NULL
-                AND reviewed_notes IS NULL
+                AND review_notes IS NULL
                 AND reviewed_at IS NULL
             )
             OR
@@ -173,7 +173,7 @@ CREATE TABLE fraud.award_integrity_assessments (
                     'DISMISSED'
                 )
                 AND reviewed_by IS NOT NULL
-                AND reviewed_notes IS NOT NULL
+                AND review_notes IS NOT NULL
                 AND reviewed_at IS NOT NULL
             )
         )
