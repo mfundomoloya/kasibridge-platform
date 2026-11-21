@@ -73,11 +73,6 @@ public class SecurityConfig {
                                          * Public operational endpoints.
                                          */
                                         .requestMatchers(
-                                                "/swagger-ui.html",
-                                                "/swagger-ui/**",
-                                                "/v3/api-docs",
-                                                "/v3/api-docs/**",
-                                                "/v3/api-docs.yaml",
                                                 "/actuator/health",
                                                 "/actuator/info",
                                                 "/error"
